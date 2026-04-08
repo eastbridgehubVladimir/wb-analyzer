@@ -1,0 +1,93 @@
+version: "3.9"
+
+services:
+  # --- Реляционная БД: оперативные данные (товары, заказы, операции) ---
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-wb_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-wb_saas}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wb}"]
+      interval: 5s
+      retries: 5
+
+  # --- Аналитическая БД: миллионы событий, быстрая агрегация ---
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3-alpine
+    ports:
+      - "8123:8123"   # HTTP интерфейс
+      - "9000:9000"   # Native протокол
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./infra/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
+      retries: 5
+
+  # --- Redis: кэш + очереди задач ---
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+  # --- FastAPI бэкенд ---
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-wb}:${POSTGRES_PASSWORD:-wb_secret}@postgres:5432/${POSTGRES_DB:-wb_saas}
+      - CLICKHOUSE_URL=clickhouse://clickhouse:9000/wb_analytics
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # --- Воркер фоновых задач (ARQ + Redis) ---
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-wb}:${POSTGRES_PASSWORD:-wb_secret}@postgres:5432/${POSTGRES_DB:-wb_saas}
+      - CLICKHOUSE_URL=clickhouse://clickhouse:9000/wb_analytics
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - redis
+      - postgres
+      - clickhouse
+    command: arq workers.main.WorkerSettings
+
+volumes:
+  postgres_data:
+  clickhouse_data:
+  redis_data:

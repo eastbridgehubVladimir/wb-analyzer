@@ -1,0 +1,26 @@
+# Web framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+
+# PostgreSQL (async)
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# ClickHouse
+clickhouse-connect==0.8.8
+
+# Redis + очереди
+redis[asyncio]==5.2.0
+arq==0.26.1
+
+# Парсер
+playwright==1.48.0
+
+# Утилиты
+pydantic==2.10.0
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+httpx==0.28.0
+tenacity==9.0.0          # retry логика
+orjson==3.10.12          # быстрый JSON

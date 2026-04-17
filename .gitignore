@@ -1,22 +1,13 @@
-# Python
+.env
+*.py.bak
+app_backup*.py
+nohup.out
+*.log
+*.xlsx
+find_paths*.py
+import_log.txt
+find_paths_log.txt
+test_*.py
 __pycache__/
 *.pyc
-*.pyo
-.venv/
-venv/
-*.egg-info/
-
-# Env
-.env
-
-# Docker volumes (локальные данные БД)
-postgres_data/
-clickhouse_data/
-redis_data/
-
-# IDE
-.idea/
-.vscode/
-
-# OS
 .DS_Store

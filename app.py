@@ -192,7 +192,8 @@ def get_ai_insights(row):
     hypotheses.append(f"Протестировать вход в ценовом сегменте {price_low:,.0f}–{price_high:,.0f} ₽ с минимальной партией 30–50 единиц.")
     hypotheses.append(f"Проверить сезонность ниши: сравнить заказы за последние 30 и 90 дней — если рост более 20%, ниша на подъёме.")
 
-    return {'insights': insights, 'hypotheses': hypotheses}
+    analysis = ' '.join(insights)
+    return {'insights': insights, 'hypotheses': hypotheses, 'analysis': analysis}
 
 HTML = """<!DOCTYPE html>
 <html lang="ru">
@@ -1976,7 +1977,7 @@ class Handler(BaseHTTPRequestHandler):
                             float(orders or 0) / 30,
                             int(sellers or 0),
                             float(avg_price or 0),
-                            insights.analysis,
+                            insights['analysis'],
                         ))
                         conn2.commit()
                         cur2.close()
@@ -1995,7 +1996,7 @@ class Handler(BaseHTTPRequestHandler):
                         'verdict': verdict,
                         'insights': insights['insights'],
                         'hypotheses': insights['hypotheses'],
-                        'analysis': insights.analysis,
+                        'analysis': insights['analysis'],
                         'buyout_pct': float(buyout_pct or 0),
                         'turnover': float(turnover or 0),
                         'profit_pct': float(profit_pct or 0),

@@ -18,6 +18,8 @@ except ImportError:
     from dotenv import load_dotenv
     print("Зависимости установлены!")
 
+import requests as mpstats_req
+
 
 
 import datetime

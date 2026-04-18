@@ -25,7 +25,12 @@ except ImportError:
 import datetime
 import sys
 import os
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    import subprocess, sys
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'python-dotenv'], stdout=subprocess.DEVNULL)
+    from dotenv import load_dotenv
 load_dotenv()
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))

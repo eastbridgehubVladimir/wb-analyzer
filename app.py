@@ -1982,7 +1982,7 @@ class Handler(BaseHTTPRequestHandler):
                         cur2.close()
                         conn2.close()
                     except Exception as log_err:
-                        logger.warning("Логирование не удалось: %s", log_err)
+                        print(f"Логирование не удалось: {log_err}")
 
                     result = {
                         'name': clean_name(name),

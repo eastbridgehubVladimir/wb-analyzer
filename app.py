@@ -1653,6 +1653,8 @@ class Handler(BaseHTTPRequestHandler):
                 AND profit_pct > 0.1 
                 AND buyout_pct > 0.5
                 AND sellers > 10
+                AND LENGTH(REGEXP_REPLACE(name, '^[0-9]+ ', '')) > 5
+                AND mpstats_path IS NOT NULL
                 ORDER BY score DESC
                 LIMIT 50
             ''')

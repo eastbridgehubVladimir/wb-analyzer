@@ -751,6 +751,7 @@ function refreshTopNiches() {
   showTopNiches();
 }
 async function showTopNiches() {
+  history.pushState({page: 'top'}, '', '#top');
   hideAll();
   setActiveMenu(event.target);
   document.getElementById('result').style.display = 'none';
@@ -783,6 +784,7 @@ function showCalc() {
   document.getElementById('calculator').style.display = 'block';
 }
 async function showCatalog() {
+  history.pushState({page: 'catalog'}, '', '#catalog');
   hideAll();
   setActiveMenu(event.target);
   document.getElementById('catalog').style.display = 'block';
@@ -1186,6 +1188,7 @@ async function loadCharts(name) {
 }
 
 function goHome() {
+  history.pushState({page: 'home'}, '', '#');
   hideAll();
   document.querySelector('.search-box').style.display = 'block';
   document.getElementById('query').value = '';
@@ -1283,6 +1286,7 @@ function addToRecent(name) {
   localStorage.setItem('recent_niches', JSON.stringify(recent));
   loadTopChips();
 loadCalcRates();
+history.replaceState({page: 'top'}, '', '#top');
 
 window.addEventListener('popstate', function(e) {
   if (e.state && e.state.page === 'niche') {
@@ -1292,6 +1296,8 @@ window.addEventListener('popstate', function(e) {
     showCatalog();
   } else if (e.state && e.state.page === 'top') {
     showTopNiches();
+  } else if (e.state && e.state.page === 'home') {
+    goHome();
   } else {
     goHome();
   }
@@ -1300,6 +1306,7 @@ window.addEventListener('popstate', function(e) {
 }
 loadTopChips();
 loadCalcRates();
+history.replaceState({page: 'top'}, '', '#top');
 
 window.addEventListener('popstate', function(e) {
   if (e.state && e.state.page === 'niche') {
@@ -1309,6 +1316,8 @@ window.addEventListener('popstate', function(e) {
     showCatalog();
   } else if (e.state && e.state.page === 'top') {
     showTopNiches();
+  } else if (e.state && e.state.page === 'home') {
+    goHome();
   } else {
     goHome();
   }

@@ -1,1 +1,1 @@
-web: python3 app.py
+web: pip install psycopg2-binary && python3 app.py

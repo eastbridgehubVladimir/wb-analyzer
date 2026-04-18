@@ -751,7 +751,6 @@ function refreshTopNiches() {
   showTopNiches();
 }
 async function showTopNiches() {
-  history.pushState({page: 'top'}, '', '?page=top');
   hideAll();
   setActiveMenu(event.target);
   document.getElementById('result').style.display = 'none';
@@ -784,7 +783,6 @@ function showCalc() {
   document.getElementById('calculator').style.display = 'block';
 }
 async function showCatalog() {
-  history.pushState({page: 'catalog'}, '', '?page=catalog');
   hideAll();
   setActiveMenu(event.target);
   document.getElementById('catalog').style.display = 'block';
@@ -1286,52 +1284,10 @@ function addToRecent(name) {
   loadTopChips();
 loadCalcRates();
 
-// Обработка кнопки назад/вперёд
-window.addEventListener('popstate', function(e) {
-  if (e.state && e.state.page === 'niche') {
-    document.getElementById('query').value = e.state.query;
-    analyze();
-  } else if (e.state && e.state.page === 'catalog') {
-    showCatalog();
-  } else if (e.state && e.state.page === 'top') {
-    showTopNiches();
-  } else {
-    goHome();
-  }
-});
-
-// Загрузка ниши из URL при открытии страницы
-const urlParams = new URLSearchParams(window.location.search);
-const urlQuery = urlParams.get('q');
-if (urlQuery) {
-  document.getElementById('query').value = urlQuery;
-  analyze();
-}
 }
 loadTopChips();
 loadCalcRates();
 
-// Обработка кнопки назад/вперёд
-window.addEventListener('popstate', function(e) {
-  if (e.state && e.state.page === 'niche') {
-    document.getElementById('query').value = e.state.query;
-    analyze();
-  } else if (e.state && e.state.page === 'catalog') {
-    showCatalog();
-  } else if (e.state && e.state.page === 'top') {
-    showTopNiches();
-  } else {
-    goHome();
-  }
-});
-
-// Загрузка ниши из URL при открытии страницы
-const urlParams = new URLSearchParams(window.location.search);
-const urlQuery = urlParams.get('q');
-if (urlQuery) {
-  document.getElementById('query').value = urlQuery;
-  analyze();
-}
 
 function setQuery(q) {
   const displayName = q.includes(" ") ? q.split(" ").slice(1).join(" ") : q;

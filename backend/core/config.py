@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # Прокси (через запятую)
     proxy_list: str = ""
 
+    # AI
+    anthropic_api_key: str = ""
+    # MPStats
+    mpstats_token: str = ""
     # Безопасность
     secret_key: str = "change_me"
     cors_origins: list[str] = ["http://localhost:3000"]

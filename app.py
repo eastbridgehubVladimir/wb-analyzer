@@ -1,7 +1,12 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import asyncio
-import psycopg2
+try:
+    import psycopg2
+except ImportError:
+    import subprocess, sys
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'psycopg2-binary'])
+    import psycopg2
 import datetime
 import sys
 import requests as mpstats_req

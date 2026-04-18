@@ -9,13 +9,9 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-sys.path.insert(0, 'backend')
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-from services.ai_analyst.analyst import analyze_niche
-from schemas.analysis import MetricsSummary
-
-DB = "postgresql://user@localhost:5432/wb_saas"
+DB = os.getenv("DATABASE_URL", "postgresql://user@localhost:5432/wb_saas")
 MPSTATS_TOKEN = os.getenv("MPSTATS_TOKEN", "")
 
 def clean_name(name):

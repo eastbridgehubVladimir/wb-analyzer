@@ -2,35 +2,27 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import asyncio
 import subprocess, sys
+
+# Устанавливаем все зависимости при старте
 def install(pkg):
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', pkg], stdout=subprocess.DEVNULL)
 
 try:
-    import psycopg2
+    import psycopg2, requests, anthropic
+    from dotenv import load_dotenv
 except ImportError:
-    install('psycopg2-binary')
-    import psycopg2
+    print("Устанавливаем зависимости...")
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', 
+        'psycopg2-binary', 'requests', 'anthropic', 'python-dotenv'])
+    import psycopg2, requests, anthropic
+    from dotenv import load_dotenv
+    print("Зависимости установлены!")
 
-try:
-    import requests
-except ImportError:
-    install('requests')
-    import requests
 
-try:
-    import anthropic
-except ImportError:
-    install('anthropic')
-    import anthropic
+
 import datetime
 import sys
 import os
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    import subprocess, sys
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'python-dotenv'], stdout=subprocess.DEVNULL)
-    from dotenv import load_dotenv
 load_dotenv()
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))

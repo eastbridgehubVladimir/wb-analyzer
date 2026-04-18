@@ -166,31 +166,33 @@ def get_ai_insights(row):
 
     avg_price = float(revenue or 0) / (orders or 1)
     sellers_activity = (sellers_with_sales or 0) / (sellers or 1)
+    orders_per_day = float(orders or 0) / 30
 
-    if sellers > 500 and sellers_activity < 0.5:
-        competition = "HIGH"
-    elif sellers > 500 and sellers_activity >= 0.5:
-        competition = "MEDIUM"
-    elif sellers > 100:
-        competition = "MEDIUM"
+    insights = []
+    if sellers > 10000:
+        insights.append(f"Ниша насыщена: {sellers} активных продавцов. Топ-20% SKU забирают 60% выручки — вход без УТП рискован.")
+    elif sellers > 1000:
+        insights.append(f"Умеренная конкуренция: {sellers} продавцов. Есть место для новых игроков с хорошим продуктом.")
     else:
-        competition = "LOW"
+        insights.append(f"Низкая конкуренция: {sellers} продавцов. Хорошая возможность для входа.")
 
-    metrics = MetricsSummary(
-        monthly_revenue_estimate=float(revenue or 0),
-        avg_orders_per_day=float(orders or 0) / 30,
-        active_sellers=int(sellers or 0),
-        competition_level=competition,
-        median_price=float(avg_price),
-        price_iqr=float(avg_price) * 0.3,
-        top_20pct_revenue_share=0.6,
-        top_10_revenue_share=float(sellers_activity),
-    )
+    if orders_per_day > 1000:
+        insights.append(f"Высокий спрос: {orders_per_day:.0f} заказов/день по нише. Оценочная выручка {revenue:,.0f} ₽/мес говорит о зрелом рынке.")
+    elif orders_per_day > 100:
+        insights.append(f"Стабильный спрос: {orders_per_day:.0f} заказов/день. Достаточно для тестовой поставки.")
+    else:
+        insights.append(f"Низкий спрос: {orders_per_day:.0f} заказов/день. Ниша узкая — оцените объём рынка.")
 
-    loop = asyncio.new_event_loop()
-    insights = loop.run_until_complete(analyze_niche(metrics))
-    loop.close()
-    return insights
+    if avg_price > 0:
+        insights.append(f"Цены сконцентрированы вокруг {avg_price:,.0f} ₽. Ценовая война вероятна — дифференциация важнее цены.")
+
+    hypotheses = []
+    price_low = avg_price * 0.9
+    price_high = avg_price * 1.1
+    hypotheses.append(f"Протестировать вход в ценовом сегменте {price_low:,.0f}–{price_high:,.0f} ₽ с минимальной партией 30–50 единиц.")
+    hypotheses.append(f"Проверить сезонность ниши: сравнить заказы за последние 30 и 90 дней — если рост более 20%, ниша на подъёме.")
+
+    return {'insights': insights, 'hypotheses': hypotheses}
 
 HTML = """<!DOCTYPE html>
 <html lang="ru">

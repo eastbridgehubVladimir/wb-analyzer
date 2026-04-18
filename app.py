@@ -1,15 +1,27 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import asyncio
+import subprocess, sys
+def install(pkg):
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', pkg], stdout=subprocess.DEVNULL)
+
 try:
     import psycopg2
 except ImportError:
-    import subprocess, sys
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'psycopg2-binary'])
+    install('psycopg2-binary')
     import psycopg2
-import datetime
+
+try:
+    import requests
+except ImportError:
+    install('requests')
+    import requests
+
+try:
+    except ImportError:
+    install('anthropic')
+    import datetime
 import sys
-import requests as mpstats_req
 import os
 from dotenv import load_dotenv
 load_dotenv()

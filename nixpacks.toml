@@ -1,0 +1,5 @@
+[phases.install]
+cmds = ["pip install psycopg2-binary requests anthropic python-dotenv"]
+
+[start]
+cmd = "python3 app.py"

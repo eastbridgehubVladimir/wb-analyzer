@@ -1284,9 +1284,35 @@ function addToRecent(name) {
   loadTopChips();
 loadCalcRates();
 
+window.addEventListener('popstate', function(e) {
+  if (e.state && e.state.page === 'niche') {
+    document.getElementById('query').value = e.state.query;
+    analyze();
+  } else if (e.state && e.state.page === 'catalog') {
+    showCatalog();
+  } else if (e.state && e.state.page === 'top') {
+    showTopNiches();
+  } else {
+    goHome();
+  }
+});
+
 }
 loadTopChips();
 loadCalcRates();
+
+window.addEventListener('popstate', function(e) {
+  if (e.state && e.state.page === 'niche') {
+    document.getElementById('query').value = e.state.query;
+    analyze();
+  } else if (e.state && e.state.page === 'catalog') {
+    showCatalog();
+  } else if (e.state && e.state.page === 'top') {
+    showTopNiches();
+  } else {
+    goHome();
+  }
+});
 
 
 function setQuery(q) {
@@ -1365,6 +1391,7 @@ async function analyze() {
   hideAll();
   const q = document.getElementById('query').value.trim();
   if (!q) return;
+  history.pushState({page: 'niche', query: q}, '', '#q=' + encodeURIComponent(q));
   history.pushState({page: 'niche', query: q}, '', '?q=' + encodeURIComponent(q));
   document.getElementById('loading').style.display = 'block';
   document.getElementById('result').style.display = 'none';

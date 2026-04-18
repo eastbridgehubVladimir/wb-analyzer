@@ -1289,17 +1289,16 @@ loadCalcRates();
 history.replaceState({page: 'top'}, '', '#top');
 
 window.addEventListener('popstate', function(e) {
+  _navigating = true;
   if (e.state && e.state.page === 'niche') {
     document.getElementById('query').value = e.state.query;
-    analyze();
+    analyze().then(() => { _navigating = false; });
   } else if (e.state && e.state.page === 'catalog') {
-    showCatalog();
+    showCatalog(); _navigating = false;
   } else if (e.state && e.state.page === 'top') {
-    showTopNiches();
-  } else if (e.state && e.state.page === 'home') {
-    goHome();
+    showTopNiches(); _navigating = false;
   } else {
-    goHome();
+    goHome(); _navigating = false;
   }
 });
 
@@ -1309,17 +1308,16 @@ loadCalcRates();
 history.replaceState({page: 'top'}, '', '#top');
 
 window.addEventListener('popstate', function(e) {
+  _navigating = true;
   if (e.state && e.state.page === 'niche') {
     document.getElementById('query').value = e.state.query;
-    analyze();
+    analyze().then(() => { _navigating = false; });
   } else if (e.state && e.state.page === 'catalog') {
-    showCatalog();
+    showCatalog(); _navigating = false;
   } else if (e.state && e.state.page === 'top') {
-    showTopNiches();
-  } else if (e.state && e.state.page === 'home') {
-    goHome();
+    showTopNiches(); _navigating = false;
   } else {
-    goHome();
+    goHome(); _navigating = false;
   }
 });
 
@@ -1396,11 +1394,12 @@ function hideSuggestions() {
   if (box) box.style.display = 'none';
 }
 
+let _navigating = false;
 async function analyze() {
   hideAll();
   const q = document.getElementById('query').value.trim();
   if (!q) return;
-  history.pushState({page: 'niche', query: q}, '', '#q=' + encodeURIComponent(q));
+  if (!_navigating) history.pushState({page: 'niche', query: q}, '', '#q=' + encodeURIComponent(q));
   history.pushState({page: 'niche', query: q}, '', '?q=' + encodeURIComponent(q));
   document.getElementById('loading').style.display = 'block';
   document.getElementById('result').style.display = 'none';

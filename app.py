@@ -18,9 +18,11 @@ except ImportError:
     import requests
 
 try:
-    except ImportError:
+    import anthropic
+except ImportError:
     install('anthropic')
-    import datetime
+    import anthropic
+import datetime
 import sys
 import os
 from dotenv import load_dotenv

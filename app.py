@@ -1586,7 +1586,7 @@ function renderResult(d) {
     <!-- ЗОНА 4г: Прогноз продаж -->
     <div class="chart-card" style="height:320px;margin-bottom:16px;" onclick="openChartModal('🔮 Прогноз выручки на 3 месяца', 'forecast', window._chartData.labels, window._chartData.revenue, '#38bdf8', false)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div class="chart-title" style="margin:0;">🔮 Прогноз выручки на 3 месяца <span id="forecast-currency-label" style="font-size:10px;color:#555;">(млн ₽) 🔍</span></div>
+        <div class="chart-title" style="margin:0;">🔮 Прогноз выручки на 3 месяца <span style="font-size:10px;color:#555;">🔍</span></div>
         <div style="font-size:11px;color:#555;">на основе сезонности + тренда</div>
       </div>
       <canvas id="forecastChart" height="110"></canvas>

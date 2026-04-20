@@ -350,6 +350,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div class="sidebar">
 
   <div class="sidebar-item active" onclick="showTopNiches()">Топ ниши</div>
+  <div class="sidebar-item" onclick="showPortfolio()">🎯 Рекомендации</div>
   <div class="sidebar-item" onclick="showCatalog()">Все ниши</div>
   <div class="sidebar-item" onclick="showCalc()">Калькулятор</div>
   <div class="sidebar-item" id="watchlist-menu" onclick="showWatchlist()">📌 В работе <span id="watchlist-count" style="background:#6c63ff33;color:#a78bfa;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;"></span></div>
@@ -366,6 +367,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
   </div>
   <div id="top-niches" style="display:none;margin-top:24px;"></div>
+  <div id="portfolio" style="display:none;margin-top:24px;"></div>
   <div id="watchlist" style="display:none;margin-top:24px;"></div><div id="catalog" style="display:none;margin-top:24px;">
     <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
       <input id="cat-search" placeholder="Фильтр по названию..." style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px 14px;color:#fff;font-size:13px;outline:none;flex:1;min-width:200px;" oninput="filterCatalog()"/>
@@ -676,7 +678,7 @@ function calcUnit() {
   `;
 }
 function hideAll() {
-  ['catalog','calculator','result','top-niches','watchlist','history'].forEach(id => {
+  ['catalog','calculator','result','top-niches','watchlist','history','portfolio'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
@@ -694,6 +696,55 @@ function refreshTopNiches() {
   topNichesOffset += 21;
   showTopNiches();
 }
+async function showPortfolio() {
+  hideAll();
+  setActiveMenu(event.target);
+  const div = document.getElementById('portfolio');
+  div.style.display = 'block';
+  div.innerHTML = '<div style="color:#555;padding:20px">Загружаем портфель...</div>';
+  const r = await fetch('/portfolio');
+  const data = await r.json();
+  if (data.error) { div.innerHTML = '<div style="color:#f00;padding:20px">' + data.error + '</div>'; return; }
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <div>
+        <div style="font-size:20px;font-weight:700;color:#fff;">🎯 Рекомендации для закупки</div>
+        <div style="font-size:13px;color:#555;margin-top:4px;">Ниши с высокой вероятностью быстрой распродажи</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+      ${data.map((n,i) => `
+        <div onclick="setQuery('${n.full}')" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:12px;padding:16px;cursor:pointer;position:relative;" onmouseover="this.style.borderColor='#6c63ff'" onmouseout="this.style.borderColor='#2a2a3a'">
+          <div style="position:absolute;top:12px;right:12px;background:#6c63ff22;color:#a78bfa;border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">#${i+1}</div>
+          <div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:10px;padding-right:32px;">${n.full}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+            <div style="background:#0f0f13;border-radius:6px;padding:6px 8px;">
+              <div style="font-size:10px;color:#555;">Выкуп</div>
+              <div style="font-size:13px;font-weight:600;color:#22c55e;">${Math.round(n.buyout_pct*100)}%</div>
+            </div>
+            <div style="background:#0f0f13;border-radius:6px;padding:6px 8px;">
+              <div style="font-size:10px;color:#555;">Оборот</div>
+              <div style="font-size:13px;font-weight:600;color:#38bdf8;">${Math.round(n.turnover)} дн</div>
+            </div>
+            <div style="background:#0f0f13;border-radius:6px;padding:6px 8px;">
+              <div style="font-size:10px;color:#555;">Маржа</div>
+              <div style="font-size:13px;font-weight:600;color:#a78bfa;">${Math.round(n.profit_pct*100)}%</div>
+            </div>
+            <div style="background:#0f0f13;border-radius:6px;padding:6px 8px;">
+              <div style="font-size:10px;color:#555;">Цена</div>
+              <div style="font-size:13px;font-weight:600;color:#fff;">${Math.round(n.avg_price).toLocaleString('ru')}₽</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:12px;color:#555;">${fmt(n.revenue)}/мес</div>
+            <div style="font-size:18px;font-weight:700;color:${n.score>=65?'#22c55e':n.score>=40?'#eab308':'#ef4444'}">${n.score}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 async function showTopNiches() {
   hideAll();
   setActiveMenu(event.target);
@@ -1670,6 +1721,59 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()
                 self.wfile.write(json.dumps(niches, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+
+        elif self.path == '/portfolio':
+            try:
+                conn = psycopg2.connect(DB)
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT name, revenue, orders, sellers, sellers_with_sales,
+                           buyout_pct, profit_pct, turnover, lost_revenue_pct,
+                           COALESCE(display_name, name) as display_name,
+                           avg_price, commission
+                    FROM niches
+                    WHERE buyout_pct > 0.70
+                    AND turnover BETWEEN 5 AND 45
+                    AND profit_pct > 0.30
+                    AND revenue > 5000000
+                    AND sellers_with_sales > 10
+                    ORDER BY (buyout_pct * 0.35 + profit_pct * 0.35 + (45.0 - LEAST(turnover,45))/45.0 * 0.30) DESC
+                    LIMIT 50
+                """)
+                rows = cursor.fetchall()
+                cursor.close()
+                conn.close()
+                results = []
+                for r in rows:
+                    name, revenue, orders, sellers, sellers_with_sales,                     buyout_pct, profit_pct, turnover, lost_revenue_pct,                     display_name, avg_price, commission = r
+                    score = calculate_score((
+                        name, None, None, sellers, sellers_with_sales,
+                        revenue, None, None, lost_revenue_pct, orders,
+                        buyout_pct, turnover, profit_pct, None, None, commission, avg_price
+                    ))
+                    results.append({
+                        'name': display_name,
+                        'full': name,
+                        'revenue': float(revenue or 0),
+                        'orders': int(orders or 0),
+                        'buyout_pct': float(buyout_pct or 0),
+                        'profit_pct': float(profit_pct or 0),
+                        'turnover': float(turnover or 0),
+                        'score': score,
+                        'avg_price': float(avg_price or 0),
+                    })
+                results.sort(key=lambda x: x['score'], reverse=True)
+                results = results[:15]
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(results, ensure_ascii=False).encode('utf-8'))
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')

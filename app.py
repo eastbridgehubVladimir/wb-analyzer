@@ -70,8 +70,8 @@ def get_suggestions(query):
     cursor.execute("""
         SELECT name, revenue, COALESCE(display_name, name) as display_name FROM niches
         WHERE (LOWER(name) LIKE LOWER(%s) OR LOWER(COALESCE(display_name, name)) LIKE LOWER(%s)) AND revenue IS NOT NULL
-        ORDER BY revenue DESC LIMIT 8
-    """, (f"%{query}%", f"%{query}%"))
+        ORDER BY CASE WHEN LOWER(COALESCE(display_name,name)) LIKE LOWER(%s) THEN 0 ELSE 1 END, revenue DESC LIMIT 8
+    """, (f"%{query}%", f"%{query}%", f"%{query}%"))
     rows = cursor.fetchall()
     cursor.close()
     conn.close()

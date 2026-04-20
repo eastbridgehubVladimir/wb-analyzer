@@ -55,9 +55,9 @@ def find_niche(query):
                revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders,
                buyout_pct, turnover, profit_pct, avg_rating, rank, commission, avg_price
         FROM niches
-        WHERE (LOWER(name) LIKE LOWER(%s) OR LOWER(COALESCE(display_name, name)) LIKE LOWER(%s)) AND revenue IS NOT NULL
+        WHERE LOWER(name) LIKE LOWER(%s) AND revenue IS NOT NULL
         ORDER BY revenue DESC LIMIT 1
-    """, (f"%{query}%", f"%{query}%"))
+    """, (f"%{query}%",))
     row = cursor.fetchone()
     cursor.close()
     conn.close()
@@ -69,9 +69,9 @@ def get_suggestions(query):
     cursor = conn.cursor()
     cursor.execute("""
         SELECT name, revenue, COALESCE(display_name, name) as display_name FROM niches
-        WHERE (LOWER(name) LIKE LOWER(%s) OR LOWER(COALESCE(display_name, name)) LIKE LOWER(%s)) AND revenue IS NOT NULL
-        ORDER BY CASE WHEN LOWER(COALESCE(display_name,name)) LIKE LOWER(%s) THEN 0 ELSE 1 END, revenue DESC LIMIT 8
-    """, (f"%{query}%", f"%{query}%", f"%{query}%"))
+        WHERE LOWER(name) LIKE LOWER(%s) AND revenue IS NOT NULL
+        ORDER BY revenue DESC LIMIT 8
+    """, (f"%{query}%",))
     rows = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -693,7 +693,6 @@ function calcUnit() {
     <div class="calc-result-row"><span style="color:#fff;font-weight:600">Прибыль с единицы</span><span class="${profitColor}">${fmtCalc(profit)}</span></div>
   `;
 }
-function hideAll() {
   document.getElementById('catalog').style.display = 'none';
   document.getElementById('history').style.display = 'none';
   document.getElementById('calculator').style.display = 'none';

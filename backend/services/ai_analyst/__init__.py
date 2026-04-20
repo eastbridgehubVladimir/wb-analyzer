@@ -1,0 +1,3 @@
+from backend.services.ai_analyst.analyst import NicheInsights, analyze_niche
+
+__all__ = ["analyze_niche", "NicheInsights"]

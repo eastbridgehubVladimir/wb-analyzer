@@ -55,9 +55,9 @@ def find_niche(query):
                revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders,
                buyout_pct, turnover, profit_pct, avg_rating, rank, commission, avg_price
         FROM niches
-        WHERE LOWER(name) LIKE LOWER(%s) AND revenue IS NOT NULL
+        WHERE (LOWER(name) LIKE LOWER(%s) OR LOWER(COALESCE(display_name, name)) LIKE LOWER(%s)) AND revenue IS NOT NULL
         ORDER BY revenue DESC LIMIT 1
-    """, (f"%{query}%",))
+    """, (f"%{query}%", f"%{query}%"))
     row = cursor.fetchone()
     cursor.close()
     conn.close()
@@ -69,9 +69,9 @@ def get_suggestions(query):
     cursor = conn.cursor()
     cursor.execute("""
         SELECT name, revenue, COALESCE(display_name, name) as display_name FROM niches
-        WHERE LOWER(name) LIKE LOWER(%s) AND revenue IS NOT NULL
+        WHERE (LOWER(name) LIKE LOWER(%s) OR LOWER(COALESCE(display_name, name)) LIKE LOWER(%s)) AND revenue IS NOT NULL
         ORDER BY revenue DESC LIMIT 8
-    """, (f"%{query}%",))
+    """, (f"%{query}%", f"%{query}%"))
     rows = cursor.fetchall()
     cursor.close()
     conn.close()

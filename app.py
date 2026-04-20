@@ -393,11 +393,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       </select>
     </div>
     <div id="cat-chips" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;"></div>
-    <div style="display:none;">
-    </div>
     <div id="cat-stats" style="font-size:12px;color:#555;margin-bottom:12px;"></div>
     <div id="cat-list"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    </div><div class="calc-wrap" id="calculator" style="display:none;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
       <div style="font-size:16px;font-weight:600;color:#fff;">Калькулятор юнит-экономики</div>
       <div style="display:flex;gap:12px;align-items:center;">
         <div class="scheme-tabs">
@@ -714,9 +712,6 @@ function refreshTopNiches() {
 async function showTopNiches() {
   hideAll();
   setActiveMenu(event.target);
-  document.getElementById('result').style.display = 'none';
-  document.getElementById('top-niches').style.display = 'none';
-  if(document.getElementById('watchlist'))document.getElementById('watchlist').style.display='none';
   const topDiv = document.getElementById('top-niches');
   topDiv.style.display = 'block';
   topDiv.innerHTML = '<div style="color:#555;padding:20px">Загружаем топ ниш...</div>';
@@ -747,9 +742,6 @@ async function showCatalog() {
   hideAll();
   setActiveMenu(event.target);
   document.getElementById('catalog').style.display = 'block';
-  document.getElementById('result').style.display = 'none';
-  document.getElementById('top-niches').style.display = 'none';
-  if(document.getElementById('watchlist'))document.getElementById('watchlist').style.display='none';
   document.querySelector('.search-box').style.display = 'none';
   if (catalogData.length > 0) { filterCatalog(); return; }
   document.getElementById('cat-list').innerHTML = '<div style="color:#555;padding:20px">Загружаем ниши...</div>';
@@ -1356,10 +1348,8 @@ async function analyze() {
   if (!q) return;
   history.pushState({page: 'niche', query: q}, '', '?q=' + encodeURIComponent(q));
   document.getElementById('loading').style.display = 'block';
-  document.getElementById('result').style.display = 'none';
-  document.getElementById('top-niches').style.display = 'none';
-  if(document.getElementById('watchlist'))document.getElementById('watchlist').style.display='none';
-  document.getElementById('error').style.display = 'none';
+  const errEl = document.getElementById('error');
+  if(errEl) errEl.style.display = 'none';
   try {
     const r = await fetch('/analyze?q=' + encodeURIComponent(q));
     const data = await r.json();

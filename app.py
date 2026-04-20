@@ -75,90 +75,78 @@ def get_suggestions(query):
     return [{'name': r[2], 'full': r[0], 'revenue': float(r[1])} for r in rows]
 
 def calculate_score(row):
-    """Умный расчёт score на основе всех доступных метрик."""
+    """Расчёт score: приоритет выкупу, прибыльности, оборачиваемости."""
     name, products, products_with_sales, sellers, sellers_with_sales, \
     revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders, \
     buyout_pct, turnover, profit_pct, avg_rating, rank, commission, avg_price = row
 
     score = 0
 
-    # 1. Активность продавцов (макс 20 очков)
-    sellers_activity = (sellers_with_sales or 0) / (sellers or 1)
-    if sellers_activity >= 0.7:
-        score += 20
-    elif sellers_activity >= 0.5:
-        score += 12
-    elif sellers_activity >= 0.3:
-        score += 6
-    else:
-        score += 0
-
-    # 2. Упущенная выручка (макс 20 очков)
-    lost_pct = float(lost_revenue_pct or 0)
-    if lost_pct >= 30:
-        score += 20
-    elif lost_pct >= 15:
-        score += 14
-    elif lost_pct >= 5:
-        score += 8
-    else:
-        score += 2
-
-    # 3. Средняя выручка на продавца (макс 20 очков)
-    avg_rev = float(revenue or 0) / (sellers_with_sales or 1)
-    if avg_rev >= 3_000_000:
-        score += 20
-    elif avg_rev >= 1_000_000:
-        score += 14
-    elif avg_rev >= 300_000:
-        score += 8
-    else:
-        score += 2
-
-    # 4. Процент выкупа (макс 15 очков)
+    # 1. Выкуп (макс 25 очков) — главный показатель
     buyout = float(buyout_pct or 0)
     if buyout >= 0.85:
-        score += 15
-    elif buyout >= 0.70:
+        score += 25
+    elif buyout >= 0.75:
+        score += 18
+    elif buyout >= 0.60:
         score += 10
-    elif buyout >= 0.50:
-        score += 5
-    else:
-        score += 0
-
-    # 5. Оборачиваемость (макс 10 очков) — чем меньше дней тем лучше
-    turn = float(turnover or 0)
-    if turn <= 30:
-        score += 10
-    elif turn <= 60:
-        score += 7
-    elif turn <= 90:
+    elif buyout >= 0.45:
         score += 4
-    elif turn <= 180:
-        score += 1
     else:
         score += 0
-    # Жёсткий штраф за оборачиваемость более 180 дней — не рекомендуем входить
-    if turn > 180:
-        score = min(score, 55)  # Максимум TEST, никогда не BUY
 
-    # 6. Прибыльность ниши (макс 10 очков)
+    # 2. Прибыльность (макс 25 очков) — главный показатель
     profit = float(profit_pct or 0)
-    if profit >= 0.35:
-        score += 10
+    if profit >= 0.50:
+        score += 25
+    elif profit >= 0.35:
+        score += 18
     elif profit >= 0.20:
-        score += 7
+        score += 10
     elif profit >= 0.10:
         score += 4
     else:
         score += 0
 
-    # 7. Рейтинг товаров (макс 5 очков)
-    rating = float(avg_rating or 0)
-    if rating >= 4.7:
+    # 3. Оборачиваемость (макс 20 очков) — чем быстрее тем лучше
+    turn = float(turnover or 0)
+    if turn <= 20:
+        score += 20
+    elif turn <= 40:
+        score += 15
+    elif turn <= 60:
+        score += 10
+    elif turn <= 90:
         score += 5
-    elif rating >= 4.3:
+    elif turn <= 180:
+        score += 2
+    else:
+        score += 0
+    # Штраф за оборачиваемость более 180 дней
+    if turn > 180:
+        score = min(score, 55)
+
+    # 4. Выручка на продавца с продажами (макс 20 очков)
+    avg_rev = float(revenue or 0) / (sellers_with_sales or 1)
+    if avg_rev >= 5_000_000:
+        score += 20
+    elif avg_rev >= 2_000_000:
+        score += 15
+    elif avg_rev >= 500_000:
+        score += 8
+    elif avg_rev >= 100_000:
         score += 3
+    else:
+        score += 0
+
+    # 5. Упущенная выручка (макс 10 очков)
+    lost_pct = float(lost_revenue_pct or 0)
+    if lost_pct >= 30:
+        score += 10
+    elif lost_pct >= 15:
+        score += 7
+    elif lost_pct >= 5:
+        score += 4
     else:
         score += 1
 

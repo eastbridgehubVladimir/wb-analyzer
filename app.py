@@ -33,12 +33,9 @@ DB = os.getenv("DATABASE_URL", "postgresql://user@localhost:5432/wb_saas")
 MPSTATS_TOKEN = os.getenv("MPSTATS_TOKEN", "")
 
 def clean_name(name):
-    """Убирает префикс категории из названия ниши."""
+    """Возвращает название ниши как есть."""
     if not name:
         return name
-    parts = name.split(' ', 1)
-    if len(parts) > 1:
-        return parts[1]
     return name
 
 def get_category(name):
@@ -55,9 +52,9 @@ def find_niche(query):
                revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders,
                buyout_pct, turnover, profit_pct, avg_rating, rank, commission, avg_price
         FROM niches
-        WHERE LOWER(name) LIKE LOWER(%s) AND revenue IS NOT NULL
-        ORDER BY revenue DESC LIMIT 1
-    """, (f"%{query}%",))
+        WHERE (LOWER(name) LIKE LOWER(%s) OR LOWER(COALESCE(display_name,name)) LIKE LOWER(%s)) AND revenue IS NOT NULL
+        ORDER BY CASE WHEN LOWER(name)=LOWER(%s) THEN 0 WHEN LOWER(name) LIKE LOWER(%s) THEN 1 ELSE 2 END, revenue DESC LIMIT 1
+    """, (f"%{query}%", f"%{query}%", query, f"{query}%"))
     row = cursor.fetchone()
     cursor.close()
     conn.close()
@@ -722,7 +719,7 @@ async function showTopNiches() {
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
       ${data.map(n => `
         <div onclick="setQuery('${n.full}')" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:12px;padding:16px;cursor:pointer;" onmouseover="this.style.borderColor='#6c63ff'" onmouseout="this.style.borderColor='#2a2a3a'">
-          <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:8px">${n.name.includes(' / ') ? n.name.split(' / ').slice(1).join(' / ') : n.name}</div>
+          <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:8px">${n.full}</div>
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div style="font-size:13px;color:#555">${fmt(n.revenue)}/мес</div>
             <div style="font-size:18px;font-weight:700;color:${n.score>=65?'#22c55e':n.score>=40?'#eab308':'#ef4444'}">${n.score}</div>
@@ -820,8 +817,7 @@ function selectFromCatalog(full) {
 }
 
 function clean_name_js(name) {
-  const parts = name.split(' ');
-  return parts.length > 1 ? parts.slice(1).join(' ') : name;
+  return name;
 }
 let revenueChartInstance = null;
 let salesChartInstance = null;
@@ -1271,8 +1267,9 @@ window.addEventListener('popstate', function(e) {
 
 
 function setQuery(q) {
-  const displayName = q.includes(" ") ? q.split(" ").slice(1).join(" ") : q;
-  document.getElementById('query').value = displayName;
+  const displayName = q.includes(' / ') ? q.split(' / ').slice(1).join(' / ') : q;
+  document.getElementById('query').value = q;
+  document.getElementById('query').setAttribute('data-display', displayName);
   hideSuggestions();
   analyze();
 }

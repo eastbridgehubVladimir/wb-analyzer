@@ -367,7 +367,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="sidebar-item active" onclick="showTopNiches()">Топ ниши</div>
   <div class="sidebar-item" onclick="showCatalog()">Все ниши</div>
   <div class="sidebar-item" onclick="showCalc()">Калькулятор</div>
-  <div class="sidebar-item" onclick="showHistory()">История</div>
   <div class="sidebar-item" id="watchlist-menu" onclick="showWatchlist()">📌 В работе <span id="watchlist-count" style="background:#6c63ff33;color:#a78bfa;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;"></span></div>
 </div>
 <div class="content-area">
@@ -398,10 +397,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
     <div id="cat-stats" style="font-size:12px;color:#555;margin-bottom:12px;"></div>
     <div id="cat-list"></div>
-  </div><div id="history" style="display:none;margin-top:24px;">
-    <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:20px;">История анализов</div>
-    <div id="history-list"></div>
-  </div><div class="calc-wrap" id="calculator">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
       <div style="font-size:16px;font-weight:600;color:#fff;">Калькулятор юнит-экономики</div>
       <div style="display:flex;gap:12px;align-items:center;">
@@ -697,47 +692,13 @@ function calcUnit() {
     <div class="calc-result-row"><span style="color:#fff;font-weight:600">Прибыль с единицы</span><span class="${profitColor}">${fmtCalc(profit)}</span></div>
   `;
 }
-async function showHistory() {
-  hideAll();
-  setActiveMenu(event.target);
-  document.getElementById('history').style.display = 'block';
-  document.getElementById('catalog').style.display = 'none';
-  document.getElementById('result').style.display = 'none';
-  document.getElementById('top-niches').style.display = 'none';
-  if(document.getElementById('watchlist'))document.getElementById('watchlist').style.display='none';
-  document.getElementById('calculator').style.display = 'none';
-  document.getElementById('history').style.display = 'block';
-  const r = await fetch('/history');
-  const data = await r.json();
-  if (data.error) {
-    document.getElementById('history-list').innerHTML = '<div style="color:#555;padding:20px">Ошибка загрузки</div>';
-    return;
-  }
-  if (data.length === 0) {
-    document.getElementById('history-list').innerHTML = '<div style="color:#555;padding:20px">История пуста</div>';
-    return;
-  }
-  document.getElementById('history-list').innerHTML = data.map(d => `
-    <div onclick="setQuery('${d.category}')" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:10px;padding:16px;margin-bottom:8px;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;" onmouseover="this.style.borderColor='#6c63ff'" onmouseout="this.style.borderColor='#2a2a3a'">
-      <div>
-        <div style="font-size:15px;color:#fff;font-weight:500;margin-bottom:4px;">${d.category}</div>
-        <div style="font-size:12px;color:#555;">${d.created_at} · выручка ${fmt(d.monthly_revenue)} · ${d.active_sellers} продавцов</div>
-      </div>
-      <div style="text-align:right;">
-        <div class="verdict-badge verdict-${d.verdict}" style="padding:4px 12px;font-size:13px;">${d.verdict}</div>
-        <div style="font-size:20px;color:#fff;font-weight:700;margin-top:4px;">${d.score}</div>
-      </div>
-    </div>
-  `).join('');
-}
 function hideAll() {
-  document.getElementById('catalog').style.display = 'none';
-  document.getElementById('history').style.display = 'none';
-  document.getElementById('calculator').style.display = 'none';
-  document.getElementById('result').style.display = 'none';
-  document.getElementById('top-niches').style.display = 'none';
-  if(document.getElementById('watchlist'))document.getElementById('watchlist').style.display='none';
-  document.querySelector('.search-box').style.display = 'block';
+  ['catalog','calculator','result','top-niches','watchlist','history'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'none';
+  });
+  const sb = document.querySelector('.search-box');
+  if(sb) sb.style.display = 'block';
 }
 
 function setActiveMenu(el) {
@@ -1650,39 +1611,6 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
 
-        elif self.path == '/history':
-            try:
-                conn = psycopg2.connect(DB)
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT category, score, verdict, monthly_revenue,
-                           active_sellers, created_at
-                    FROM product_decisions
-                    ORDER BY created_at DESC
-                    LIMIT 50
-                """)
-                rows = cursor.fetchall()
-                cursor.close()
-                conn.close()
-                history = []
-                for r in rows:
-                    history.append({
-                        'category': r[0],
-                        'score': r[1],
-                        'verdict': r[2],
-                        'monthly_revenue': float(r[3] or 0),
-                        'active_sellers': int(r[4] or 0),
-                        'created_at': r[5].strftime('%d.%m.%Y %H:%M') if r[5] else '',
-                    })
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json; charset=utf-8')
-                self.end_headers()
-                self.wfile.write(json.dumps(history, ensure_ascii=False).encode('utf-8'))
-            except Exception as e:
-                self.send_response(500)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({'error': str(e)}).encode())
 
         elif self.path == '/top-chips':
             import random, datetime

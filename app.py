@@ -360,7 +360,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="search-box">
     <div class="search-row">
       <input class="search-input" id="query" autocomplete="off" placeholder="Введите нишу, например: платья, термосы, наушники..." />
-      <button class="btn" onclick="analyze()">Анализировать</button>
+      <button class="btn" id="analyze-btn" onclick="analyze()" disabled>Анализировать</button>
     </div>
     <div class="examples" id="top-chips">
       <span style="font-size:11px;color:#555;align-self:center;">🔥 Топ ниши:</span>
@@ -1339,6 +1339,8 @@ document.getElementById('query').addEventListener('keypress', e => {
 
 document.getElementById('query').addEventListener('input', e => {
   const q = e.target.value.trim();
+  const btn = document.getElementById('analyze-btn');
+  if (btn) btn.disabled = q.length < 2;
   clearTimeout(suggestTimer);
   if (q.length < 2) { hideSuggestions(); return; }
   suggestTimer = setTimeout(() => loadSuggestions(q), 250);

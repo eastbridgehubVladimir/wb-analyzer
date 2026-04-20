@@ -693,6 +693,7 @@ function calcUnit() {
     <div class="calc-result-row"><span style="color:#fff;font-weight:600">Прибыль с единицы</span><span class="${profitColor}">${fmtCalc(profit)}</span></div>
   `;
 }
+function hideAll() {
   document.getElementById('catalog').style.display = 'none';
   document.getElementById('history').style.display = 'none';
   document.getElementById('calculator').style.display = 'none';

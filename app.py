@@ -338,6 +338,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="logo" onclick="goHome()" style="cursor:pointer;">WB<span>Analyzer</span></div>
     <div class="tagline">AI-платформа анализа товарных ниш</div>
   </div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+    <button id="gcur-rub" onclick="setGlobalCurrency('rub')" style="background:#6c63ff22;border:1px solid #6c63ff;border-radius:6px;color:#6c63ff;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">₽</button>
+    <button id="gcur-usd" onclick="setGlobalCurrency('usd')" style="background:transparent;border:1px solid #2a2a3a;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">$</button>
+    <button id="gcur-eur" onclick="setGlobalCurrency('eur')" style="background:transparent;border:1px solid #2a2a3a;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">€</button>
+    <button id="gcur-byn" onclick="setGlobalCurrency('byn')" style="background:transparent;border:1px solid #2a2a3a;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">Br</button>
+  </div>
 </div>
 <div class="page-wrap">
 <div id="chartModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000000cc;z-index:1000;align-items:center;justify-content:center;" onclick="if(event.target.id=='chartModal'){this.style.display='none';if(modalChartInstance){modalChartInstance.destroy();modalChartInstance=null;}}">
@@ -538,11 +544,55 @@ let currentCurrency = 'rub';
 const rates = { rub: 1, usd: 0.011, eur: 0.010, byn: 0.036 };
 const symbols = { rub: '₽', usd: '$', eur: '€', byn: 'Br' };
 
+function setGlobalCurrency(cur) {
+  setCurrency(cur);
+  // Обновляем кнопки в шапке
+  ['rub','usd','eur','byn'].forEach(c => {
+    const btn = document.getElementById('gcur-' + c);
+    if (!btn) return;
+    if (c === cur) {
+      btn.style.background = '#6c63ff22';
+      btn.style.borderColor = '#6c63ff';
+      btn.style.color = '#6c63ff';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.borderColor = '#2a2a3a';
+      btn.style.color = '#555';
+    }
+  });
+}
+function updateChartsForCurrency(cur) {
+  const rate = rates[cur];
+  const sym = symbols[cur];
+  // Пересчитываем метки графика цен
+  if (window._chartData && window._chartData.price_labels_rub && window.priceChartInstance) {
+    const newLabels = window._chartData.price_labels_rub.map(label => {
+      return label.replace(/\d+/g, n => Math.round(parseInt(n) * rate).toLocaleString('ru')) + ' ' + sym;
+    });
+    window.priceChartInstance.data.labels = newLabels;
+    window.priceChartInstance.update('active');
+  }
+  // Пересчитываем прогноз выручки — пересоздаём график
+  if (window._chartData && window._chartData.forecast_data_rub && window.forecastChartInstance) {
+    const last6rev = window._chartData.revenue_rub.map(v => +(v * rate).toFixed(2));
+    const forecastData = window._chartData.forecast_data_rub.map(v => +(v * rate).toFixed(2));
+    const allRevenue = [...last6rev, ...Array(forecastData.length).fill(null)];
+    const forecastFull = [...Array(last6rev.length - 1).fill(null), last6rev[last6rev.length-1], ...forecastData];
+    window.forecastChartInstance.data.datasets[0].data = allRevenue;
+    window.forecastChartInstance.data.datasets[1].data = forecastFull;
+    window.forecastChartInstance.data.datasets[0].label = 'Факт (млн ' + sym + ')';
+    window.forecastChartInstance.data.datasets[1].label = 'Прогноз (млн ' + sym + ')';
+    window.forecastChartInstance.update('active');
+  }
+}
 function setCurrency(cur) {
   currentCurrency = cur;
   document.querySelectorAll('.currency-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll(`.currency-btn[data-cur="${cur}"]`).forEach(b => b.classList.add('active'));
-  if (window.lastResult) renderResult(window.lastResult);
+  if (window.lastResult) {
+    renderResult(window.lastResult);
+    setTimeout(() => updateChartsForCurrency(cur), 100);
+  }
 }
 
 function fmtCurrency(rub) {
@@ -938,10 +988,15 @@ async function loadCharts(name) {
     // График распределения цен
     if (document.getElementById('priceChart') && data.price_labels) {
       if (window.priceChartInstance) window.priceChartInstance.destroy();
+      const prRate = rates[currentCurrency];
+      const prSym = symbols[currentCurrency];
+      const convertedPriceLabels = data.price_labels.map(label => {
+        return label.replace(/\d+/g, n => Math.round(parseInt(n) * prRate).toLocaleString('ru')) + ' ' + prSym;
+      });
       window.priceChartInstance = new Chart(document.getElementById('priceChart'), {
         type: 'bar',
         data: {
-          labels: data.price_labels,
+          labels: convertedPriceLabels,
           datasets: [{
             data: data.price_data,
             backgroundColor: ['#fbbf24aa','#fbbf24bb','#fbbf24cc','#fbbf24dd','#fbbf24ee','#fbbf24'],
@@ -1028,8 +1083,8 @@ async function loadCharts(name) {
         html += `<td style="padding:8px;color:#555;">${i+1}</td>`;
         html += `<td style="padding:8px;color:#ddd;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.name}</td>`;
         html += `<td style="padding:8px;color:#888;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.seller}</td>`;
-        html += `<td style="padding:8px;color:#fff;text-align:right;">${item.price.toLocaleString('ru')} ₽</td>`;
-        html += `<td style="padding:8px;color:#38bdf8;text-align:right;">${item.revenue.toLocaleString('ru')} тыс ₽</td>`;
+        html += `<td style="padding:8px;color:#fff;text-align:right;">${fmtCurrency(item.price)}</td>`;
+        html += `<td style="padding:8px;color:#38bdf8;text-align:right;">${fmtCurrency(item.revenue * 1000)}</td>`;
         html += `<td style="padding:8px;color:#4ade80;text-align:right;">${item.sales.toLocaleString('ru')}</td>`;
         html += `<td style="padding:8px;color:#fbbf24;text-align:right;">${item.rating > 0 ? '★ ' + item.rating : '—'}</td>`;
         html += `<td style="padding:8px;text-align:center;">${item.url ? '<a href="' + item.url + '" target="_blank" style="color:#6c63ff;text-decoration:none;font-size:11px;">' + item.id + '</a>' : '—'}</td>`;
@@ -1079,14 +1134,25 @@ async function loadCharts(name) {
       // Связующая точка
       forecastFull[data.revenue.length - 1] = data.revenue[data.revenue.length - 1];
 
+      // Сохраняем оригинальные данные в рублях для конвертации
+      window._chartData.revenue_rub = last6rev;
+      window._chartData.forecast_data_rub = data.forecast_data;
+      window._chartData.price_labels_rub = data.price_labels;
+
+      // Конвертируем данные в текущую валюту
+      const fcRate = rates[currentCurrency];
+      const fcSym = symbols[currentCurrency];
+      const allRevenueConverted = allRevenue.map(v => v === null ? null : +(v * fcRate).toFixed(2));
+      const forecastFullConverted = forecastFull.map(v => v === null ? null : +(v * fcRate).toFixed(2));
+
       window.forecastChartInstance = new Chart(document.getElementById('forecastChart'), {
         type: 'line',
         data: {
           labels: allLabels,
           datasets: [
             {
-              label: 'Факт (млн ₽)',
-              data: allRevenue,
+              label: 'Факт (млн ' + fcSym + ')',
+              data: allRevenueConverted,
               borderColor: '#ffffff',
               backgroundColor: '#ffffff10',
               fill: true,
@@ -1096,8 +1162,8 @@ async function loadCharts(name) {
               borderWidth: 2
             },
             {
-              label: 'Прогноз (млн ₽)',
-              data: forecastFull,
+              label: 'Прогноз (млн ' + fcSym + ')',
+              data: forecastFullConverted,
               borderColor: '#00d4ff',
               backgroundColor: '#00d4ff10',
               fill: true,
@@ -1440,7 +1506,7 @@ function renderResult(d) {
 
     <!-- ЗОНА 1: Метрики -->
     <div class="metrics-grid">
-      <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-value">${fmtCurrency(d.revenue)}</div><div class="metric-sub">в месяц<div class="currency-switch"><button class="currency-btn ${currentCurrency==='rub'?'active':''}" data-cur="rub" onclick="setCurrency('rub')">₽</button><button class="currency-btn ${currentCurrency==='usd'?'active':''}" data-cur="usd" onclick="setCurrency('usd')">$</button><button class="currency-btn ${currentCurrency==='eur'?'active':''}" data-cur="eur" onclick="setCurrency('eur')">€</button><button class="currency-btn ${currentCurrency==='byn'?'active':''}" data-cur="byn" onclick="setCurrency('byn')">Br</button></div></div></div>
+      <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-value">${fmtCurrency(d.revenue)}</div><div class="metric-sub">в месяц</div></div>
       <div class="metric-card"><div class="metric-label">Заказов в месяц</div><div class="metric-value">${d.orders.toLocaleString('ru')}</div><div class="metric-sub">${(d.orders/30).toFixed(0)} в день</div></div>
       <div class="metric-card"><div class="metric-label">Продавцов</div><div class="metric-value">${d.sellers.toLocaleString('ru')}</div><div class="metric-sub">${d.sellers_with_sales} с продажами</div></div>
       <div class="metric-card"><div class="metric-label">Выкуп</div><div class="metric-value">${(d.buyout_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.buyout_pct >= 0.8 ? 'отличный' : d.buyout_pct >= 0.6 ? 'хороший' : 'низкий'}</div></div>
@@ -1489,7 +1555,7 @@ function renderResult(d) {
           <div class="metric-row"><div class="metric-row-label">Прибыльность</div><div class="metric-row-value">${Math.round(d.profit_pct*100)}%</div></div>
           <div class="metric-row-bar" style="margin-bottom:12px;"><div class="metric-row-fill" style="width:${Math.round(d.profit_pct*100)}%;background:#f59e0b"></div></div>
           <div class="metric-row"><div class="metric-row-label">Рейтинг товаров</div><div class="metric-row-value">⭐ ${d.avg_rating.toFixed(1)}</div></div>
-          <div class="metric-row"><div class="metric-row-label">Средняя цена</div><div class="metric-row-value">${Math.round(d.avg_price).toLocaleString('ru')} ₽</div></div>
+          <div class="metric-row"><div class="metric-row-label">Средняя цена</div><div class="metric-row-value">${fmtCurrency(d.avg_price)}</div></div>
           <div class="metric-row"><div class="metric-row-label">Комиссия WB</div><div class="metric-row-value">${d.commission}%</div></div>
         </div>
       </div>
@@ -1520,7 +1586,7 @@ function renderResult(d) {
     <!-- ЗОНА 4г: Прогноз продаж -->
     <div class="chart-card" style="height:320px;margin-bottom:16px;" onclick="openChartModal('🔮 Прогноз выручки на 3 месяца', 'forecast', window._chartData.labels, window._chartData.revenue, '#38bdf8', false)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div class="chart-title" style="margin:0;">🔮 Прогноз выручки на 3 месяца <span style="font-size:10px;color:#555;">(млн ₽) 🔍</span></div>
+        <div class="chart-title" style="margin:0;">🔮 Прогноз выручки на 3 месяца <span id="forecast-currency-label" style="font-size:10px;color:#555;">(млн ₽) 🔍</span></div>
         <div style="font-size:11px;color:#555;">на основе сезонности + тренда</div>
       </div>
       <canvas id="forecastChart" height="110"></canvas>

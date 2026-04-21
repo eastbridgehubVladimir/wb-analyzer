@@ -2166,14 +2166,14 @@ class Handler(BaseHTTPRequestHandler):
                     cur2.close()
                     conn2.close()
                     top8_revenue = sum(s[1] for s in top_sellers)
-                    others_revenue = max(0, total_niche_revenue - top8_revenue)
+                    # Общая выручка всех товаров из выборки MPStats
+                    total_items_revenue = sum(item.get('revenue', 0) or 0 for item in items)
+                    total_for_pct = total_items_revenue if total_items_revenue > 0 else top8_revenue if top8_revenue > 0 else 1
+                    others_revenue = max(0, total_for_pct - top8_revenue)
                     seller_pct = []
-                    if total_niche_revenue > 0:
-                        for s in top_sellers:
-                            seller_pct.append(round(s[1] / total_niche_revenue * 100, 1))
-                        seller_pct.append(round(others_revenue / total_niche_revenue * 100, 1))
-                    else:
-                        seller_pct = [0] * (len(top_sellers) + 1)
+                    for s in top_sellers:
+                        seller_pct.append(round(s[1] / total_for_pct * 100, 1))
+                    seller_pct.append(round(others_revenue / total_for_pct * 100, 1))
 
                     # Умный прогноз на 3 месяца вперёд
                     rev_list = [round(months_revenue.get(k, 0) / 1000000, 1) for k in sorted(months_revenue.keys())]

@@ -540,6 +540,45 @@ let currentCurrency = 'rub';
 const rates = { rub: 1, usd: 0.011, eur: 0.010, byn: 0.036 };
 const symbols = { rub: '₽', usd: '$', eur: '€', byn: 'Br' };
 
+async function deepAnalysis(d) {
+  const block = document.getElementById('deep-analysis-block');
+  const content = document.getElementById('deep-content');
+  const loading = document.getElementById('deep-loading');
+  
+  block.style.display = 'block';
+  loading.style.display = 'block';
+  content.innerHTML = '';
+  
+  // Скроллим к блоку
+  block.scrollIntoView({behavior: 'smooth', block: 'start'});
+  
+  try {
+    const params = new URLSearchParams({
+      name: d.full || d.name,
+      revenue: d.revenue,
+      avg_price: d.avg_price,
+      commission: d.commission,
+      buyout_pct: d.buyout_pct,
+      profit_pct: d.profit_pct,
+      turnover: d.turnover,
+      sellers: d.sellers,
+      sellers_with_sales: d.sellers_with_sales,
+      currency: currentCurrency
+    });
+    const r = await fetch('/deep-analysis?' + params);
+    const data = await r.json();
+    loading.style.display = 'none';
+    if (data.error) {
+      content.innerHTML = '<div style="color:#f87171;padding:16px;">' + data.error + '</div>';
+      return;
+    }
+    content.innerHTML = data.html;
+  } catch(e) {
+    loading.style.display = 'none';
+    content.innerHTML = '<div style="color:#f87171;padding:16px;">Ошибка соединения</div>';
+  }
+}
+
 function fillCalculator(avg_price, commission, buyout_pct) {
   // Заполняем калькулятор данными из ниши
   showCalc();
@@ -561,6 +600,10 @@ function setGlobalCurrency(cur) {
   // Синхронизируем с калькулятором (у него нет EUR)
   const calcCur = cur === 'eur' ? 'rub' : cur;
   if (typeof setCalcCurrency === 'function') setCalcCurrency(calcCur);
+  // Обновляем глубокий анализ если открыт
+  if (window.currentNiche && document.getElementById('deep-analysis-block').style.display !== 'none') {
+    deepAnalysis(window.currentNiche);
+  }
   // Обновляем кнопки в шапке
   ['rub','usd','eur','byn'].forEach(c => {
     const btn = document.getElementById('gcur-' + c);
@@ -766,7 +809,7 @@ async function showPortfolio() {
   setActiveMenu(event.target);
   const div = document.getElementById('portfolio');
   div.style.display = 'block';
-  div.innerHTML = '<div style="color:#555;padding:20px">Загружаем портфель...</div>';
+  div.innerHTML = '<div style="color:#555;padding:20px">Загружаем рекомендации...</div>';
   const r = await fetch('/portfolio');
   const data = await r.json();
   if (data.error) { div.innerHTML = '<div style="color:#f00;padding:20px">' + data.error + '</div>'; return; }
@@ -1510,6 +1553,7 @@ function isSeasonal(name) {
 
 function renderResult(d) {
   window.lastResult = d;
+  window.currentNiche = d;
   const verdictMap = {BUY: 'Рекомендуем входить', TEST: 'Тестовая закупка', SKIP: 'Не рекомендуем'};
   const insights = d.insights.map((t,i) => `<div class="insight-item"><div class="insight-num">${i+1}</div><div class="insight-text">${t}</div></div>`).join('');
   const hyps = d.hypotheses.map(t => `<div class="hyp-item">${t}</div>`).join('');
@@ -1518,6 +1562,7 @@ function renderResult(d) {
       <div class="niche-name" style="margin-bottom:0;">${d.name} ${isSeasonal(d.name) ? '<span style="font-size:14px;color:#eab308;font-weight:400">🍂 сезонный товар</span>' : ''}</div>
       <div style="display:flex;gap:8px;">
         <button onclick="fillCalculator(${d.avg_price}, ${d.commission}, ${d.buyout_pct})" style="background:#6c63ff22;border:1px solid #6c63ff;border-radius:8px;padding:8px 16px;color:#a78bfa;cursor:pointer;font-size:13px;white-space:nowrap;">🧮 Рассчитать экономику</button>
+        <button onclick="deepAnalysis(window.currentNiche)" style="background:#22c55e22;border:1px solid #22c55e;border-radius:8px;padding:8px 16px;color:#22c55e;cursor:pointer;font-size:13px;white-space:nowrap;">🔍 Глубокий анализ</button>
         <button id="watchlist-btn" onclick="toggleWatchlist('${(d.full||d.name).replace(/'/g,'`')}','${d.name.replace(/'/g,'`')}',${d.revenue}); updateWatchlistBtn('${(d.full||d.name).replace(/'/g,'`')}');" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:8px 16px;color:#888;cursor:pointer;font-size:13px;white-space:nowrap;">${isInWatchlist(d.full||d.name) ? '📌 В работе' : '🔖 В работе'}</button>
       </div>
     </div>
@@ -1629,6 +1674,17 @@ function renderResult(d) {
       <div class="section-title">Ключевые наблюдения</div>
       ${insights}
       ${hyps ? `<div class="section-title" style="margin-top:20px">Гипотезы для проверки</div>${hyps}` : ''}
+    </div>
+    <!-- ЗОНА 6: Глубокий анализ -->
+    <div id="deep-analysis-block" style="display:none;margin-top:24px;">
+      <div class="ai-card">
+        <div class="ai-header">
+          <div class="ai-dot" style="background:#22c55e;"></div>
+          <div class="ai-title">🔍 Глубокий анализ</div>
+          <div id="deep-loading" style="display:none;margin-left:12px;font-size:12px;color:#555;">Анализируем нишу...</div>
+        </div>
+        <div id="deep-content"></div>
+      </div>
     </div>
   `;
   document.getElementById('result').style.display = 'block';
@@ -1860,6 +1916,100 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()
                 self.wfile.write(json.dumps(results, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+        elif self.path.startswith('/deep-analysis'):
+            from urllib.parse import parse_qs, urlparse, unquote
+            try:
+                params = parse_qs(urlparse(self.path).query)
+                name = unquote(params.get('name', [''])[0])
+                revenue = float(params.get('revenue', [0])[0])
+                avg_price = float(params.get('avg_price', [0])[0])
+                commission = float(params.get('commission', [0])[0])
+                buyout_pct = float(params.get('buyout_pct', [0])[0])
+                profit_pct = float(params.get('profit_pct', [0])[0])
+                turnover = float(params.get('turnover', [0])[0])
+                sellers = int(params.get('sellers', [0])[0])
+                sellers_with_sales = int(params.get('sellers_with_sales', [0])[0])
+                currency = params.get('currency', ['rub'])[0]
+                rates = {'rub': 1, 'usd': 0.011, 'eur': 0.010, 'byn': 0.036}
+                symbols = {'rub': '₽', 'usd': '$', 'eur': '€', 'byn': 'Br'}
+                rate = rates.get(currency, 1)
+                sym = symbols.get(currency, '₽')
+
+                # Считаем ключевые показатели
+                avg_rev_per_seller = revenue / sellers_with_sales if sellers_with_sales > 0 else 0
+                real_turnover = round(turnover / buyout_pct) if buyout_pct > 0 else round(turnover)
+                entry_budget = avg_price * 30 * rate
+                monthly_ad_budget = avg_price * 5 * rate
+                breakeven = entry_budget + monthly_ad_budget
+                avg_rev_display = avg_rev_per_seller * rate
+
+                # Вердикт входа
+                if buyout_pct >= 0.75 and profit_pct >= 0.3 and real_turnover <= 45:
+                    verdict = "ВХОДИТЬ"
+                    verdict_color = "#22c55e"
+                    verdict_desc = "Ниша показывает сильные показатели по всем ключевым метрикам"
+                elif buyout_pct >= 0.6 and profit_pct >= 0.2:
+                    verdict = "ТЕСТИРОВАТЬ"
+                    verdict_color = "#eab308"
+                    verdict_desc = "Ниша перспективна но требует тестовой поставки для проверки"
+                else:
+                    verdict = "НЕ ВХОДИТЬ"
+                    verdict_color = "#ef4444"
+                    verdict_desc = "Показатели ниши не соответствуют критериям входа"
+
+                html = f'''
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;">
+                  <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
+                    <div style="font-size:11px;color:#555;margin-bottom:8px;">ВЕРДИКТ</div>
+                    <div style="font-size:22px;font-weight:700;color:{verdict_color};">{verdict}</div>
+                    <div style="font-size:11px;color:#555;margin-top:6px;">{verdict_desc}</div>
+                  </div>
+                  <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
+                    <div style="font-size:11px;color:#555;margin-bottom:8px;">БЮДЖЕТ НА ВХОД</div>
+                    <div style="font-size:22px;font-weight:700;color:#fff;">{entry_budget:,.0f} {sym}</div>
+                    <div style="font-size:11px;color:#555;margin-top:6px;">минимальная партия 30 шт</div>
+                  </div>
+                  <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
+                    <div style="font-size:11px;color:#555;margin-bottom:8px;">БЮДЖЕТ НА РЕКЛАМУ</div>
+                    <div style="font-size:22px;font-weight:700;color:#fff;">{monthly_ad_budget:,.0f} {sym}</div>
+                    <div style="font-size:11px;color:#555;margin-top:6px;">первый месяц</div>
+                  </div>
+                </div>
+                <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:16px;">
+                  <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:12px;">💰 Финансовый план</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <div style="font-size:12px;color:#888;">Точка безубыточности:</div>
+                    <div style="font-size:12px;color:#fff;font-weight:600;">{breakeven:,.0f} {sym}</div>
+                    <div style="font-size:12px;color:#888;">Средняя выручка продавца:</div>
+                    <div style="font-size:12px;color:#fff;font-weight:600;">{avg_rev_display:,.0f} {sym}/мес</div>
+                    <div style="font-size:12px;color:#888;">Реальная оборачиваемость:</div>
+                    <div style="font-size:12px;color:#fff;font-weight:600;">{real_turnover} дней</div>
+                    <div style="font-size:12px;color:#888;">Маржинальность:</div>
+                    <div style="font-size:12px;color:#fff;font-weight:600;">{profit_pct*100:.0f}%</div>
+                  </div>
+                </div>
+                <div style="background:#0f0f13;border-radius:10px;padding:16px;">
+                  <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:12px;">🏆 Конкурентный анализ</div>
+                  <div style="font-size:12px;color:#888;line-height:1.6;">
+                    {'✅ Низкая конкуренция — легко войти' if sellers < 100 else '⚠️ Умеренная конкуренция — нужно УТП' if sellers < 500 else '🔴 Высокая конкуренция — сложный рынок'}<br>
+                    {'✅ Высокий выкуп — товар нравится покупателям' if buyout_pct >= 0.75 else '⚠️ Средний выкуп — возможны проблемы с качеством' if buyout_pct >= 0.5 else '🔴 Низкий выкуп — много возвратов'}<br>
+                    {'✅ Быстрая оборачиваемость — деньги возвращаются быстро' if real_turnover <= 30 else '⚠️ Умеренная оборачиваемость' if real_turnover <= 60 else '🔴 Медленная оборачиваемость — деньги заморожены надолго'}
+                  </div>
+                </div>
+                <div style="margin-top:12px;padding:12px;background:#6c63ff11;border:1px solid #6c63ff33;border-radius:8px;font-size:11px;color:#666;text-align:center;">
+                  💡 Для детального AI анализа пополните баланс Anthropic API
+                </div>'''
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'html': html}, ensure_ascii=False).encode('utf-8'))
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')

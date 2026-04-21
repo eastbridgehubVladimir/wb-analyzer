@@ -227,7 +227,7 @@ HTML = """<!DOCTYPE html>
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f13; color: #e8e8e8; min-height: 100vh; }
 .header { background: #1a1a24; border-bottom: 1px solid #2a2a3a; padding: 20px 40px; display: flex; align-items: center; gap: 16px; }
 .page-wrap { display: flex; min-height: calc(100vh - 57px); }
-.sidebar { width: 180px; background: #141418; border-right: 1px solid #2a2a3a; padding: 16px; flex-shrink: 0; }
+.sidebar { width: 200px; background: #141418; border-right: 1px solid #2a2a3a; padding: 16px; flex-shrink: 0; }
 .sidebar-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
 .sidebar-item { display: flex; align-items: center; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 15px; color: #888; margin-bottom: 4px; transition: all 0.15s; }
 .sidebar-item:hover { background: #1a1a24; color: #ddd; }
@@ -355,10 +355,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 <div class="sidebar">
 
-  <div class="sidebar-item active" onclick="showTopNiches()">Топ ниши</div>
+  <div class="sidebar-item active" onclick="showCatalog()">🔍 Все ниши</div>
+  <div class="sidebar-item" onclick="showTopNiches()">⭐ Топ ниши</div>
   <div class="sidebar-item" onclick="showPortfolio()">🎯 Рекомендации</div>
-  <div class="sidebar-item" onclick="showCatalog()">Все ниши</div>
-  <div class="sidebar-item" onclick="showCalc()">Калькулятор</div>
+  <div class="sidebar-item" onclick="showCalc()">🧮 Калькулятор</div>
   <div class="sidebar-item" id="watchlist-menu" onclick="showWatchlist()">📌 В работе <span id="watchlist-count" style="background:#6c63ff33;color:#a78bfa;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;"></span></div>
 </div>
 <div class="content-area">

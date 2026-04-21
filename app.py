@@ -396,11 +396,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
           <button class="scheme-tab" onclick="setScheme('fbs')">FBS</button>
           <button class="scheme-tab" onclick="setScheme('china')">Китай</button>
         </div>
-        <div class="scheme-tabs">
-          <button class="scheme-tab active" id="calc-cur-rub" onclick="setCalcCurrency('rub')">₽</button>
-          <button class="scheme-tab" id="calc-cur-usd" onclick="setCalcCurrency('usd')">$</button>
-          <button class="scheme-tab" id="calc-cur-byn" onclick="setCalcCurrency('byn')">BYN</button>
-        </div>
+
       </div>
     </div>
     <div class="calc-grid">
@@ -544,8 +540,27 @@ let currentCurrency = 'rub';
 const rates = { rub: 1, usd: 0.011, eur: 0.010, byn: 0.036 };
 const symbols = { rub: '₽', usd: '$', eur: '€', byn: 'Br' };
 
+function fillCalculator(avg_price, commission, buyout_pct) {
+  // Заполняем калькулятор данными из ниши
+  showCalc();
+  setTimeout(() => {
+    const price = document.getElementById('c-price');
+    const comm = document.getElementById('c-commission');
+    const buyout = document.getElementById('c-buyout');
+    const logistic = document.getElementById('c-logistic');
+    if (price) price.value = Math.round(avg_price);
+    if (comm) comm.value = Math.round(commission);
+    if (buyout) buyout.value = Math.round(buyout_pct * 100);
+    if (logistic) logistic.value = Math.round(avg_price * 0.06);
+    calcUnit();
+  }, 100);
+}
+
 function setGlobalCurrency(cur) {
   setCurrency(cur);
+  // Синхронизируем с калькулятором (у него нет EUR)
+  const calcCur = cur === 'eur' ? 'rub' : cur;
+  if (typeof setCalcCurrency === 'function') setCalcCurrency(calcCur);
   // Обновляем кнопки в шапке
   ['rub','usd','eur','byn'].forEach(c => {
     const btn = document.getElementById('gcur-' + c);
@@ -1501,7 +1516,10 @@ function renderResult(d) {
   document.getElementById('result').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <div class="niche-name" style="margin-bottom:0;">${d.name} ${isSeasonal(d.name) ? '<span style="font-size:14px;color:#eab308;font-weight:400">🍂 сезонный товар</span>' : ''}</div>
-      <button id="watchlist-btn" onclick="toggleWatchlist('${(d.full||d.name).replace(/'/g,'`')}','${d.name.replace(/'/g,'`')}',${d.revenue}); updateWatchlistBtn('${(d.full||d.name).replace(/'/g,'`')}');" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:8px 16px;color:#888;cursor:pointer;font-size:13px;white-space:nowrap;">${isInWatchlist(d.full||d.name) ? '📌 В работе' : '🔖 В работе'}</button>
+      <div style="display:flex;gap:8px;">
+        <button onclick="fillCalculator(${d.avg_price}, ${d.commission}, ${d.buyout_pct})" style="background:#6c63ff22;border:1px solid #6c63ff;border-radius:8px;padding:8px 16px;color:#a78bfa;cursor:pointer;font-size:13px;white-space:nowrap;">🧮 Рассчитать экономику</button>
+        <button id="watchlist-btn" onclick="toggleWatchlist('${(d.full||d.name).replace(/'/g,'`')}','${d.name.replace(/'/g,'`')}',${d.revenue}); updateWatchlistBtn('${(d.full||d.name).replace(/'/g,'`')}');" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:8px 16px;color:#888;cursor:pointer;font-size:13px;white-space:nowrap;">${isInWatchlist(d.full||d.name) ? '📌 В работе' : '🔖 В работе'}</button>
+      </div>
     </div>
 
     <!-- ЗОНА 1: Метрики -->

@@ -195,7 +195,7 @@ def get_ai_insights(row):
 Только JSON, никакого другого текста."""
 
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-5",
             max_tokens=600,
             messages=[{"role": "user", "content": prompt}]
         )

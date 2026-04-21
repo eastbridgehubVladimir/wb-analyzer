@@ -205,6 +205,7 @@ def get_ai_insights(row):
         result = json.loads(text)
         return result
     except Exception as e:
+        print(f"AI Insights error: {e}")
         # Fallback на шаблонные инсайты если API недоступен
         insights = []
         if sellers > 10000:

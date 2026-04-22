@@ -1589,7 +1589,7 @@ function renderResult(d) {
   const hyps = d.hypotheses.map(t => `<div class="hyp-item">${t}</div>`).join('');
   document.getElementById('result').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
-      <div class="niche-name" style="margin-bottom:0;">${d.name} ${isSeasonal(d.name) ? '<span style="font-size:14px;color:#eab308;font-weight:400">🍂 сезонный товар</span>' : ''}</div>
+      <div class="niche-name" style="margin-bottom:0;">${d.name} ${isSeasonal(d.name) ? '<span style="font-size:14px;color:#eab308;font-weight:400">🍂 сезонный товар</span>' : ''} ${d.data_warning ? '<span style="font-size:12px;color:#ef4444;font-weight:400;background:#ef444422;border:1px solid #ef444444;border-radius:6px;padding:2px 8px;margin-left:8px;">⚠️ Данные могут быть неточными</span>' : ''}</div>
       <div style="display:flex;gap:8px;">
         <button onclick="fillCalculator(${d.avg_price}, ${d.commission}, ${d.buyout_pct})" style="background:#6c63ff22;border:1px solid #6c63ff;border-radius:8px;padding:8px 16px;color:#a78bfa;cursor:pointer;font-size:13px;white-space:nowrap;">🧮 Рассчитать экономику</button>
         <button onclick="deepAnalysis(window.currentNiche)" style="background:#22c55e22;border:1px solid #22c55e;border-radius:8px;padding:8px 16px;color:#22c55e;cursor:pointer;font-size:13px;white-space:nowrap;">🔍 Глубокий анализ</button>
@@ -1757,6 +1757,11 @@ class Handler(BaseHTTPRequestHandler):
                     AND profit_pct > 0.1
                     AND buyout_pct > 0.5
                     AND sellers > 10
+                    AND (mpstats_path IS NULL OR path_verified = TRUE OR EXISTS (
+                        SELECT 1 FROM unnest(string_to_array(LOWER(name), ' ')) AS nw
+                        JOIN unnest(string_to_array(LOWER(REPLACE(mpstats_path, '/', ' ')), ' ')) AS pw ON LEFT(nw, 5) = LEFT(pw, 5)
+                        WHERE length(nw) > 3
+                    ))
                     ORDER BY revenue DESC
                     LIMIT 500
                 """)
@@ -1918,6 +1923,11 @@ class Handler(BaseHTTPRequestHandler):
                     AND profit_pct > 0.30
                     AND revenue > 5000000
                     AND sellers_with_sales > 10
+                    AND (mpstats_path IS NULL OR path_verified = TRUE OR EXISTS (
+                        SELECT 1 FROM unnest(string_to_array(LOWER(name), ' ')) AS nw
+                        JOIN unnest(string_to_array(LOWER(REPLACE(mpstats_path, '/', ' ')), ' ')) AS pw ON LEFT(nw, 5) = LEFT(pw, 5)
+                        WHERE length(nw) > 3
+                    ))
                     ORDER BY (buyout_pct * 0.35 + profit_pct * 0.35 + (45.0 - LEAST(turnover,45))/45.0 * 0.30) DESC
                     LIMIT 50
                 """)
@@ -2085,9 +2095,20 @@ class Handler(BaseHTTPRequestHandler):
                 from datetime import date, timedelta
                 conn = psycopg2.connect(DB)
                 cur = conn.cursor()
-                cur.execute("SELECT mpstats_path FROM niches WHERE name ILIKE %s ORDER BY CASE WHEN LOWER(name)=LOWER(%s) THEN 0 ELSE 1 END LIMIT 1", (f'%{query}%', query))
+                cur.execute("SELECT mpstats_path, name, COALESCE(path_verified, FALSE) FROM niches WHERE name ILIKE %s ORDER BY CASE WHEN LOWER(name)=LOWER(%s) THEN 0 ELSE 1 END LIMIT 1", (f'%{query}%', query))
                 row = cur.fetchone()
                 conn.close()
+                data_warning = False
+                if row and row[0]:
+                    niche_name = row[1]
+                    path_verified = row[2]
+                    path_last = row[0].split('/')[-1].lower()
+                    name_words = set(niche_name.lower().split())
+                    path_words = set(row[0].lower().replace('/', ' ').split())
+                    common_words = name_words & path_words
+                    # Показываем маркер если путь не верифицирован и нет общих слов
+                    if not path_verified and len(common_words) == 0:
+                        data_warning = True
                 
                 if not row or not row[0]:
                     self.send_response(200)
@@ -2303,6 +2324,7 @@ class Handler(BaseHTTPRequestHandler):
             query = unquote(query)
 
             try:
+                data_warning = False
                 row = find_niche(query)
                 if not row:
                     result = {'error': f'Ниша "{query}" не найдена. Попробуйте: Платья, Куртки, Пижамы, Конфеты'}
@@ -2342,6 +2364,7 @@ class Handler(BaseHTTPRequestHandler):
 
                     result = {
                         'name': clean_name(name),
+                        'data_warning': data_warning,
                         'category': get_category(name),
                         'revenue': float(revenue or 0),
                         'orders': int(orders or 0),

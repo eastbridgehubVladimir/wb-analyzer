@@ -828,13 +828,18 @@ function refreshTopNiches() {
   topNichesOffset += 21;
   showTopNiches();
 }
+let portfolioOffset = 0;
+function refreshPortfolio() {
+  portfolioOffset += 15;
+  showPortfolio();
+}
 async function showPortfolio() {
   hideAll();
   setActiveMenu(event.target);
   const div = document.getElementById('portfolio');
   div.style.display = 'block';
   div.innerHTML = '<div style="color:#555;padding:20px">Загружаем рекомендации...</div>';
-  const r = await fetch('/portfolio');
+  const r = await fetch('/portfolio?offset=' + portfolioOffset);
   const data = await r.json();
   if (data.error) { div.innerHTML = '<div style="color:#f00;padding:20px">' + data.error + '</div>'; return; }
   div.innerHTML = `
@@ -843,6 +848,7 @@ async function showPortfolio() {
         <div style="font-size:20px;font-weight:700;color:#fff;">🎯 Рекомендации для закупки</div>
         <div style="font-size:13px;color:#555;margin-top:4px;">Ниши с высокой вероятностью быстрой распродажи</div>
       </div>
+      <button onclick="refreshPortfolio()" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:8px 16px;color:#888;cursor:pointer;font-size:13px;">🔄 Показать другие</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
       ${data.map((n,i) => `
@@ -1894,8 +1900,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
 
 
-        elif self.path == '/portfolio':
+        elif self.path.startswith('/portfolio'):
             try:
+                from urllib.parse import parse_qs, urlparse
+                offset = int(parse_qs(urlparse(self.path).query).get('offset', ['0'])[0])
+                import random, datetime
                 conn = psycopg2.connect(DB)
                 cursor = conn.cursor()
                 cursor.execute("""
@@ -1935,7 +1944,7 @@ class Handler(BaseHTTPRequestHandler):
                         'avg_price': float(avg_price or 0),
                     })
                 results.sort(key=lambda x: x['score'], reverse=True)
-                results = results[:15]
+                results = results[offset:offset+15]
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()

@@ -1965,69 +1965,97 @@ class Handler(BaseHTTPRequestHandler):
                 rate = rates.get(currency, 1)
                 sym = symbols.get(currency, '₽')
 
-                # Считаем ключевые показатели
-                avg_rev_per_seller = revenue / sellers_with_sales if sellers_with_sales > 0 else 0
+                # Считаем базовые показатели для контекста
                 real_turnover = round(turnover / buyout_pct) if buyout_pct > 0 else round(turnover)
-                entry_budget = avg_price * 30 * rate
-                monthly_ad_budget = avg_price * 5 * rate
-                breakeven = entry_budget + monthly_ad_budget
-                avg_rev_display = avg_rev_per_seller * rate
+                avg_rev_per_seller = revenue / sellers_with_sales if sellers_with_sales > 0 else 0
 
-                # Вердикт входа
-                if buyout_pct >= 0.75 and profit_pct >= 0.3 and real_turnover <= 45:
-                    verdict = "ВХОДИТЬ"
-                    verdict_color = "#22c55e"
-                    verdict_desc = "Ниша показывает сильные показатели по всем ключевым метрикам"
-                elif buyout_pct >= 0.6 and profit_pct >= 0.2:
-                    verdict = "ТЕСТИРОВАТЬ"
-                    verdict_color = "#eab308"
-                    verdict_desc = "Ниша перспективна но требует тестовой поставки для проверки"
-                else:
-                    verdict = "НЕ ВХОДИТЬ"
-                    verdict_color = "#ef4444"
-                    verdict_desc = "Показатели ниши не соответствуют критериям входа"
+                # Claude AI глубокий анализ
+                import anthropic as anthr
+                client = anthr.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+                prompt = f"""Ты эксперт по торговле на Wildberries. Сделай глубокий анализ ниши для селлера.
+
+Ниша: {name}
+Валюта отображения: {sym}
+Курс к рублю: {rate}
+
+ДАННЫЕ НИШИ:
+- Выручка: {revenue:,.0f} ₽/мес
+- Заказов: {int(revenue/avg_price) if avg_price > 0 else 0}/мес
+- Продавцов всего: {sellers}
+- Продавцов с продажами: {sellers_with_sales} ({round(sellers_with_sales/sellers*100) if sellers > 0 else 0}%)
+- Средняя цена: {avg_price:,.0f} ₽
+- Комиссия WB: {commission:.0f}%
+- Выкуп: {buyout_pct*100:.0f}%
+- Оборачиваемость реальная: {real_turnover} дней
+- Маржинальность: {profit_pct*100:.0f}%
+- Средняя выручка продавца: {avg_rev_per_seller:,.0f} ₽/мес
+
+Дай анализ в формате JSON (все суммы в {sym}, умножай рубли на {rate}):
+{{
+  "verdict": "ВХОДИТЬ" или "ТЕСТИРОВАТЬ" или "НЕ ВХОДИТЬ",
+  "verdict_color": "#22c55e" или "#eab308" или "#ef4444",
+  "verdict_desc": "краткое обоснование вердикта 1 предложение",
+  "entry_budget": число (минимальный бюджет на вход = партия 30 шт * цена * курс),
+  "ad_budget": число (бюджет на рекламу первый месяц в {sym}),
+  "breakeven": число (точка безубыточности в {sym}),
+  "roi_forecast": "прогноз ROI через 3 месяца например 25-40%",
+  "financial_plan": "2-3 предложения о финансовом плане входа",
+  "competitive_analysis": "2-3 предложения о конкурентной ситуации и слабых местах топ игроков",
+  "free_segments": "какие ценовые или продуктовые сегменты свободны",
+  "recommendation": "конкретная рекомендация что делать 2-3 предложения"
+}}
+Только JSON без markdown."""
+
+                msg = client.messages.create(
+                    model="claude-sonnet-4-5",
+                    max_tokens=1000,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                ai = json.loads(msg.content[0].text.strip().replace("```json","").replace("```","").strip())
 
                 html = f'''
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;">
                   <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
                     <div style="font-size:11px;color:#555;margin-bottom:8px;">ВЕРДИКТ</div>
-                    <div style="font-size:22px;font-weight:700;color:{verdict_color};">{verdict}</div>
-                    <div style="font-size:11px;color:#555;margin-top:6px;">{verdict_desc}</div>
+                    <div style="font-size:22px;font-weight:700;color:{ai["verdict_color"]};">{ai["verdict"]}</div>
+                    <div style="font-size:11px;color:#555;margin-top:6px;">{ai["verdict_desc"]}</div>
                   </div>
                   <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
                     <div style="font-size:11px;color:#555;margin-bottom:8px;">БЮДЖЕТ НА ВХОД</div>
-                    <div style="font-size:22px;font-weight:700;color:#fff;">{entry_budget:,.0f} {sym}</div>
+                    <div style="font-size:22px;font-weight:700;color:#fff;">{ai["entry_budget"]:,.0f} {sym}</div>
                     <div style="font-size:11px;color:#555;margin-top:6px;">минимальная партия 30 шт</div>
                   </div>
                   <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
                     <div style="font-size:11px;color:#555;margin-bottom:8px;">БЮДЖЕТ НА РЕКЛАМУ</div>
-                    <div style="font-size:22px;font-weight:700;color:#fff;">{monthly_ad_budget:,.0f} {sym}</div>
+                    <div style="font-size:22px;font-weight:700;color:#fff;">{ai["ad_budget"]:,.0f} {sym}</div>
                     <div style="font-size:11px;color:#555;margin-top:6px;">первый месяц</div>
                   </div>
                 </div>
-                <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:16px;">
-                  <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:12px;">💰 Финансовый план</div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    <div style="font-size:12px;color:#888;">Точка безубыточности:</div>
-                    <div style="font-size:12px;color:#fff;font-weight:600;">{breakeven:,.0f} {sym}</div>
-                    <div style="font-size:12px;color:#888;">Средняя выручка продавца:</div>
-                    <div style="font-size:12px;color:#fff;font-weight:600;">{avg_rev_display:,.0f} {sym}/мес</div>
-                    <div style="font-size:12px;color:#888;">Реальная оборачиваемость:</div>
-                    <div style="font-size:12px;color:#fff;font-weight:600;">{real_turnover} дней</div>
-                    <div style="font-size:12px;color:#888;">Маржинальность:</div>
-                    <div style="font-size:12px;color:#fff;font-weight:600;">{profit_pct*100:.0f}%</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                  <div style="background:#0f0f13;border-radius:10px;padding:16px;">
+                    <div style="font-size:11px;color:#555;margin-bottom:4px;">ТОЧКА БЕЗУБЫТОЧНОСТИ</div>
+                    <div style="font-size:18px;font-weight:700;color:#fff;">{ai["breakeven"]:,.0f} {sym}</div>
+                  </div>
+                  <div style="background:#0f0f13;border-radius:10px;padding:16px;">
+                    <div style="font-size:11px;color:#555;margin-bottom:4px;">ПРОГНОЗ ROI (3 мес)</div>
+                    <div style="font-size:18px;font-weight:700;color:#22c55e;">{ai["roi_forecast"]}</div>
                   </div>
                 </div>
-                <div style="background:#0f0f13;border-radius:10px;padding:16px;">
-                  <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:12px;">🏆 Конкурентный анализ</div>
-                  <div style="font-size:12px;color:#888;line-height:1.6;">
-                    {'✅ Низкая конкуренция — легко войти' if sellers < 100 else '⚠️ Умеренная конкуренция — нужно УТП' if sellers < 500 else '🔴 Высокая конкуренция — сложный рынок'}<br>
-                    {'✅ Высокий выкуп — товар нравится покупателям' if buyout_pct >= 0.75 else '⚠️ Средний выкуп — возможны проблемы с качеством' if buyout_pct >= 0.5 else '🔴 Низкий выкуп — много возвратов'}<br>
-                    {'✅ Быстрая оборачиваемость — деньги возвращаются быстро' if real_turnover <= 30 else '⚠️ Умеренная оборачиваемость' if real_turnover <= 60 else '🔴 Медленная оборачиваемость — деньги заморожены надолго'}
-                  </div>
+                <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">
+                  <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">💰 Финансовый план</div>
+                  <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai["financial_plan"]}</div>
                 </div>
-                <div style="margin-top:12px;padding:12px;background:#6c63ff11;border:1px solid #6c63ff33;border-radius:8px;font-size:11px;color:#666;text-align:center;">
-                  💡 Для детального AI анализа пополните баланс Anthropic API
+                <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">
+                  <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">🏆 Конкурентный анализ</div>
+                  <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai["competitive_analysis"]}</div>
+                </div>
+                <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">
+                  <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">🎯 Свободные сегменты</div>
+                  <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai["free_segments"]}</div>
+                </div>
+                <div style="background:#22c55e11;border:1px solid #22c55e33;border-radius:10px;padding:16px;">
+                  <div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:8px;">✅ Рекомендация</div>
+                  <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai["recommendation"]}</div>
                 </div>'''
 
                 self.send_response(200)

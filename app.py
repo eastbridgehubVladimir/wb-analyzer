@@ -150,7 +150,20 @@ def calculate_score(row):
     else:
         score += 1
 
-    return min(score, 100)
+    # 6. Конкуренция (штраф по активным продавцам)
+    active_sellers = int(sellers_with_sales or 0)
+    if active_sellers < 50:
+        score += 5
+    elif active_sellers < 200:
+        score += 0
+    elif active_sellers < 500:
+        score -= 5
+    elif active_sellers < 1000:
+        score -= 10
+    else:
+        score -= 15
+
+    return min(max(score, 0), 100)
 
 
 def get_verdict(score):

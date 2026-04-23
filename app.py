@@ -2151,17 +2151,36 @@ class Handler(BaseHTTPRequestHandler):
                                    '06':'Июн','07':'Июл','08':'Авг','09':'Сен','10':'Окт',
                                    '11':'Ноя','12':'Дек'}
                     
-                    # Ценовые сегменты
-                    price_segments = {'до 500': 0, '500-1000': 0, '1000-2000': 0, '2000-5000': 0, '5000-10000': 0, 'свыше 10000': 0}
+                    # Динамические ценовые сегменты на основе средней цены
+                    prices_list = [item.get('final_price', 0) or 0 for item in items if item.get('final_price', 0)]
+                    avg_p = sum(prices_list) / len(prices_list) if prices_list else 1000
+                    # Создаём 6 диапазонов вокруг средней цены
+                    p1 = round(avg_p * 0.2, -1) or 100
+                    p2 = round(avg_p * 0.5, -1) or 250
+                    p3 = round(avg_p * 0.8, -1) or 500
+                    p4 = round(avg_p * 1.2, -1) or 800
+                    p5 = round(avg_p * 2.0, -1) or 1500
+                    def fmt_price(v):
+                        return f"{int(v):,}".replace(",", " ")
+                    price_segments = {
+                        f"до {fmt_price(p1)}": 0,
+                        f"{fmt_price(p1)}-{fmt_price(p2)}": 0,
+                        f"{fmt_price(p2)}-{fmt_price(p3)}": 0,
+                        f"{fmt_price(p3)}-{fmt_price(p4)}": 0,
+                        f"{fmt_price(p4)}-{fmt_price(p5)}": 0,
+                        f"свыше {fmt_price(p5)}": 0
+                    }
+                    seg_bounds = [p1, p2, p3, p4, p5]
+                    seg_keys = list(price_segments.keys())
                     sellers_revenue = {}
                     for item in items:
                         price = item.get('final_price', 0) or 0
-                        if price < 500: price_segments['до 500'] += 1
-                        elif price < 1000: price_segments['500-1000'] += 1
-                        elif price < 2000: price_segments['1000-2000'] += 1
-                        elif price < 5000: price_segments['2000-5000'] += 1
-                        elif price < 10000: price_segments['5000-10000'] += 1
-                        else: price_segments['свыше 10000'] += 1
+                        idx = len(seg_bounds)
+                        for j, bound in enumerate(seg_bounds):
+                            if price < bound:
+                                idx = j
+                                break
+                        price_segments[seg_keys[idx]] += 1
                         seller = item.get('seller', 'Неизвестно')
                         rev = item.get('revenue', 0) or 0
                         sellers_revenue[seller] = sellers_revenue.get(seller, 0) + rev

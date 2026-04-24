@@ -1196,6 +1196,11 @@ async function loadCharts(name) {
     }
 
     // Блок рекламы
+    if (data.warehouse_stats) {
+      window._warehouseStats = data.warehouse_stats;
+      renderWarehouseMetrics(data);
+    }
+
     if (data.avg_cpm !== undefined) {
       if (!window._chartData) window._chartData = {};
       window._chartData.avg_cpm = data.avg_cpm;
@@ -1203,6 +1208,11 @@ async function loadCharts(name) {
       window._chartData.cpm_status = data.cpm_status;
       window._chartData.ad_verdict = data.ad_verdict;
       window._chartData.top_ad_sellers = data.top_ad_sellers;
+    }
+
+    if (data.warehouse_stats) {
+      window._warehouseStats = data.warehouse_stats;
+      renderWarehouseMetrics(data);
     }
 
     if (data.avg_cpm !== undefined) {
@@ -1734,6 +1744,16 @@ function renderResult(d) {
       <div id="topItemsContent" style="margin-top:12px;"></div>
     </div>
 
+    <!-- ЗОНА 4ж: Агент географии складов -->
+    <div class="chart-card" id="warehouseBlock" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div class="chart-title" style="margin:0;">🏭 Стратегия поставок</div>
+        <button id="warehouseBtn" onclick="runWarehouseAnalysis()" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;">📦 Анализ поставок</button>
+      </div>
+      <div id="warehouseMetrics" style="margin-top:12px;"></div>
+      <div id="warehouseStrategy" style="margin-top:16px;"></div>
+    </div>
+
     <!-- ЗОНА 5: AI Инсайты -->
     <div class="ai-card">
       <div class="ai-header"><div class="ai-dot"></div><div class="ai-title">AI Инсайты</div></div>
@@ -1759,6 +1779,134 @@ function renderResult(d) {
 }
 
 function clearMonitor() { document.getElementById('adMonitorContent').innerHTML=''; }
+
+// ===== АГЕНТ СКЛАДОВ =====
+function renderWarehouseMetrics(data) {
+  const el = document.getElementById('warehouseMetrics');
+  if (!el) return;
+  const w = data.warehouse_stats;
+  if (!w) return;
+  const sc = {fbs:'#38bdf8', fbo:'#a78bfa', mixed:'#4ade80'};
+  const dominant = w.fbs_pct > 60 ? 'FBS' : w.fbs_pct < 40 ? 'FBO' : 'Смешанный';
+  const domColor = w.fbs_pct > 60 ? '#38bdf8' : w.fbs_pct < 40 ? '#a78bfa' : '#4ade80';
+  el.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px;">' +
+      '<div style="background:#0f0f13;border-radius:8px;padding:12px;text-align:center;">' +
+        '<div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">МОДЕЛЬ НИШИ</div>' +
+        '<div style="font-size:16px;font-weight:700;color:' + domColor + ';">' + dominant + '</div>' +
+        '<div style="font-size:11px;color:#555;margin-top:4px;">FBS ' + w.fbs_pct + '% / FBO ' + w.fbo_pct + '%</div>' +
+      '</div>' +
+      '<div style="background:#0f0f13;border-radius:8px;padding:12px;text-align:center;">' +
+        '<div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">СКЛАДЫ У ЛИДЕРОВ</div>' +
+        '<div style="font-size:16px;font-weight:700;color:#fff;">' + w.avg_wh_leaders + '</div>' +
+        '<div style="font-size:11px;color:#555;margin-top:4px;">у остальных: ' + w.avg_wh_others + '</div>' +
+      '</div>' +
+      '<div style="background:#0f0f13;border-radius:8px;padding:12px;text-align:center;">' +
+        '<div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">ОБОРАЧИВАЕМОСТЬ</div>' +
+        '<div style="font-size:16px;font-weight:700;color:#fff;">' + w.avg_turnover + ' дн</div>' +
+        '<div style="font-size:11px;color:#555;margin-top:4px;">в наличии: ' + w.avg_days_stock + ' дн</div>' +
+      '</div>' +
+      '<div style="background:#0f0f13;border-radius:8px;padding:12px;text-align:center;">' +
+        '<div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">ЗАМОРОЗКА >10%</div>' +
+        '<div style="font-size:16px;font-weight:700;color:' + (w.frozen_pct > 30 ? '#ef4444' : w.frozen_pct > 15 ? '#fbbf24' : '#4ade80') + ';">' + w.frozen_pct + '%</div>' +
+        '<div style="font-size:11px;color:#555;margin-top:4px;">товаров с проблемой</div>' +
+      '</div>' +
+    '</div>';
+}
+
+async function runWarehouseAnalysis() {
+  const btn = document.getElementById('warehouseBtn');
+  const container = document.getElementById('warehouseStrategy');
+  if (!window.currentNiche) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Анализируем...';
+  btn.style.opacity = '0.6';
+  container.innerHTML = '<div style="background:#0f0f13;border-radius:12px;padding:20px;text-align:center;color:#555;"><div style="font-size:24px;margin-bottom:8px;">🤖</div><div style="font-size:13px;">Claude анализирует стратегию поставок...</div></div>';
+  try {
+    const d = window.currentNiche;
+    const w = window._warehouseStats;
+    if (!w) throw new Error('Сначала откройте нишу для загрузки данных');
+    const payload = {
+      niche_name: d.name,
+      avg_price: d.avg_price || 0,
+      revenue: d.revenue || 0,
+      turnover: d.turnover || 0,
+      buyout_pct: d.buyout_pct || 0,
+      profit_pct: d.profit_pct || 0,
+      commission: d.commission || 0,
+      warehouse_stats: w,
+      currency: currentCurrency,
+      rate: rates[currentCurrency],
+      symbol: symbols[currentCurrency]
+    };
+    const resp = await fetch('/warehouse-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    if (!resp.ok) throw new Error('Ошибка сервера: ' + resp.status);
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    renderWarehouseStrategy(result.analysis, symbols[currentCurrency], rates[currentCurrency]);
+    btn.textContent = '🔄 Обновить анализ';
+    btn.style.opacity = '1';
+    btn.disabled = false;
+  } catch(e) {
+    container.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;font-size:13px;">❌ ' + e.message + '</div>';
+    btn.textContent = '📦 Анализ поставок';
+    btn.style.opacity = '1';
+    btn.disabled = false;
+  }
+}
+
+function renderWarehouseStrategy(r, sym, rate) {
+  const container = document.getElementById('warehouseStrategy');
+  if (!r) return;
+  const fmtMoney = (rub) => !rub ? '—' : Math.round(rub * rate).toLocaleString('ru-RU') + ' ' + sym;
+  const sc = {fbs:'#38bdf8', fbo:'#a78bfa', mixed:'#4ade80', low:'#4ade80', medium:'#fbbf24', high:'#ef4444'};
+
+  container.innerHTML =
+    '<div style="border-top:1px solid #1a1a2e;padding-top:20px;">' +
+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">' +
+      '<div style="width:36px;height:36px;background:linear-gradient(135deg,#0ea5e9,#38bdf8);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;">🏭</div>' +
+      '<div><div style="font-size:15px;font-weight:700;color:#fff;">Стратегия поставок</div><div style="font-size:11px;color:#555;">AI-анализ топ-30 SKU ниши</div></div>' +
+    '</div>' +
+
+    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid ' + (sc[r.model_color]||'#38bdf8') + ';">' +
+      '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:6px;">РЕКОМЕНДУЕМАЯ МОДЕЛЬ</div>' +
+      '<div style="font-size:16px;font-weight:700;color:' + (sc[r.model_color]||'#38bdf8') + ';margin-bottom:8px;">' + (r.model||'') + '</div>' +
+      '<div style="font-size:13px;color:#ccc;line-height:1.6;">' + (r.model_detail||'') + '</div>' +
+    '</div>' +
+
+    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #6c63ff;">' +
+      '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">РЕКОМЕНДАЦИИ ПО СКЛАДАМ</div>' +
+      (r.warehouse_tips||[]).map((tip,i) =>
+        '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">' +
+          '<div style="min-width:22px;height:22px;background:#6c63ff22;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#a78bfa;font-weight:700;">' + (i+1) + '</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.5;">' + tip + '</div>' +
+        '</div>'
+      ).join('') +
+    '</div>' +
+
+    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #38bdf8;">' +
+      '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ОБЪЁМ ПЕРВОЙ ПОСТАВКИ</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">' +
+        '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">МИНИМУМ</div><div style="font-size:15px;font-weight:700;color:#38bdf8;">' + (r.stock?.min_units||'—') + ' шт</div><div style="font-size:11px;color:#555;">' + fmtMoney(r.stock?.min_rub) + '</div></div>' +
+        '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ОПТИМУМ</div><div style="font-size:15px;font-weight:700;color:#4ade80;">' + (r.stock?.opt_units||'—') + ' шт</div><div style="font-size:11px;color:#555;">' + fmtMoney(r.stock?.opt_rub) + '</div></div>' +
+        '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ЗАПАС НА</div><div style="font-size:15px;font-weight:700;color:#fff;">' + (r.stock?.days_covered||'—') + ' дней</div><div style="font-size:11px;color:#555;">без дефицита</div></div>' +
+      '</div>' +
+      '<div style="margin-top:12px;font-size:12px;color:#666;line-height:1.6;">' + (r.stock?.comment||'') + '</div>' +
+    '</div>' +
+
+    '<div style="background:#0f0f13;border-radius:10px;padding:16px;border-left:3px solid #4ade80;">' +
+      '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:8px;">РИСКИ И ПРЕДУПРЕЖДЕНИЯ</div>' +
+      (r.risks||[]).map(risk =>
+        '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">' +
+          '<div style="color:#fbbf24;font-size:14px;">⚠</div>' +
+          '<div style="font-size:12px;color:#aaa;line-height:1.5;">' + risk + '</div>' +
+        '</div>'
+      ).join('') +
+    '</div>' +
+
+    '</div>';
+}
 
 // ===== АГЕНТ РЕКЛАМЫ =====
 async function runAdAnalysis() {
@@ -2485,6 +2633,34 @@ class Handler(BaseHTTPRequestHandler):
                             'url': f"https://www.wildberries.ru/catalog/{item.get('id', '')}/detail.aspx" if item.get('id') else '',
                         })
 
+                    # Агрегация данных складов по топ-30 SKU
+                    items_with_sales = [i for i in items if (i.get('sales') or 0) > 0][:30]
+                    if items_with_sales:
+                        fbs_count = sum(1 for i in items_with_sales if i.get('is_fbs'))
+                        fbo_count = len(items_with_sales) - fbs_count
+                        fbs_pct = round(fbs_count / len(items_with_sales) * 100)
+                        leaders = items_with_sales[:10]
+                        others = items_with_sales[10:]
+                        avg_wh_leaders = round(sum(i.get('warehouses_count',0) for i in leaders) / len(leaders), 1)
+                        avg_wh_others = round(sum(i.get('warehouses_count',0) for i in others) / len(others), 1) if others else 0
+                        avg_turnover = round(sum(i.get('turnover_days',0) for i in items_with_sales) / len(items_with_sales), 1)
+                        avg_days_stock = round(sum(i.get('days_in_stock',0) for i in items_with_sales) / len(items_with_sales), 1)
+                        frozen_count = sum(1 for i in items_with_sales if (i.get('frozen_stocks_percent',0) or 0) > 10)
+                        frozen_pct = round(frozen_count / len(items_with_sales) * 100)
+                        avg_balance = round(sum(i.get('balance',0) for i in items_with_sales) / len(items_with_sales))
+                        avg_balance_fbs = round(sum(i.get('balance_fbs',0) for i in items_with_sales) / len(items_with_sales))
+                        warehouse_stats = {
+                            'fbs_count': fbs_count, 'fbo_count': fbo_count,
+                            'fbs_pct': fbs_pct, 'fbo_pct': 100 - fbs_pct,
+                            'avg_wh_leaders': avg_wh_leaders, 'avg_wh_others': avg_wh_others,
+                            'avg_turnover': avg_turnover, 'avg_days_stock': avg_days_stock,
+                            'frozen_pct': frozen_pct, 'frozen_count': frozen_count,
+                            'avg_balance': avg_balance, 'avg_balance_fbs': avg_balance_fbs,
+                            'total_skus': len(items_with_sales)
+                        }
+                    else:
+                        warehouse_stats = None
+
                     result = {
                         'labels': [month_names[k.split('-')[1]] + ' ' + k.split('-')[0][2:] for k in labels],
                         'revenue': [round(months_revenue.get(k, 0) / 1000000, 1) for k in labels],
@@ -2505,7 +2681,8 @@ class Handler(BaseHTTPRequestHandler):
                         'ad_verdict': ad_verdict,
                         'ad_verdict_color': ad_verdict_color,
                         'top_ad_sellers': [{'name': s[0][:25], 'count': s[1]} for s in top_ad_sellers],
-                        'top_items': top_items
+                        'top_items': top_items,
+                        'warehouse_stats': warehouse_stats
                     }
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json; charset=utf-8')
@@ -2747,6 +2924,83 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header('Content-type','application/json; charset=utf-8')
                 self.end_headers()
                 self.wfile.write(json.dumps({'diagnosis':diagnosis},ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type','application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error':str(e)}).encode('utf-8'))
+
+        elif self.path == '/warehouse-analysis':
+            try:
+                import anthropic
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                niche_name = body.get('niche_name', '')
+                avg_price = body.get('avg_price', 0)
+                revenue = body.get('revenue', 0)
+                turnover = body.get('turnover', 0)
+                buyout_pct = body.get('buyout_pct', 0)
+                profit_pct = body.get('profit_pct', 0)
+                commission = body.get('commission', 0)
+                w = body.get('warehouse_stats', {})
+
+                prompt = f"""Ты эксперт по логистике и поставкам на Wildberries. Проанализируй данные топ-30 SKU ниши и дай конкретные рекомендации по стратегии поставок для новичка.
+
+НИША: {niche_name}
+ДАННЫЕ НИШИ:
+- Средняя цена: {avg_price} руб
+- Выручка ниши: {revenue:,.0f} руб
+- Оборачиваемость: {turnover} дней
+- Выкуп: {buyout_pct*100:.1f}%
+- Маржинальность: {profit_pct*100:.1f}%
+- Комиссия WB: {commission*100:.1f}%
+
+ДАННЫЕ ТОП-30 SKU:
+- FBS товаров: {w.get('fbs_count',0)} ({w.get('fbs_pct',0)}%)
+- FBO товаров: {w.get('fbo_count',0)} ({w.get('fbo_pct',0)}%)
+- Среднее складов у лидеров топ-10: {w.get('avg_wh_leaders',0)}
+- Среднее складов у остальных: {w.get('avg_wh_others',0)}
+- Средняя оборачиваемость: {w.get('avg_turnover',0)} дней
+- Среднее дней в наличии: {w.get('avg_days_stock',0)} дней
+- Товаров с заморозкой >10%: {w.get('frozen_pct',0)}%
+- Средний остаток FBO: {w.get('avg_balance',0)} шт
+- Средний остаток FBS: {w.get('avg_balance_fbs',0)} шт
+
+Верни ТОЛЬКО валидный JSON без markdown:
+{{
+  "model": "FBS / FBO / Смешанная FBS+FBO",
+  "model_color": "fbs|fbo|mixed",
+  "model_detail": "детальное объяснение почему именно эта модель для данной ниши 3-4 предложения с конкретными цифрами",
+  "warehouse_tips": [
+    "конкретный совет 1 с цифрами",
+    "конкретный совет 2 с цифрами",
+    "конкретный совет 3 с цифрами",
+    "конкретный совет 4 с цифрами"
+  ],
+  "stock": {{
+    "min_units": число (минимальная первая поставка в штуках),
+    "opt_units": число (оптимальная первая поставка),
+    "min_rub": число (стоимость минимальной поставки в рублях по себестоимости ~40% от цены),
+    "opt_rub": число (стоимость оптимальной поставки),
+    "days_covered": число (на сколько дней хватит оптимального запаса),
+    "comment": "логика расчёта объёма поставки 2-3 предложения"
+  }},
+  "risks": [
+    "риск 1 специфичный для данной ниши",
+    "риск 2 специфичный для данной ниши",
+    "риск 3 специфичный для данной ниши"
+  ]
+}}
+Все суммы в рублях. Будь конкретным — никаких размытых диапазонов."""
+
+                client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+                message = client.messages.create(model="claude-sonnet-4-5", max_tokens=2000, messages=[{"role":"user","content":prompt}])
+                raw = message.content[0].text.strip().replace('```json','').replace('```','').strip()
+                analysis = json.loads(raw)
+                self.send_response(200)
+                self.send_header('Content-type','application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'analysis':analysis},ensure_ascii=False).encode('utf-8'))
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-type','application/json')

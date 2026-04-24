@@ -1552,7 +1552,12 @@ async function loadSuggestions(q) {
     showSuggestions(data);
     // Запускаем умный поиск если обычный дал мало результатов
     clearTimeout(window._smartTimer);
-    window._smartTimer = setTimeout(() => smartSearch(q), 400);
+    window._smartSearchDone = false;
+    window._smartSearchQuery = q;
+    window._smartTimer = setTimeout(() => {
+      // Запускаем только если запрос не изменился
+      if (window._smartSearchQuery === q) smartSearch(q);
+    }, 800);
   } else {
     // Скрываем умный баннер если обычный поиск дал результаты
     const sb = document.getElementById('smart-banner');
@@ -1585,6 +1590,11 @@ async function smartSearch(q) {
     // Удаляем строку загрузки
     const smartRowEl = document.getElementById('smart-search-row');
     if (smartRowEl) smartRowEl.remove();
+
+    // Убираем старый баннер если есть
+    const oldBanner = document.getElementById('smart-banner');
+    if (oldBanner) oldBanner.remove();
+    window._smartSearchDone = true;
 
     if (data.niche) {
       // Показываем умный результат
@@ -1649,6 +1659,40 @@ async function analyze() {
     const data = await r.json();
     document.getElementById('loading').style.display = 'none';
     if (data.error) {
+      if (data.not_found) {
+        // Запускаем умный поиск автоматически
+        const errEl = document.getElementById('error');
+        if (errEl) {
+          errEl.style.display = 'block';
+          errEl.style.color = '#a78bfa';
+          errEl.style.background = '#1a1a2e';
+          errEl.style.border = '1px solid #6c63ff44';
+          errEl.innerHTML = '🧠 Ниша не найдена напрямую — ищем семантически через AI...';
+        }
+        try {
+          const sr = await fetch('/smart-search?q=' + encodeURIComponent(q));
+          const sd = await sr.json();
+          if (sd.niche) {
+            if (errEl) {
+              window._smartNiche = sd.niche;
+              errEl.innerHTML = '🧠 AI нашёл: <strong style="color:#a78bfa;">' + sd.niche_display + '</strong> — ' + sd.explanation + '. <span style="color:#6c63ff;cursor:pointer;text-decoration:underline;" onclick="setQuery(window._smartNiche);analyze();">Открыть нишу →</span>';
+            }
+            // Автоматически открываем найденную нишу
+            setQuery(sd.niche);
+            analyze();
+          } else {
+            if (errEl) {
+              errEl.style.color = '#ef4444';
+              errEl.style.background = '';
+              errEl.style.border = '';
+              errEl.textContent = 'Ниша "' + q + '" не найдена. Попробуйте другой запрос.';
+            }
+          }
+        } catch(se) {
+          if (errEl) errEl.textContent = data.error;
+        }
+        return;
+      }
       document.getElementById('error').style.display = 'block';
       document.getElementById('error').textContent = data.error;
       return;
@@ -1701,7 +1745,7 @@ function renderResult(d) {
 
     <!-- ЗОНА 1: Метрики -->
     <div class="metrics-grid">
-      <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-value">${fmtCurrency(d.revenue)}</div><div class="metric-sub">в месяц</div></div>
+      <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-value">${fmtCurrency(d.revenue_annual || d.revenue / 2)}</div><div class="metric-sub">за 12 мес</div></div>
       <div class="metric-card"><div class="metric-label">Заказов в месяц</div><div class="metric-value">${d.orders.toLocaleString('ru')}</div><div class="metric-sub">${(d.orders/30).toFixed(0)} в день</div></div>
       <div class="metric-card"><div class="metric-label">Продавцов</div><div class="metric-value">${d.sellers.toLocaleString('ru')}</div><div class="metric-sub">${d.sellers_with_sales} с продажами</div></div>
       <div class="metric-card"><div class="metric-label">Выкуп</div><div class="metric-value">${(d.buyout_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.buyout_pct >= 0.8 ? 'отличный' : d.buyout_pct >= 0.6 ? 'хороший' : 'низкий'}</div></div>
@@ -2183,6 +2227,7 @@ class Handler(BaseHTTPRequestHandler):
                         'name': display_name,
                         'full': name,
                         'revenue': float(revenue or 0),
+                        'revenue_annual': float(revenue or 0) / 2,
                         'score': score,
                         'category': cat,
                     })
@@ -2344,6 +2389,7 @@ class Handler(BaseHTTPRequestHandler):
                         'name': display_name,
                         'full': name,
                         'revenue': float(revenue or 0),
+                        'revenue_annual': float(revenue or 0) / 2,
                         'orders': int(orders or 0),
                         'buyout_pct': float(buyout_pct or 0),
                         'profit_pct': float(profit_pct or 0),
@@ -2785,18 +2831,21 @@ class Handler(BaseHTTPRequestHandler):
                 all_names = [r[1] for r in all_niches]
                 niches_text = ', '.join(all_names)
                 
-                prompt = f"""Пользователь ищет товар: "{query}"
+                prompt = f"""Пользователь ищет товар для продажи на Wildberries: "{query}"
 
 Список всех ниш Wildberries (через запятую):
 {niches_text}
 
-Найди нишу которая семантически наиболее соответствует запросу.
-Учитывай синонимы, подкатегории, смысловые связи.
-Примеры: спиннинг→Удилища, кроссовки→Кроссовки, удочка→Удилища, ноутбук→Ноутбуки
+Задача: найти ОДНУ наиболее точную нишу для этого товара.
+Правила:
+- Ищи по смысловому значению товара, а не по созвучию слов
+- спиннинг = рыболовное удилище → ниша "Удилища" (НЕ "Фиджет спиннер")
+- Если запрос явно о рыбалке/спорте/конкретном товаре — приоритет практическому смыслу
+- Возвращай ТОЛЬКО одну самую релевантную нишу
 
-Верни ТОЛЬКО JSON:
-{{"found": true, "niche_name": "точное название из списка", "explanation": "краткое объяснение"}}
-или
+Верни ТОЛЬКО JSON без markdown:
+{{"found": true, "niche_name": "точное название из списка", "explanation": "краткое объяснение 5-8 слов"}}
+или если совсем не нашёл:
 {{"found": false, "niche_name": null, "explanation": "не найдено"}}"""
                 
                 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
@@ -2860,7 +2909,7 @@ class Handler(BaseHTTPRequestHandler):
                 data_warning = False
                 row = find_niche(query)
                 if not row:
-                    result = {'error': f'Ниша "{query}" не найдена. Попробуйте: Платья, Куртки, Пижамы, Конфеты'}
+                    result = {'error': f'Ниша "{query}" не найдена', 'query': query, 'not_found': True}
                 else:
                     insights = get_ai_insights(row)
                     name, products, products_with_sales, sellers, sellers_with_sales, \
@@ -2900,6 +2949,7 @@ class Handler(BaseHTTPRequestHandler):
                         'data_warning': data_warning,
                         'category': get_category(name),
                         'revenue': float(revenue or 0),
+                        'revenue_annual': float(revenue or 0) / 2,
                         'orders': int(orders or 0),
                         'sellers': int(sellers or 0),
                         'sellers_with_sales': int(sellers_with_sales or 0),

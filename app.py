@@ -1196,6 +1196,24 @@ async function loadCharts(name) {
     }
 
     // Блок рекламы
+    if (data.avg_cpm !== undefined) {
+      if (!window._chartData) window._chartData = {};
+      window._chartData.avg_cpm = data.avg_cpm;
+      window._chartData.ad_pct = data.ad_pct;
+      window._chartData.cpm_status = data.cpm_status;
+      window._chartData.ad_verdict = data.ad_verdict;
+      window._chartData.top_ad_sellers = data.top_ad_sellers;
+    }
+
+    if (data.avg_cpm !== undefined) {
+      if (!window._chartData) window._chartData = {};
+      window._chartData.avg_cpm = data.avg_cpm;
+      window._chartData.ad_pct = data.ad_pct;
+      window._chartData.cpm_status = data.cpm_status;
+      window._chartData.ad_verdict = data.ad_verdict;
+      window._chartData.top_ad_sellers = data.top_ad_sellers;
+    }
+
     if (document.getElementById('adContent') && data.avg_cpm !== undefined) {
       const cpmColors = { green: '#4ade80', yellow: '#fbbf24', red: '#ef4444' };
       const cpmEmoji = { green: '🟢', yellow: '🟡', red: '🔴' };
@@ -1701,8 +1719,13 @@ function renderResult(d) {
 
     <!-- ЗОНА 4д: Реклама WB -->
     <div class="chart-card" id="adBlock" style="margin-bottom:16px;">
-      <div class="chart-title">📢 Анализ рекламы WB</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div class="chart-title" style="margin:0;">📢 Анализ рекламы WB</div>
+        <button id="adStrategyBtn" onclick="runAdAnalysis()" style="background:linear-gradient(135deg,#6c63ff,#8b5cf6);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;">🎯 Получить стратегию</button>
+      </div>
       <div id="adContent" style="margin-top:12px;"></div>
+      <div id="adStrategyContent" style="margin-top:16px;"></div>
+      <div id="adMonitorContent" style="margin-top:12px;"></div>
     </div>
 
     <!-- ЗОНА 4е: Топ товаров ниши -->
@@ -1733,6 +1756,159 @@ function renderResult(d) {
   document.getElementById('result').style.display = 'block';
   loadCharts(d.name);
   addToRecent(d.name);
+}
+
+function clearMonitor() { document.getElementById('adMonitorContent').innerHTML=''; }
+
+// ===== АГЕНТ РЕКЛАМЫ =====
+async function runAdAnalysis() {
+  const btn = document.getElementById('adStrategyBtn');
+  const container = document.getElementById('adStrategyContent');
+  if (!window.currentNiche) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Анализируем...';
+  btn.style.opacity = '0.6';
+  container.innerHTML = '<div style="background:#0f0f13;border-radius:12px;padding:20px;text-align:center;color:#555;"><div style="font-size:24px;margin-bottom:8px;">🤖</div><div style="font-size:13px;">Claude анализирует рекламную нишу...</div><div style="font-size:11px;margin-top:6px;color:#444;">Обычно занимает 15-20 секунд</div></div>';
+  try {
+    const d = window.currentNiche;
+    const cd = window._chartData || {};
+    const rate = rates[currentCurrency];
+    const sym = symbols[currentCurrency];
+    const payload = {
+      niche_name: d.name, display_name: d.display_name || d.name,
+      avg_cpm: cd.avg_cpm || 0, ad_pct: cd.ad_pct || 0,
+      cpm_status: cd.cpm_status || 'yellow', ad_verdict: cd.ad_verdict || '',
+      top_ad_sellers: cd.top_ad_sellers || [],
+      avg_price: d.avg_price || 0, revenue: d.revenue || 0,
+      sellers_with_sales: d.sellers_with_sales || 0, profit_pct: d.profit_pct || 0,
+      buyout_pct: d.buyout_pct || 0, turnover: d.turnover || 0,
+      commission: d.commission || 0, currency: currentCurrency, rate: rate, symbol: sym
+    };
+    const resp = await fetch('/ad-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    if (!resp.ok) throw new Error('Ошибка сервера: ' + resp.status);
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    window._adForecastId = result.forecast_id;
+    renderAdStrategy(result, sym, rate);
+    btn.textContent = '🔄 Обновить анализ';
+    btn.style.opacity = '1';
+    btn.disabled = false;
+  } catch(e) {
+    container.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;font-size:13px;">❌ Ошибка: ' + e.message + '</div>';
+    btn.textContent = '🎯 Получить стратегию';
+    btn.style.opacity = '1';
+    btn.disabled = false;
+  }
+}
+
+function renderAdStrategy(data, sym, rate) {
+  const container = document.getElementById('adStrategyContent');
+  const r = data.analysis;
+  if (!r) return;
+  const sc = {low:'#4ade80', medium:'#fbbf24', high:'#ef4444'};
+  const sl = {low:'🟢 Низкая', medium:'🟡 Умеренная', high:'🔴 Высокая'};
+  const budget = r.budget || {};
+  const forecast = r.forecast || {};
+  const m1 = forecast.month1 || {};
+  const m2 = forecast.month2 || {};
+  const fmtMoney = (rub) => {
+    if (!rub) return '—';
+    return Math.round(rub * rate).toLocaleString('ru-RU') + ' ' + sym;
+  };
+  container.innerHTML = '<div style="border-top:1px solid #1a1a2e;padding-top:20px;margin-top:8px;">' +
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">' +
+      '<div style="width:36px;height:36px;background:linear-gradient(135deg,#6c63ff,#8b5cf6);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;">🎯</div>' +
+      '<div><div style="font-size:15px;font-weight:700;color:#fff;">Рекламная стратегия</div><div style="font-size:11px;color:#555;">AI-анализ на основе данных ниши</div></div>' +
+    '</div>' +
+    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid ' + (sc[r.load_level]||'#fbbf24') + ';">' +
+      '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:6px;">РЕКЛАМНАЯ НАГРУЗКА</div>' +
+      '<div style="font-size:16px;font-weight:700;color:' + (sc[r.load_level]||'#fbbf24') + ';margin-bottom:8px;">' + (sl[r.load_level]||'🟡 Умеренная') + '</div>' +
+      '<div style="font-size:13px;color:#ccc;line-height:1.6;">' + (r.load_analysis||'') + '</div>' +
+    '</div>' +
+    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #6c63ff;">' +
+      '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:6px;">СТРАТЕГИЯ ВХОДА</div>' +
+      '<div style="font-size:14px;font-weight:700;color:#a78bfa;margin-bottom:8px;">' + (r.strategy_type||'') + '</div>' +
+      '<div style="font-size:13px;color:#ccc;line-height:1.6;">' + (r.strategy_detail||'') + '</div>' +
+      (r.strategy_steps ? '<div style="margin-top:12px;">' + r.strategy_steps.map((s,i) => '<div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-start;"><div style="min-width:22px;height:22px;background:#6c63ff22;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#a78bfa;font-weight:700;">' + (i+1) + '</div><div style="font-size:12px;color:#aaa;line-height:1.5;">' + s + '</div></div>').join('') + '</div>' : '') +
+    '</div>' +
+    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #38bdf8;">' +
+      '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">РЕКОМЕНДУЕМЫЙ БЮДЖЕТ</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">' +
+        '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">СТАРТ (1-й мес)</div><div style="font-size:16px;font-weight:700;color:#38bdf8;">' + fmtMoney(budget.start_rub) + '</div></div>' +
+        '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">РОСТ (2-й мес)</div><div style="font-size:16px;font-weight:700;color:#38bdf8;">' + fmtMoney(budget.growth_rub) + '</div></div>' +
+        '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">УДЕРЖАНИЕ</div><div style="font-size:16px;font-weight:700;color:#38bdf8;">' + fmtMoney(budget.sustain_rub) + '</div></div>' +
+      '</div>' +
+      '<div style="margin-top:12px;font-size:12px;color:#666;line-height:1.6;">' + (budget.comment||'') + '</div>' +
+    '</div>' +
+    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:16px;border-left:3px solid #4ade80;">' +
+      '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ПРОГНОЗ РЕЗУЛЬТАТОВ</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
+        '<div style="background:#0a0a0f;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">CPM СТАРТ (новичок)</div><div style="font-size:15px;font-weight:700;color:#fbbf24;">' + fmtMoney(r.cpm_forecast && r.cpm_forecast.start_rub) + '</div></div>' +
+        '<div style="background:#0a0a0f;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">CPM ЧЕРЕЗ 2 МЕС</div><div style="font-size:15px;font-weight:700;color:#4ade80;">' + fmtMoney(r.cpm_forecast && r.cpm_forecast.month2_rub) + '</div></div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+        '<div style="background:#0a0a0f;border-radius:8px;padding:12px;"><div style="font-size:11px;color:#a78bfa;font-weight:600;margin-bottom:8px;">📅 Месяц 1 — ожидать:</div>' + (m1.metrics||[]).map(m => '<div style="font-size:11px;color:#aaa;margin-bottom:4px;">• ' + m + '</div>').join('') + '</div>' +
+        '<div style="background:#0a0a0f;border-radius:8px;padding:12px;"><div style="font-size:11px;color:#4ade80;font-weight:600;margin-bottom:8px;">📅 Месяц 2 — ожидать:</div>' + (m2.metrics||[]).map(m => '<div style="font-size:11px;color:#aaa;margin-bottom:4px;">• ' + m + '</div>').join('') + '</div>' +
+      '</div>' +
+      '<div style="margin-top:12px;font-size:12px;color:#666;line-height:1.6;">' + ((r.cpm_forecast && r.cpm_forecast.comment)||'') + '</div>' +
+    '</div>' +
+    (window._adForecastId ? '<div style="border-top:1px solid #1a1a2e;padding-top:16px;"><div style="font-size:12px;color:#555;margin-bottom:10px;">📊 Введите реальные показатели через месяц для получения диагностики:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><button onclick="showMonitorForm(1)" style="background:#1a1a2e;color:#a78bfa;border:1px solid #6c63ff44;border-radius:8px;padding:10px;font-size:12px;cursor:pointer;">📊 Факт — месяц 1</button><button onclick="showMonitorForm(2)" style="background:#1a1a2e;color:#4ade80;border:1px solid #22c55e44;border-radius:8px;padding:10px;font-size:12px;cursor:pointer;">📊 Факт — месяц 2</button></div></div>' : '') +
+  '</div>';
+}
+
+function showMonitorForm(month) {
+  const container = document.getElementById('adMonitorContent');
+  const fields = [
+    ['m'+month+'_cpm','Фактический CPM (₽)','например 250'],
+    ['m'+month+'_ctr','CTR %','например 1.5'],
+    ['m'+month+'_spend','Расход на рекламу (₽)','например 15000'],
+    ['m'+month+'_orders','Заказов с рекламы','например 45'],
+    ['m'+month+'_pos','Позиция в поиске (средняя)','например 15'],
+    ['m'+month+'_revenue','Выручка за месяц (₽)','например 120000']
+  ];
+  container.innerHTML = '<div style="background:#0f0f13;border-radius:10px;padding:16px;border:1px solid #6c63ff44;">' +
+    '<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:14px;">📊 Реальные показатели — Месяц ' + month + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+    fields.map(f => '<div><div style="font-size:11px;color:#555;margin-bottom:4px;">' + f[1] + '</div><input id="' + f[0] + '" type="number" step="0.01" placeholder="' + f[2] + '" style="width:100%;background:#0a0a0f;border:1px solid #1a1a2e;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;"></div>').join('') +
+    '</div>' +
+    '<div style="display:flex;gap:8px;">' +
+      '<button onclick="submitMonitor(' + month + ')" style="background:linear-gradient(135deg,#6c63ff,#8b5cf6);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:12px;font-weight:600;cursor:pointer;flex:1;">🔍 Получить диагностику</button>' +
+      '<button onclick="clearMonitor()" style="background:#1a1a2e;color:#555;border:none;border-radius:8px;padding:10px 16px;font-size:12px;cursor:pointer;">✕</button>' +
+    '</div></div>';
+}
+
+async function submitMonitor(month) {
+  const forecastId = window._adForecastId;
+  if (!forecastId) return;
+  const p = 'm' + month + '_';
+  const actual = {
+    cpm: parseFloat(document.getElementById(p+'cpm')?.value)||0,
+    ctr: parseFloat(document.getElementById(p+'ctr')?.value)||0,
+    spend: parseFloat(document.getElementById(p+'spend')?.value)||0,
+    orders: parseFloat(document.getElementById(p+'orders')?.value)||0,
+    position: parseFloat(document.getElementById(p+'pos')?.value)||0,
+    revenue: parseFloat(document.getElementById(p+'revenue')?.value)||0
+  };
+  const container = document.getElementById('adMonitorContent');
+  container.innerHTML = '<div style="padding:16px;text-align:center;color:#555;font-size:13px;">⏳ Claude анализирует ваши показатели...</div>';
+  try {
+    const resp = await fetch('/ad-monitor', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({forecast_id:forecastId, month:month, actual:actual})});
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    const diag = result.diagnosis;
+    const sc = {good:'#4ade80', warning:'#fbbf24', bad:'#ef4444'};
+    const se = {good:'✅', warning:'⚠️', bad:'🚨'};
+    container.innerHTML = '<div style="background:#0f0f13;border-radius:10px;padding:16px;border:1px solid ' + (sc[diag.status]||'#fbbf24') + '44;">' +
+      '<div style="font-size:13px;font-weight:700;color:' + (sc[diag.status]||'#fbbf24') + ';margin-bottom:10px;">' + (se[diag.status]||'⚠️') + ' Диагностика месяц ' + month + '</div>' +
+      '<div style="margin-bottom:14px;">' +
+      (diag.comparison||[]).map(c => '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1a1a2e;"><div style="font-size:12px;color:#aaa;">' + c.metric + '</div><div style="display:flex;gap:16px;font-size:12px;"><span style="color:#555;">План: ' + c.plan + '</span><span style="color:' + (sc[c.status]||'#aaa') + ';">Факт: ' + c.actual + '</span></div></div>').join('') +
+      '</div>' +
+      '<div style="font-size:13px;color:#ccc;line-height:1.6;margin-bottom:12px;">' + (diag.summary||'') + '</div>' +
+      ((diag.recommendations||[]).length > 0 ? '<div style="margin-top:10px;"><div style="font-size:11px;color:#555;letter-spacing:1px;margin-bottom:8px;">РЕКОМЕНДАЦИИ:</div>' + diag.recommendations.map(rec => '<div style="display:flex;gap:8px;margin-bottom:6px;align-items:flex-start;"><div style="color:#6c63ff;font-size:14px;">→</div><div style="font-size:12px;color:#aaa;line-height:1.5;">' + rec + '</div></div>').join('') + '</div>' : '') +
+    '</div>';
+  } catch(e) {
+    container.innerHTML = '<div style="color:#ef4444;padding:12px;font-size:13px;">❌ ' + e.message + '</div>';
+  }
 }
 </script>
 </div>
@@ -2425,6 +2601,162 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+    def do_POST(self):
+        if self.path == '/ad-analysis':
+            try:
+                import anthropic
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                niche_name = body.get('niche_name', '')
+                avg_cpm = body.get('avg_cpm', 0)
+                ad_pct = body.get('ad_pct', 0)
+                cpm_status = body.get('cpm_status', 'yellow')
+                ad_verdict = body.get('ad_verdict', '')
+                top_ad_sellers = body.get('top_ad_sellers', [])
+                avg_price = body.get('avg_price', 0)
+                revenue = body.get('revenue', 0)
+                sellers_with_sales = body.get('sellers_with_sales', 0)
+                profit_pct = body.get('profit_pct', 0)
+                buyout_pct = body.get('buyout_pct', 0)
+                turnover = body.get('turnover', 0)
+                commission = body.get('commission', 0)
+                top_sellers_str = ', '.join([f"{s['name']} ({s['count']} тов.)" for s in top_ad_sellers[:5]]) if top_ad_sellers else 'нет данных'
+                prompt = f"""Ты профессиональный рекламный аналитик Wildberries с опытом 7+ лет. Проведи глубокий анализ и разработай детальную стратегию.
+
+ДАННЫЕ НИШИ: {niche_name}
+- Средний CPM: {avg_cpm} руб (статус: {cpm_status})
+- Товаров с рекламой: {ad_pct}%
+- Вердикт нагрузки: {ad_verdict}
+- Топ рекламодатели: {top_sellers_str}
+- Средняя цена: {avg_price} руб
+- Выручка ниши: {revenue:,.0f} руб
+- Продавцов с продажами: {sellers_with_sales}
+- Маржинальность до себест.: {profit_pct*100:.1f}%
+- Процент выкупа: {buyout_pct*100:.1f}%
+- Оборачиваемость: {turnover} дней
+- Комиссия WB: {commission*100:.1f}%
+
+Верни ТОЛЬКО валидный JSON без markdown и пояснений:
+{{
+  "load_level": "low|medium|high",
+  "load_analysis": "детальный анализ рекламной нагрузки 3-4 предложения с конкретными выводами",
+  "strategy_type": "название стратегии (например: Автореклама + Поиск)",
+  "strategy_detail": "объяснение почему именно эта стратегия 3-4 предложения",
+  "strategy_steps": ["Шаг 1 с цифрами","Шаг 2 с цифрами","Шаг 3 с цифрами","Шаг 4 с цифрами","Шаг 5 с цифрами"],
+  "budget": {{
+    "start_rub": число,
+    "growth_rub": число,
+    "sustain_rub": число,
+    "comment": "логика бюджетов с учётом CPM и маржи 2-3 предложения"
+  }},
+  "cpm_forecast": {{
+    "start_rub": число,
+    "month2_rub": число,
+    "comment": "почему такой CPM и как снизить 2-3 предложения"
+  }},
+  "forecast": {{
+    "month1": {{
+      "metrics": ["CTR: X.X%","CR в заказ: X.X%","ДРР: XX%","Позиция: топ XX","Заказов: ~XX шт"]
+    }},
+    "month2": {{
+      "metrics": ["CTR: X.X%","CR в заказ: X.X%","ДРР: XX%","Позиция: топ XX","Заказов: ~XX шт"]
+    }}
+  }}
+}}
+Все бюджеты в рублях. ДРР не должен превышать маржинальность. Будь максимально конкретным."""
+                client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+                message = client.messages.create(model="claude-sonnet-4-5", max_tokens=2000, messages=[{"role":"user","content":prompt}])
+                raw = message.content[0].text.strip().replace('```json','').replace('```','').strip()
+                analysis = json.loads(raw)
+                conn2 = psycopg2.connect(DB)
+                cur2 = conn2.cursor()
+                cur2.execute("""INSERT INTO ad_forecasts (niche_name,avg_cpm,ad_pct,avg_price,revenue,sellers_with_sales,profit_pct,forecast_data) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
+                    (niche_name,avg_cpm,ad_pct,avg_price,revenue,sellers_with_sales,profit_pct,json.dumps(analysis,ensure_ascii=False)))
+                forecast_id = cur2.fetchone()[0]
+                conn2.commit(); cur2.close(); conn2.close()
+                self.send_response(200)
+                self.send_header('Content-type','application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'analysis':analysis,'forecast_id':forecast_id},ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type','application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error':str(e)}).encode('utf-8'))
+
+        elif self.path == '/ad-monitor':
+            try:
+                import anthropic
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                forecast_id = body.get('forecast_id')
+                month = body.get('month', 1)
+                actual = body.get('actual', {})
+                conn2 = psycopg2.connect(DB)
+                cur2 = conn2.cursor()
+                cur2.execute("SELECT niche_name, forecast_data, avg_cpm, avg_price, profit_pct FROM ad_forecasts WHERE id = %s", (forecast_id,))
+                row = cur2.fetchone()
+                if not row:
+                    raise Exception('Прогноз не найден')
+                niche_name, forecast_data, avg_cpm, avg_price, profit_pct = row
+                forecast = forecast_data if isinstance(forecast_data, dict) else json.loads(forecast_data)
+                month_key = f'month{month}'
+                planned_metrics = forecast.get('forecast',{}).get(month_key,{}).get('metrics',[])
+                planned_budget = forecast.get('budget',{}).get('start_rub' if month==1 else 'growth_rub', 0)
+                planned_cpm = forecast.get('cpm_forecast',{}).get('start_rub' if month==1 else 'month2_rub', 0)
+                prompt = f"""Ты аналитик рекламы Wildberries. Сравни плановые и фактические показатели за месяц {month} и дай честную диагностику.
+
+НИША: {niche_name}
+ПЛАН:
+{chr(10).join(['- '+m for m in planned_metrics])}
+- Плановый бюджет: {planned_budget:,.0f} руб
+- Плановый CPM: {planned_cpm:,.0f} руб
+
+ФАКТ:
+- CPM: {actual.get('cpm',0):,.0f} руб
+- CTR: {actual.get('ctr',0)}%
+- Расход: {actual.get('spend',0):,.0f} руб
+- Заказов с рекламы: {actual.get('orders',0)} шт
+- Средняя позиция: {actual.get('position',0)}
+- Выручка за месяц: {actual.get('revenue',0):,.0f} руб
+
+КОНТЕКСТ: CPM ниши={avg_cpm} руб, цена={avg_price} руб, маржа={float(profit_pct or 0)*100:.1f}%
+
+Верни ТОЛЬКО валидный JSON:
+{{
+  "status": "good|warning|bad",
+  "comparison": [
+    {{"metric":"CPM","plan":"X руб","actual":"Y руб","status":"good|warning|bad"}},
+    {{"metric":"CTR","plan":"X%","actual":"Y%","status":"good|warning|bad"}},
+    {{"metric":"Расход","plan":"X руб","actual":"Y руб","status":"good|warning|bad"}},
+    {{"metric":"Заказы","plan":"X шт","actual":"Y шт","status":"good|warning|bad"}},
+    {{"metric":"Позиция","plan":"топ X","actual":"топ Y","status":"good|warning|bad"}}
+  ],
+  "summary": "честный анализ 3-4 предложения что работает что нет и почему с учётом специфики ниши",
+  "recommendations": ["рекомендация 1 с цифрами","рекомендация 2 с цифрами","рекомендация 3 с цифрами","рекомендация 4 с цифрами"]
+}}"""
+                client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+                message = client.messages.create(model="claude-sonnet-4-5", max_tokens=1500, messages=[{"role":"user","content":prompt}])
+                raw = message.content[0].text.strip().replace('```json','').replace('```','').strip()
+                diagnosis = json.loads(raw)
+                cur2.execute(f"""UPDATE ad_forecasts SET month{month}_actual=%s, month{month}_diagnosis=%s, month{month}_checked_at=NOW() WHERE id=%s""",
+                    (json.dumps(actual,ensure_ascii=False), json.dumps(diagnosis,ensure_ascii=False), forecast_id))
+                conn2.commit(); cur2.close(); conn2.close()
+                self.send_response(200)
+                self.send_header('Content-type','application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'diagnosis':diagnosis},ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type','application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error':str(e)}).encode('utf-8'))
+
+        else:
+            self.send_response(404)
+            self.end_headers()
+
 
 if __name__ == '__main__':
     print("🚀 Сервер запущен: http://localhost:8080")

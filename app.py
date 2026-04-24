@@ -1548,7 +1548,68 @@ document.addEventListener('click', e => {
 async function loadSuggestions(q) {
   const r = await fetch('/suggest?q=' + encodeURIComponent(q));
   const data = await r.json();
-  showSuggestions(data);
+  if (data.length < 2 && q.length >= 3) {
+    showSuggestions(data);
+    // Запускаем умный поиск если обычный дал мало результатов
+    clearTimeout(window._smartTimer);
+    window._smartTimer = setTimeout(() => smartSearch(q), 400);
+  } else {
+    // Скрываем умный баннер если обычный поиск дал результаты
+    const sb = document.getElementById('smart-banner');
+    if (sb) sb.remove();
+    showSuggestions(data);
+  }
+}
+
+async function smartSearch(q) {
+  // Показываем индикатор умного поиска
+  let box = document.getElementById('suggestions');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'suggestions';
+    box.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:#1a1a24;border:1px solid #2a2a3a;border-radius:10px;margin-top:4px;overflow:hidden;z-index:100;';
+    document.querySelector('.search-row').style.position = 'relative';
+    document.querySelector('.search-row').appendChild(box);
+  }
+  
+  // Добавляем строку умного поиска
+  const existingContent = box.innerHTML;
+  const smartRow = '<div id="smart-search-row" style="padding:10px 16px;color:#555;font-size:12px;display:flex;align-items:center;gap:8px;border-top:1px solid #1f1f2e;"><span style="animation:spin 1s linear infinite;display:inline-block;">🔍</span> Ищем семантически через AI...</div>';
+  box.innerHTML = existingContent + smartRow;
+  box.style.display = 'block';
+
+  try {
+    const r = await fetch('/smart-search?q=' + encodeURIComponent(q));
+    const data = await r.json();
+    
+    // Удаляем строку загрузки
+    const smartRowEl = document.getElementById('smart-search-row');
+    if (smartRowEl) smartRowEl.remove();
+
+    if (data.niche) {
+      // Показываем умный результат
+      const smartResult = document.createElement('div');
+      smartResult.id = 'smart-banner';
+      smartResult.style.cssText = 'padding:12px 16px;background:#0f0f1a;border-top:1px solid #6c63ff44;cursor:pointer;';
+      smartResult.innerHTML = 
+        '<div style="font-size:10px;color:#6c63ff;letter-spacing:1px;margin-bottom:4px;">🧠 AI НАШЁЛ СЕМАНТИЧЕСКИ</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          '<div>' +
+            '<span style="color:#a78bfa;font-size:13px;font-weight:600;">' + data.niche_display + '</span>' +
+            '<div style="font-size:11px;color:#555;margin-top:2px;">' + data.explanation + '</div>' +
+          '</div>' +
+          '<span style="color:#555;font-size:12px;">' + fmt(data.revenue) + '</span>' +
+        '</div>';
+      smartResult.onclick = () => {
+        setQuery(data.niche);
+        hideSuggestions();
+      };
+      box.appendChild(smartResult);
+    }
+  } catch(e) {
+    const smartRowEl = document.getElementById('smart-search-row');
+    if (smartRowEl) smartRowEl.remove();
+  }
 }
 
 function showSuggestions(items) {
@@ -2693,6 +2754,93 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+        elif self.path.startswith('/smart-search'):
+            from urllib.parse import parse_qs, urlparse, unquote
+            import anthropic
+            try:
+                query = unquote(self.path.split('?q=')[-1])
+                
+                # Берём все ниши — сначала текстовый поиск по корням слов
+                conn = psycopg2.connect(DB)
+                cursor = conn.cursor()
+                
+                # Шаг 1: быстрый поиск по похожим словам (первые 5 букв)
+                words = [w[:5] for w in query.lower().split() if len(w) >= 3]
+                if words:
+                    like_conditions = ' OR '.join([f"LOWER(name) LIKE %s OR LOWER(COALESCE(display_name,name)) LIKE %s" for _ in words])
+                    like_params = [p for w in words for p in (f'%{w}%', f'%{w}%')]
+                    cursor.execute(f"SELECT name, COALESCE(display_name,name), revenue FROM niches WHERE revenue IS NOT NULL AND ({like_conditions}) ORDER BY revenue DESC LIMIT 50", like_params)
+                    candidates = cursor.fetchall()
+                else:
+                    candidates = []
+                
+                # Шаг 2: если мало кандидатов — берём все названия для Claude
+                cursor.execute("SELECT name, COALESCE(display_name,name), revenue FROM niches WHERE revenue IS NOT NULL ORDER BY revenue DESC")
+                all_niches = cursor.fetchall()
+                cursor.close()
+                conn.close()
+                
+                # Передаём Claude только названия всех ниш (компактно)
+                all_names = [r[1] for r in all_niches]
+                niches_text = ', '.join(all_names)
+                
+                prompt = f"""Пользователь ищет товар: "{query}"
+
+Список всех ниш Wildberries (через запятую):
+{niches_text}
+
+Найди нишу которая семантически наиболее соответствует запросу.
+Учитывай синонимы, подкатегории, смысловые связи.
+Примеры: спиннинг→Удилища, кроссовки→Кроссовки, удочка→Удилища, ноутбук→Ноутбуки
+
+Верни ТОЛЬКО JSON:
+{{"found": true, "niche_name": "точное название из списка", "explanation": "краткое объяснение"}}
+или
+{{"found": false, "niche_name": null, "explanation": "не найдено"}}"""
+                
+                client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+                message = client.messages.create(
+                    model="claude-sonnet-4-5",
+                    max_tokens=200,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                raw = message.content[0].text.strip().replace('```json','').replace('```','').strip()
+                ai_result = json.loads(raw)
+                
+                if ai_result.get('found') and ai_result.get('niche_name'):
+                    matched_name = ai_result['niche_name'].strip().lower()
+                    # Мягкий матчинг — ищем по вхождению в all_niches
+                    matched = next((r for r in all_niches if 
+                        r[1].strip().lower() == matched_name or 
+                        r[0].strip().lower() == matched_name or
+                        matched_name in r[1].strip().lower() or
+                        matched_name in r[0].strip().lower() or
+                        r[0].strip().lower() in matched_name
+                    ), None)
+                    if matched:
+                        result = {
+                            'niche': matched[0],
+                            'niche_display': matched[1],
+                            'revenue': float(matched[2]),
+                            'explanation': ai_result.get('explanation', '')
+                        }
+                    else:
+                        # Логируем для диагностики
+                        print(f"Smart search: Claude вернул '{ai_result['niche_name']}' но не нашли в БД")
+                        result = {'niche': None}
+                else:
+                    result = {'niche': None}
+                    
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'niche': None, 'error': str(e)}).encode('utf-8'))
 
         elif self.path.startswith('/suggest'):
             from urllib.parse import unquote

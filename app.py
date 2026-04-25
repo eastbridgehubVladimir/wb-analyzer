@@ -1380,6 +1380,8 @@ function goHome() {
   document.getElementById('query').value = '';
   document.querySelectorAll('.sidebar-item').forEach(t => t.classList.remove('active'));
   document.querySelector('.sidebar-item').classList.add('active');
+  var sp = document.getElementById('sticky-agents');
+  if (sp) sp.style.display = 'none';
 }
 
 let modalChartInstance = null;
@@ -1741,13 +1743,13 @@ function renderResult(d) {
   const hyps = d.hypotheses.map(t => `<div class="hyp-item">${t}</div>`).join('');
   document.getElementById('result').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
-      <div class="niche-name" style="margin-bottom:0;">${d.name} ${isSeasonal(d.name) ? '<span style="font-size:14px;color:#eab308;font-weight:400">🍂 сезонный товар</span>' : ''} ${d.data_warning ? '<span style="font-size:12px;color:#ef4444;font-weight:400;background:#ef444422;border:1px solid #ef444444;border-radius:6px;padding:2px 8px;margin-left:8px;">⚠️ Данные могут быть неточными</span>' : ''}</div>
-      <div style="display:flex;gap:8px;">
-        
-        <button onclick="deepAnalysis(window.currentNiche)" style="background:#22c55e22;border:1px solid #22c55e;border-radius:8px;padding:8px 16px;color:#22c55e;cursor:pointer;font-size:13px;white-space:nowrap;">🔍 Глубокий анализ</button>
-        <button onclick="showUnitEconomy()" style="background:#f59e0b22;border:1px solid #f59e0b;border-radius:8px;padding:8px 16px;color:#f59e0b;cursor:pointer;font-size:13px;white-space:nowrap;">🧮 Юнит-экономика</button>
-        <button id="watchlist-btn" onclick="toggleWatchlist('${(d.full||d.name).replace(/'/g,'`')}','${d.name.replace(/'/g,'`')}',${d.revenue}); updateWatchlistBtn('${(d.full||d.name).replace(/'/g,'`')}');" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:8px 16px;color:#888;cursor:pointer;font-size:13px;white-space:nowrap;">${isInWatchlist(d.full||d.name) ? '📌 В работе' : '🔖 В работе'}</button>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div class="niche-name" style="margin-bottom:0;">${d.name}</div>
+        <span style="background:${d.score>=65?'#22c55e22':d.score>=40?'#eab30822':'#ef444422'};border:1px solid ${d.score>=65?'#22c55e':d.score>=40?'#eab308':'#ef4444'};border-radius:6px;padding:3px 10px;font-size:12px;font-weight:700;color:${d.score>=65?'#22c55e':d.score>=40?'#eab308':'#ef4444'};">${d.verdict} ${d.score}/100</span>
+        ${isSeasonal(d.name) ? '<span style="font-size:12px;color:#eab308;">&#127810; сезонный</span>' : ''}
+        ${d.data_warning ? '<span style="font-size:11px;color:#ef4444;background:#ef444422;border-radius:4px;padding:2px 6px;">&#9888; неточные данные</span>' : ''}
       </div>
+    </div>
     </div>
 
     <!-- ЗОНА 1: Метрики -->
@@ -1758,21 +1760,6 @@ function renderResult(d) {
       <div class="metric-card"><div class="metric-label">Выкуп</div><div class="metric-value">${(d.buyout_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.buyout_pct >= 0.8 ? 'отличный' : d.buyout_pct >= 0.6 ? 'хороший' : 'низкий'}</div></div>
       <div class="metric-card"><div class="metric-label">Оборачиваемость (реальная)</div><div class="metric-value">${(() => { const real = d.buyout_pct > 0 ? Math.round(d.turnover / d.buyout_pct) : Math.round(d.turnover); return real > 365 ? "365+" : real; })()} дн</div><div class="metric-sub">${(() => { const real = d.buyout_pct > 0 ? Math.round(d.turnover / d.buyout_pct) : Math.round(d.turnover); return real <= 45 ? '<span class="turn-fast">🟢 быстро</span>' : real <= 90 ? '<span class="turn-seasonal">🟡 умеренно</span>' : '<span class="turn-slow">🔴 медленно</span>'; })()} <span style="font-size:10px;color:#444;">MPStats: ${Math.round(d.turnover)} дн</span></div></div>
       <div class="metric-card"><div class="metric-label">Маржинальность</div><div class="metric-value">${(d.profit_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.profit_pct >= 0.35 ? 'высокая' : d.profit_pct >= 0.2 ? 'средняя' : 'низкая'} <span style="font-size:10px;color:#444;">до себест.</span></div></div>
-    </div>
-
-    <!-- ЗОНА 2: Вердикт со score индикатором -->
-    <div class="verdict-card" style="display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:20px;">
-      <div class="verdict-badge verdict-${d.verdict}" style="font-size:18px;padding:10px 20px;">${d.verdict}</div>
-      <div class="verdict-text"><div class="verdict-title">${verdictMap[d.verdict]}</div><div class="verdict-desc">${d.analysis}</div></div>
-      <div></div>
-      <svg viewBox="0 0 100 100" style="width:80px;height:80px;flex-shrink:0;">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="#1f1f2e" stroke-width="10"/>
-        <circle cx="50" cy="50" r="40" fill="none" stroke="${d.score>=65?'#22c55e':d.score>=40?'#eab308':'#ef4444'}" stroke-width="10"
-          stroke-dasharray="${d.score * 2.51} 251" stroke-dashoffset="62.75"
-          stroke-linecap="round" transform="rotate(-90 50 50)"/>
-        <text x="50" y="46" text-anchor="middle" fill="#fff" font-size="18" font-weight="700">${d.score}</text>
-        <text x="50" y="60" text-anchor="middle" fill="#555" font-size="10">из 100</text>
-      </svg>
     </div>
 
     <!-- ЗОНА 3: Главный широкий график -->
@@ -1901,6 +1888,25 @@ function renderResult(d) {
   document.getElementById('result').style.display = 'block';
   loadCharts(d.name);
   addToRecent(d.name);
+  var sp = document.getElementById('sticky-agents');
+  if (sp) sp.style.display = 'block';
+  var swb = document.getElementById('sticky-wl-btn');
+  if (swb) {
+    var inWl = isInWatchlist(d.full||d.name);
+    swb.textContent = inWl ? '📌 В работе' : '🔖 В работе';
+    swb.style.borderColor = inWl ? '#6c63ff' : '#2a2a3a';
+    swb.style.color = inWl ? '#a78bfa' : '#888';
+  }
+}
+
+function toggleStickyWL(btn) {
+  var n = window.currentNiche;
+  if (!n) return;
+  toggleWatchlist(n.full||n.name, n.name, n.revenue||0);
+  var inWl = isInWatchlist(n.full||n.name);
+  btn.textContent = inWl ? '📌 В работе' : '🔖 В работе';
+  btn.style.borderColor = inWl ? '#6c63ff' : '#2a2a3a';
+  btn.style.color = inWl ? '#a78bfa' : '#888';
 }
 
 function clearMonitor() { document.getElementById('adMonitorContent').innerHTML=''; }
@@ -2450,6 +2456,17 @@ async function submitMonitor(month) {
 </div>
 </div>
 </div>
+  <div id="sticky-agents" style="display:none;position:fixed;bottom:0;left:200px;right:0;background:#0d0d14;border-top:1px solid #1a1a2e;padding:8px 24px;z-index:1000;box-shadow:0 -4px 20px rgba(0,0,0,0.5);">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:10px;color:#333;margin-right:4px;white-space:nowrap;">AI:</span>
+      <button onclick="deepAnalysis(window.currentNiche)" style="background:#0f1a0f;border:1px solid #22c55e44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#22c55e;font-size:11px;white-space:nowrap;">&#128269; Глубокий анализ</button>
+      <button onclick="showUnitEconomy()" style="background:#1a150a;border:1px solid #f59e0b44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#f59e0b;font-size:11px;white-space:nowrap;">&#129518; Юнит-экономика</button>
+      <button onclick="runAdAnalysis();setTimeout(function(){var el=document.getElementById('adBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0f0f1a;border:1px solid #6c63ff44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#a78bfa;font-size:11px;white-space:nowrap;">&#127919; Реклама</button>
+      <button onclick="runWarehouseAnalysis();setTimeout(function(){var el=document.getElementById('warehouseBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0a1520;border:1px solid #38bdf844;border-radius:7px;padding:6px 12px;cursor:pointer;color:#38bdf8;font-size:11px;white-space:nowrap;">&#128230; Поставки</button>
+      <div style="flex:1;"></div>
+      <button id="sticky-wl-btn" onclick="toggleStickyWL(this)" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:7px;padding:6px 14px;cursor:pointer;color:#888;font-size:11px;white-space:nowrap;">&#128278; В работе</button>
+    </div>
+  </div>
 </body>
 </html>"""
 

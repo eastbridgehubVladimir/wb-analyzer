@@ -1200,6 +1200,9 @@ async function loadCharts(name) {
       window._warehouseStats = data.warehouse_stats;
       renderWarehouseMetrics(data);
     }
+    if (data.package_data) {
+      window._nichePackageData = data.package_data;
+    }
 
     if (data.avg_cpm !== undefined) {
       if (!window._chartData) window._chartData = {};
@@ -1213,6 +1216,9 @@ async function loadCharts(name) {
     if (data.warehouse_stats) {
       window._warehouseStats = data.warehouse_stats;
       renderWarehouseMetrics(data);
+    }
+    if (data.package_data) {
+      window._nichePackageData = data.package_data;
     }
 
     if (data.avg_cpm !== undefined) {
@@ -1737,8 +1743,9 @@ function renderResult(d) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <div class="niche-name" style="margin-bottom:0;">${d.name} ${isSeasonal(d.name) ? '<span style="font-size:14px;color:#eab308;font-weight:400">🍂 сезонный товар</span>' : ''} ${d.data_warning ? '<span style="font-size:12px;color:#ef4444;font-weight:400;background:#ef444422;border:1px solid #ef444444;border-radius:6px;padding:2px 8px;margin-left:8px;">⚠️ Данные могут быть неточными</span>' : ''}</div>
       <div style="display:flex;gap:8px;">
-        <button onclick="fillCalculator(${d.avg_price}, ${d.commission}, ${d.buyout_pct})" style="background:#6c63ff22;border:1px solid #6c63ff;border-radius:8px;padding:8px 16px;color:#a78bfa;cursor:pointer;font-size:13px;white-space:nowrap;">🧮 Рассчитать экономику</button>
+        
         <button onclick="deepAnalysis(window.currentNiche)" style="background:#22c55e22;border:1px solid #22c55e;border-radius:8px;padding:8px 16px;color:#22c55e;cursor:pointer;font-size:13px;white-space:nowrap;">🔍 Глубокий анализ</button>
+        <button onclick="showUnitEconomy()" style="background:#f59e0b22;border:1px solid #f59e0b;border-radius:8px;padding:8px 16px;color:#f59e0b;cursor:pointer;font-size:13px;white-space:nowrap;">🧮 Юнит-экономика</button>
         <button id="watchlist-btn" onclick="toggleWatchlist('${(d.full||d.name).replace(/'/g,'`')}','${d.name.replace(/'/g,'`')}',${d.revenue}); updateWatchlistBtn('${(d.full||d.name).replace(/'/g,'`')}');" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:8px 16px;color:#888;cursor:pointer;font-size:13px;white-space:nowrap;">${isInWatchlist(d.full||d.name) ? '📌 В работе' : '🔖 В работе'}</button>
       </div>
     </div>
@@ -1877,6 +1884,19 @@ function renderResult(d) {
         <div id="deep-content"></div>
       </div>
     </div>
+
+    <!-- ЗОНА 7: Юнит-экономика -->
+    <div id="unit-economy-block" style="display:none;margin-top:24px;">
+      <div class="ai-card">
+        <div class="ai-header">
+          <div class="ai-dot" style="background:#f59e0b;"></div>
+          <div class="ai-title">🧮 Юнит-экономика</div>
+          <div id="unit-loading" style="display:none;margin-left:12px;font-size:12px;color:#555;">Рассчитываем...</div>
+        </div>
+        <div id="unit-input-block" style="margin-top:16px;"></div>
+        <div id="unit-result-block" style="margin-top:16px;"></div>
+      </div>
+    </div>
   `;
   document.getElementById('result').style.display = 'block';
   loadCharts(d.name);
@@ -1884,6 +1904,269 @@ function renderResult(d) {
 }
 
 function clearMonitor() { document.getElementById('adMonitorContent').innerHTML=''; }
+
+// ===== АГЕНТ ЮНИТ-ЭКОНОМИКИ =====
+function showUnitEconomy() {
+  const block = document.getElementById('unit-economy-block');
+  if (!block) return;
+  block.style.display = 'block';
+  block.scrollIntoView({behavior:'smooth', block:'start'});
+  
+  const d = window.currentNiche;
+  if (!d) return;
+  
+  // Получаем средние габариты из MPStats если есть
+  const avgLen = window._nichePackageData?.avg_length || '';
+  const avgWid = window._nichePackageData?.avg_width || '';
+  const avgHei = window._nichePackageData?.avg_height || '';
+  const avgWgt = window._nichePackageData?.avg_weight || '';
+
+  const sym = symbols[currentCurrency];
+  const rate = rates[currentCurrency];
+
+  document.getElementById('unit-input-block').innerHTML = `
+    <div style="margin-bottom:20px;">
+      <!-- Валюта закупки -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;">
+        <div style="font-size:12px;color:#555;margin-right:4px;">Валюта закупки:</div>
+        <button onclick="setUnitCurrency('cny')" id="ucur-cny" style="background:#1a1a2e;border:1px solid #6c63ff;border-radius:6px;padding:6px 12px;color:#a78bfa;font-size:12px;cursor:pointer;">¥ CNY</button>
+        <button onclick="setUnitCurrency('usd')" id="ucur-usd" style="background:#0f0f13;border:1px solid #333;border-radius:6px;padding:6px 12px;color:#555;font-size:12px;cursor:pointer;">$ USD</button>
+        <button onclick="setUnitCurrency('rub')" id="ucur-rub" style="background:#0f0f13;border:1px solid #333;border-radius:6px;padding:6px 12px;color:#555;font-size:12px;cursor:pointer;">₽ RUB</button>
+        <button onclick="setUnitCurrency('byn')" id="ucur-byn" style="background:#0f0f13;border:1px solid #333;border-radius:6px;padding:6px 12px;color:#555;font-size:12px;cursor:pointer;">Br BYN</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px;">ЦЕНА ПРОДАЖИ НА WB (₽)</div>
+          <input id="ue-price" type="number" value="${Math.round(d.avg_price||0)}" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px;">ЗАКУПОЧНАЯ ЦЕНА (<span id="ucur-label">¥</span>)</div>
+          <input id="ue-cost" type="number" placeholder="цена закупки" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px;">КОМИССИЯ WB (%)</div>
+          <input id="ue-commission" type="number" value="${Math.round(d.commission||15)}" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+      </div>
+
+      <!-- Габариты -->
+      <div style="font-size:11px;color:#555;letter-spacing:1px;margin-bottom:4px;">ГАБАРИТЫ И ВЕС ЕДИНИЦЫ ТОВАРА</div>
+      <div style="font-size:10px;color:#444;margin-bottom:8px;">Система рассчитает короб автоматически исходя из количества единиц</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+        <div>
+          <div style="font-size:10px;color:#555;margin-bottom:4px;">ДЛИНА (см)</div>
+          <input id="ue-length" type="number" value="${avgLen}" placeholder="см" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#555;margin-bottom:4px;">ШИРИНА (см)</div>
+          <input id="ue-width" type="number" value="${avgWid}" placeholder="см" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#555;margin-bottom:4px;">ВЫСОТА (см)</div>
+          <input id="ue-height" type="number" value="${avgHei}" placeholder="см" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#555;margin-bottom:4px;">ВЕС (кг)</div>
+          <input id="ue-weight" type="number" value="${avgWgt}" placeholder="кг" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#555;margin-bottom:4px;">ЕД. В КОРОБЕ</div>
+          <input id="ue-units" type="number" value="20" placeholder="шт" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+      </div>
+
+      <!-- Способ доставки -->
+      <div style="font-size:11px;color:#555;letter-spacing:1px;margin-bottom:8px;">СПОСОБ ДОСТАВКИ ИЗ КИТАЯ</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
+        <button onclick="setDelivery('sea')" id="udel-sea" style="background:#1a1a2e;border:1px solid #38bdf8;border-radius:6px;padding:10px;color:#38bdf8;font-size:12px;cursor:pointer;text-align:left;">
+          🚢 Море<div style="font-size:10px;color:#555;margin-top:2px;">45-60 дней · $1.5-2.5/кг</div>
+        </button>
+        <button onclick="setDelivery('rail')" id="udel-rail" style="background:#0f0f13;border:1px solid #333;border-radius:6px;padding:10px;color:#555;font-size:12px;cursor:pointer;text-align:left;">
+          🚂 ЖД<div style="font-size:10px;color:#444;margin-top:2px;">18-25 дней · $2-3.5/кг</div>
+        </button>
+        <button onclick="setDelivery('truck')" id="udel-truck" style="background:#0f0f13;border:1px solid #333;border-radius:6px;padding:10px;color:#555;font-size:12px;cursor:pointer;text-align:left;">
+          🚛 Авто<div style="font-size:10px;color:#444;margin-top:2px;">20-30 дней · $3-5/кг</div>
+        </button>
+      </div>
+
+      <!-- Налогообложение -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px;">ТАМОЖЕННАЯ ПОШЛИНА (%)</div>
+          <input id="ue-customs" type="number" value="10" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px;">НДС ИМПОРТ (%)</div>
+          <input id="ue-vat" type="number" value="20" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:#555;margin-bottom:4px;">НАЛОГ УСН (%)</div>
+          <input id="ue-tax" type="number" value="6" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+      </div>
+
+      <button onclick="runUnitEconomy()" style="width:100%;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">🧮 Рассчитать все 3 сценария</button>
+    </div>`;
+
+  // Устанавливаем дефолты
+  window._unitCurrency = 'cny';
+  window._unitDelivery = 'sea';
+}
+
+function setUnitCurrency(cur) {
+  window._unitCurrency = cur;
+  const labels = {cny:'¥', usd:'$', rub:'₽', byn:'Br'};
+  document.getElementById('ucur-label').textContent = labels[cur] || '¥';
+  ['cny','usd','rub','byn'].forEach(c => {
+    const btn = document.getElementById('ucur-' + c);
+    if (!btn) return;
+    if (c === cur) {
+      btn.style.background = '#1a1a2e';
+      btn.style.borderColor = '#6c63ff';
+      btn.style.color = '#a78bfa';
+    } else {
+      btn.style.background = '#0f0f13';
+      btn.style.borderColor = '#333';
+      btn.style.color = '#555';
+    }
+  });
+}
+
+function setDelivery(mode) {
+  window._unitDelivery = mode;
+  ['sea','rail','truck'].forEach(m => {
+    const btn = document.getElementById('udel-' + m);
+    if (!btn) return;
+    if (m === mode) {
+      btn.style.background = '#1a1a2e';
+      btn.style.borderColor = '#38bdf8';
+      btn.style.color = '#38bdf8';
+    } else {
+      btn.style.background = '#0f0f13';
+      btn.style.borderColor = '#333';
+      btn.style.color = '#555';
+    }
+  });
+}
+
+async function runUnitEconomy() {
+  const d = window.currentNiche;
+  if (!d) return;
+
+  const resultBlock = document.getElementById('unit-result-block');
+  const loading = document.getElementById('unit-loading');
+  if (loading) loading.style.display = 'block';
+  resultBlock.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">⏳ Claude рассчитывает 3 сценария...</div>';
+
+  // Курсы для конвертации закупочной цены в рубли
+  const curRates = {cny: 12.5, usd: rates.usd > 0 ? 1/rates.usd : 90, rub: 1, byn: 28};
+  const costLocal = parseFloat(document.getElementById('ue-cost')?.value) || 0;
+  const costRub = costLocal * (curRates[window._unitCurrency] || 1);
+
+  const payload = {
+    niche_name: d.name,
+    display_name: d.display_name || d.name,
+    price_rub: parseFloat(document.getElementById('ue-price')?.value) || d.avg_price || 0,
+    cost_rub: costRub,
+    cost_local: costLocal,
+    cost_currency: window._unitCurrency,
+    commission_pct: parseFloat(document.getElementById('ue-commission')?.value) || (d.commission||15),
+    buyout_pct: (d.buyout_pct || 0.7) * 100,
+    length_cm: parseFloat(document.getElementById('ue-length')?.value) || 0,
+    width_cm: parseFloat(document.getElementById('ue-width')?.value) || 0,
+    height_cm: parseFloat(document.getElementById('ue-height')?.value) || 0,
+    weight_kg: parseFloat(document.getElementById('ue-weight')?.value) || 0,
+    units_per_box: parseFloat(document.getElementById('ue-units')?.value) || 10,
+    delivery_mode: window._unitDelivery || 'sea',
+    customs_pct: parseFloat(document.getElementById('ue-customs')?.value) || 10,
+    vat_pct: parseFloat(document.getElementById('ue-vat')?.value) || 20,
+    tax_pct: parseFloat(document.getElementById('ue-tax')?.value) || 6,
+    revenue: d.revenue || 0,
+    sellers_with_sales: d.sellers_with_sales || 0,
+    currency: currentCurrency,
+    rate: rates[currentCurrency],
+    symbol: symbols[currentCurrency]
+  };
+
+  try {
+    const resp = await fetch('/unit-economy', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    if (loading) loading.style.display = 'none';
+    renderUnitEconomy(result, symbols[currentCurrency], rates[currentCurrency]);
+  } catch(e) {
+    if (loading) loading.style.display = 'none';
+    resultBlock.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;font-size:13px;">❌ ' + e.message + '</div>';
+  }
+}
+
+function renderUnitEconomy(data, sym, rate) {
+  const container = document.getElementById('unit-result-block');
+  const scenarios = data.scenarios;
+  if (!scenarios) return;
+
+  const fmtM = (rub) => {
+    if (!rub && rub !== 0) return '—';
+    const v = Math.round(rub * rate);
+    return v.toLocaleString('ru-RU') + ' ' + sym;
+  };
+
+  const sc_colors = {'s1':'#38bdf8', 's2':'#a78bfa', 's3':'#4ade80'};
+  const verdict_colors = {'profit':'#4ade80', 'marginal':'#fbbf24', 'loss':'#ef4444'};
+  const verdict_labels = {'profit':'✅ Прибыльно', 'marginal':'⚠️ На грани', 'loss':'❌ Убыток'};
+
+  let html = '<div style="border-top:1px solid #1a1a2e;padding-top:20px;">';
+
+  // Рекомендация Claude
+  html += '<div style="background:linear-gradient(135deg,#1a1a2e,#0f0f1a);border-radius:10px;padding:16px;margin-bottom:20px;border:1px solid #f59e0b44;">' +
+    '<div style="font-size:10px;color:#f59e0b;letter-spacing:1px;margin-bottom:6px;">🏆 РЕКОМЕНДАЦИЯ AI</div>' +
+    '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:8px;">' + (data.recommendation?.title||'') + '</div>' +
+    '<div style="font-size:13px;color:#ccc;line-height:1.6;">' + (data.recommendation?.detail||'') + '</div>' +
+  '</div>';
+
+  // 3 сценария
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;">';
+  ['s1','s2','s3'].forEach(key => {
+    const s = scenarios[key];
+    if (!s) return;
+    const vc = verdict_colors[s.verdict] || '#fbbf24';
+    const vl = verdict_labels[s.verdict] || '⚠️';
+    html +=
+      '<div style="background:#0f0f13;border-radius:10px;padding:16px;border-top:3px solid ' + sc_colors[key] + ';">' +
+        '<div style="font-size:11px;color:' + sc_colors[key] + ';font-weight:600;margin-bottom:8px;">' + (s.title||'') + '</div>' +
+        '<div style="font-size:12px;color:' + vc + ';font-weight:600;margin-bottom:12px;">' + vl + '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:6px;">' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#555;">Себест. с логистикой</span><span style="color:#fff;">' + fmtM(s.total_cost_rub) + '</span></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#555;">Комиссия WB</span><span style="color:#fff;">' + fmtM(s.wb_commission_rub) + '</span></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#555;">Логистика WB</span><span style="color:#fff;">' + fmtM(s.wb_logistics_rub) + '</span></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid #1a1a2e;padding-top:6px;margin-top:2px;"><span style="color:#aaa;">Прибыль/ед</span><span style="color:' + vc + ';font-weight:700;">' + fmtM(s.profit_per_unit_rub) + '</span></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#aaa;">ROI</span><span style="color:' + vc + ';font-weight:700;">' + (s.roi_pct||0) + '%</span></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#aaa;">Маржа</span><span style="color:' + vc + ';font-weight:700;">' + (s.margin_pct||0) + '%</span></div>' +
+        '</div>' +
+        '<div style="margin-top:10px;font-size:11px;color:#555;line-height:1.5;">' + (s.comment||'') + '</div>' +
+      '</div>';
+  });
+  html += '</div>';
+
+  // Детали расчёта
+  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;">' +
+    '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ДЕТАЛИ РАСЧЁТА</div>' +
+    (data.calc_details||[]).map(d =>
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1a1a2e;font-size:12px;">' +
+        '<span style="color:#666;">' + d.label + '</span>' +
+        '<span style="color:#aaa;">' + d.value + '</span>' +
+      '</div>'
+    ).join('') +
+  '</div>';
+
+  html += '</div>';
+  container.innerHTML = html;
+}
 
 // ===== АГЕНТ СКЛАДОВ =====
 function renderWarehouseMetrics(data) {
@@ -2789,7 +3072,13 @@ class Handler(BaseHTTPRequestHandler):
                         'ad_verdict_color': ad_verdict_color,
                         'top_ad_sellers': [{'name': s[0][:25], 'count': s[1]} for s in top_ad_sellers],
                         'top_items': top_items,
-                        'warehouse_stats': warehouse_stats
+                        'warehouse_stats': warehouse_stats,
+                        'package_data': {
+                            'avg_length': round(sum(i.get('package_length',0) or 0 for i in items_with_sales) / len(items_with_sales), 1) if items_with_sales else 0,
+                            'avg_width': round(sum(i.get('package_width',0) or 0 for i in items_with_sales) / len(items_with_sales), 1) if items_with_sales else 0,
+                            'avg_height': round(sum(i.get('package_height',0) or 0 for i in items_with_sales) / len(items_with_sales), 1) if items_with_sales else 0,
+                            'avg_weight': round(sum(i.get('package_weight',0) or 0 for i in items_with_sales) / len(items_with_sales), 2) if items_with_sales else 0,
+                        }
                     }
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json; charset=utf-8')
@@ -3127,6 +3416,210 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header('Content-type','application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'error':str(e)}).encode('utf-8'))
+
+        elif self.path == '/unit-economy':
+            try:
+                import anthropic
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+
+                niche_name = body.get('niche_name', '')
+                price_rub = body.get('price_rub', 0)
+                cost_rub = body.get('cost_rub', 0)
+                cost_local = body.get('cost_local', 0)
+                cost_currency = body.get('cost_currency', 'cny')
+                commission_pct = body.get('commission_pct', 15)
+                buyout_pct = body.get('buyout_pct', 70)
+                length_cm = body.get('length_cm', 20)
+                width_cm = body.get('width_cm', 15)
+                height_cm = body.get('height_cm', 10)
+                weight_kg = body.get('weight_kg', 0.5)
+                units_per_box = body.get('units_per_box', 10)
+                delivery_mode = body.get('delivery_mode', 'sea')
+                customs_pct = body.get('customs_pct', 10)
+                vat_pct = body.get('vat_pct', 20)
+                tax_pct = body.get('tax_pct', 6)
+                revenue = body.get('revenue', 0)
+                sym = body.get('symbol', '₽')
+
+                # Расчёт объёма и веса единицы товара
+                # length/width/height — габариты ЕДИНИЦЫ товара
+                volume_unit_m3 = (length_cm * width_cm * height_cm) / 1000000
+                weight_unit_kg = weight_kg  # вес единицы товара
+
+                # Тарифы доставки Китай→Беларусь/Россия
+                delivery_rates = {
+                    'sea': {'usd_per_kg': 2.0, 'days': '45-60', 'name': 'Море'},
+                    'rail': {'usd_per_kg': 2.8, 'days': '18-25', 'name': 'ЖД'},
+                    'truck': {'usd_per_kg': 4.0, 'days': '20-30', 'name': 'Авто'}
+                }
+                del_rate = delivery_rates.get(delivery_mode, delivery_rates['sea'])
+                usd_rate = 90  # RUB/USD
+                cny_rate = 12.5  # RUB/CNY
+
+                # Объёмный вес (используем максимум из фактического и объёмного)
+                # Стандарт: объёмный вес = объём(м3) * 250 кг/м3
+                volumetric_weight = volume_unit_m3 * 250
+                chargeable_weight = max(weight_unit_kg, volumetric_weight)
+
+                # Стоимость доставки на единицу товара
+                delivery_cost_usd = del_rate['usd_per_kg'] * chargeable_weight
+                delivery_cost_rub = delivery_cost_usd * usd_rate
+
+                # Объём короба для информации
+                box_weight = weight_unit_kg * units_per_box
+                volume_m3 = volume_unit_m3 * units_per_box
+
+                # Таможня и НДС от себестоимости
+                customs_rub = cost_rub * (customs_pct / 100)
+                vat_rub = (cost_rub + customs_rub) * (vat_pct / 100)
+
+                # Логистика WB (зависит от объёма единицы)
+                volume_dm3 = volume_unit_m3 * 1000  # литры на единицу
+                if volume_dm3 <= 1:
+                    wb_logistics = 75
+                elif volume_dm3 <= 5:
+                    wb_logistics = 120
+                elif volume_dm3 <= 20:
+                    wb_logistics = 200
+                else:
+                    wb_logistics = 350
+
+                # Комиссия WB
+                wb_commission = price_rub * (commission_pct / 100)
+
+                # Налог УСН
+                tax_rub = price_rub * (tax_pct / 100)
+
+                # Стоимость возвратов (учитываем выкуп)
+                return_cost = wb_logistics * (1 - buyout_pct/100) * 0.5
+
+                # СЦЕНАРИЙ 1: Китай → WB Беларусь (FBO)
+                # Себестоимость + доставка + таможня + НДС + хранение WB
+                storage_fbo = price_rub * 0.02  # ~2% от цены
+                s1_total_cost = cost_rub + delivery_cost_rub + customs_rub + vat_rub + storage_fbo
+                s1_wb_cost = wb_commission + wb_logistics + return_cost + tax_rub
+                s1_profit = price_rub - s1_total_cost - s1_wb_cost
+                s1_roi = round(s1_profit / s1_total_cost * 100, 1) if s1_total_cost > 0 else 0
+                s1_margin = round(s1_profit / price_rub * 100, 1) if price_rub > 0 else 0
+
+                # СЦЕНАРИЙ 2: Китай → свой склад РБ → WB (FBS)
+                # Добавляем аренду склада и упаковку
+                warehouse_rent = price_rub * 0.015  # ~1.5% от цены
+                packing_cost = 30  # руб упаковка
+                wb_logistics_fbs = wb_logistics * 1.3  # FBS дороже
+                s2_total_cost = cost_rub + delivery_cost_rub + customs_rub + vat_rub + warehouse_rent + packing_cost
+                s2_wb_cost = wb_commission + wb_logistics_fbs + return_cost * 0.7 + tax_rub
+                s2_profit = price_rub - s2_total_cost - s2_wb_cost
+                s2_roi = round(s2_profit / s2_total_cost * 100, 1) if s2_total_cost > 0 else 0
+                s2_margin = round(s2_profit / price_rub * 100, 1) if price_rub > 0 else 0
+
+                # СЦЕНАРИЙ 3: Китай → WB Россия (FBO РФ)
+                # Доставка в Москву дороже + таможня РФ
+                delivery_cost_rub_rf = delivery_cost_rub * 1.15  # +15% до РФ
+                customs_rub_rf = cost_rub * (customs_pct / 100)
+                vat_rub_rf = (cost_rub + customs_rub_rf) * 0.20
+                s3_total_cost = cost_rub + delivery_cost_rub_rf + customs_rub_rf + vat_rub_rf + storage_fbo
+                s3_wb_cost = wb_commission + wb_logistics + return_cost + tax_rub
+                s3_profit = price_rub - s3_total_cost - s3_wb_cost
+                s3_roi = round(s3_profit / s3_total_cost * 100, 1) if s3_total_cost > 0 else 0
+                s3_margin = round(s3_profit / price_rub * 100, 1) if price_rub > 0 else 0
+
+                def get_verdict(profit):
+                    if profit > price_rub * 0.15: return 'profit'
+                    if profit > 0: return 'marginal'
+                    return 'loss'
+
+                scenarios = {
+                    's1': {
+                        'title': '🇧🇾 Китай → WB Беларусь (FBO)',
+                        'total_cost_rub': round(s1_total_cost),
+                        'wb_commission_rub': round(wb_commission),
+                        'wb_logistics_rub': round(wb_logistics),
+                        'profit_per_unit_rub': round(s1_profit),
+                        'roi_pct': s1_roi,
+                        'margin_pct': s1_margin,
+                        'verdict': get_verdict(s1_profit),
+                        'comment': f'Доставка {del_rate["name"]} {del_rate["days"]} дней'
+                    },
+                    's2': {
+                        'title': '🏭 Китай → склад РБ → WB (FBS)',
+                        'total_cost_rub': round(s2_total_cost),
+                        'wb_commission_rub': round(wb_commission),
+                        'wb_logistics_rub': round(wb_logistics_fbs),
+                        'profit_per_unit_rub': round(s2_profit),
+                        'roi_pct': s2_roi,
+                        'margin_pct': s2_margin,
+                        'verdict': get_verdict(s2_profit),
+                        'comment': 'Аренда склада + упаковка своими силами'
+                    },
+                    's3': {
+                        'title': '🇷🇺 Китай → WB Россия (FBO)',
+                        'total_cost_rub': round(s3_total_cost),
+                        'wb_commission_rub': round(wb_commission),
+                        'wb_logistics_rub': round(wb_logistics),
+                        'profit_per_unit_rub': round(s3_profit),
+                        'roi_pct': s3_roi,
+                        'margin_pct': s3_margin,
+                        'verdict': get_verdict(s3_profit),
+                        'comment': 'Доставка в РФ +15% к стоимости логистики'
+                    }
+                }
+
+                calc_details = [
+                    {'label': 'Цена продажи', 'value': f'{round(price_rub):,} ₽'},
+                    {'label': f'Закупка ({cost_currency.upper()})', 'value': f'{cost_local} → {round(cost_rub):,} ₽'},
+                    {'label': f'Доставка ({del_rate["name"]})', 'value': f'{round(delivery_cost_rub):,} ₽/ед'},
+                    {'label': f'Таможня {customs_pct}%', 'value': f'{round(customs_rub):,} ₽'},
+                    {'label': f'НДС {vat_pct}%', 'value': f'{round(vat_rub):,} ₽'},
+                    {'label': f'Комиссия WB {commission_pct}%', 'value': f'{round(wb_commission):,} ₽'},
+                    {'label': 'Логистика WB', 'value': f'{round(wb_logistics):,} ₽'},
+                    {'label': f'Налог УСН {tax_pct}%', 'value': f'{round(tax_rub):,} ₽'},
+                    {'label': 'Стоимость возвратов', 'value': f'{round(return_cost):,} ₽'},
+                    {'label': 'Объём короба', 'value': f'{round(volume_unit_m3*1000, 1)} л/ед / {round(chargeable_weight, 2)} кг (расч.)'},
+                ]
+
+                # Claude даёт рекомендацию
+                prompt = f"""Ты эксперт по юнит-экономике Wildberries. Проанализируй расчёты и дай рекомендацию.
+
+НИША: {niche_name}
+ЦЕНА ПРОДАЖИ: {price_rub} руб
+ЗАКУПКА: {cost_local} {cost_currency.upper()} = {round(cost_rub)} руб
+
+РЕЗУЛЬТАТЫ 3 СЦЕНАРИЕВ:
+1. Китай→WB Беларусь (FBO): прибыль {round(s1_profit)} руб, ROI {s1_roi}%, маржа {s1_margin}%
+2. Китай→склад РБ→WB (FBS): прибыль {round(s2_profit)} руб, ROI {s2_roi}%, маржа {s2_margin}%
+3. Китай→WB Россия (FBO): прибыль {round(s3_profit)} руб, ROI {s3_roi}%, маржа {s3_margin}%
+
+Верни ТОЛЬКО JSON:
+{{
+  "title": "Сценарий X — название (лучший вариант)",
+  "detail": "3-4 предложения: почему этот сценарий лучше, конкретные цифры, что нужно сделать для старта, риски"
+}}"""
+
+                client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+                message = client.messages.create(
+                    model="claude-sonnet-4-5",
+                    max_tokens=500,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                raw = message.content[0].text.strip().replace('```json','').replace('```','').strip()
+                recommendation = json.loads(raw)
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'scenarios': scenarios,
+                    'calc_details': calc_details,
+                    'recommendation': recommendation
+                }, ensure_ascii=False).encode('utf-8'))
+
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
 
         elif self.path == '/warehouse-analysis':
             try:

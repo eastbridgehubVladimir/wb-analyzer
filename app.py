@@ -1826,7 +1826,7 @@ function renderResult(d) {
     <div class="chart-card" id="adBlock" style="margin-bottom:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div class="chart-title" style="margin:0;">📢 Анализ рекламы WB</div>
-        <button id="adStrategyBtn" onclick="runAdAnalysis()" style="background:linear-gradient(135deg,#6c63ff,#8b5cf6);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;">🎯 Получить стратегию</button>
+        <button id="adStrategyBtn" onclick="runAdAnalysis()" style="background:transparent;color:#6c63ff;border:1px solid #6c63ff44;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;opacity:0.7;">🎯 стратегия</button>
       </div>
       <div id="adContent" style="margin-top:12px;"></div>
       <div id="adStrategyContent" style="margin-top:16px;"></div>
@@ -1843,7 +1843,7 @@ function renderResult(d) {
     <div class="chart-card" id="warehouseBlock" style="margin-bottom:16px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div class="chart-title" style="margin:0;">🏭 Стратегия поставок</div>
-        <button id="warehouseBtn" onclick="runWarehouseAnalysis()" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;">📦 Анализ поставок</button>
+        <button id="warehouseBtn" onclick="runWarehouseAnalysis()" style="background:transparent;color:#38bdf8;border:1px solid #38bdf844;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;opacity:0.7;">📦 анализ</button>
       </div>
       <div id="warehouseMetrics" style="margin-top:12px;"></div>
       <div id="warehouseStrategy" style="margin-top:16px;"></div>
@@ -2455,8 +2455,8 @@ async function submitMonitor(month) {
   <div id="sticky-agents" style="display:none;position:fixed;bottom:0;left:200px;right:0;background:#0d0d14;border-top:1px solid #1a1a2e;padding:8px 24px;z-index:1000;box-shadow:0 -4px 20px rgba(0,0,0,0.5);">
     <div style="display:flex;align-items:center;gap:8px;">
       <span style="font-size:10px;color:#333;margin-right:4px;white-space:nowrap;">AI:</span>
-      <button onclick="deepAnalysis(window.currentNiche)" style="background:#0f1a0f;border:1px solid #22c55e44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#22c55e;font-size:11px;white-space:nowrap;">&#128269; Глубокий анализ</button>
-      <button onclick="showUnitEconomy()" style="background:#1a150a;border:1px solid #f59e0b44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#f59e0b;font-size:11px;white-space:nowrap;">&#129518; Юнит-экономика</button>
+      <button onclick="deepAnalysis(window.currentNiche);setTimeout(function(){var el=document.getElementById('deep-analysis-block');if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth'});}},500)" style="background:#0f1a0f;border:1px solid #22c55e44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#22c55e;font-size:11px;white-space:nowrap;">&#128269; Глубокий анализ</button>
+      <button onclick="showUnitEconomy();setTimeout(function(){var el=document.getElementById('unit-economy-block');if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth'});}},300)" style="background:#1a150a;border:1px solid #f59e0b44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#f59e0b;font-size:11px;white-space:nowrap;">&#129518; Юнит-экономика</button>
       <button onclick="runAdAnalysis();setTimeout(function(){var el=document.getElementById('adBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0f0f1a;border:1px solid #6c63ff44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#a78bfa;font-size:11px;white-space:nowrap;">&#127919; Реклама</button>
       <button onclick="runWarehouseAnalysis();setTimeout(function(){var el=document.getElementById('warehouseBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0a1520;border:1px solid #38bdf844;border-radius:7px;padding:6px 12px;cursor:pointer;color:#38bdf8;font-size:11px;white-space:nowrap;">&#128230; Поставки</button>
       <div style="flex:1;"></div>

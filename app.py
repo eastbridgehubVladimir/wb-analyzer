@@ -366,6 +366,36 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 @keyframes spin { to { transform: rotate(360deg); } }
 .error { background: #2a0d0d; border: 1px solid #7f1d1d; border-radius: 12px; padding: 20px; color: #ef4444; display: none; }
 .niche-name { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 24px; }
+/* Тултипы для метрик */
+.metric-card { position: relative; }
+.metric-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a2e;
+  border: 1px solid #2a2a3a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  width: 220px;
+  font-size: 12px;
+  color: #aaa;
+  line-height: 1.5;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  pointer-events: none;
+}
+.metric-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #2a2a3a;
+}
+.metric-card:hover .metric-tooltip { display: block; }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
@@ -1211,6 +1241,18 @@ async function loadCharts(name) {
       window._chartData.cpm_status = data.cpm_status;
       window._chartData.ad_verdict = data.ad_verdict;
       window._chartData.top_ad_sellers = data.top_ad_sellers;
+      // Обновляем компактные метрики
+      var cpmColors = {green:'#4ade80', yellow:'#fbbf24', red:'#ef4444'};
+      var cpmVal = document.getElementById('metric-cpm-val');
+      var cpmSub = document.getElementById('metric-cpm-sub');
+      var adpctVal = document.getElementById('metric-adpct-val');
+      var adpctSub = document.getElementById('metric-adpct-sub');
+      if (cpmVal) cpmVal.textContent = data.avg_cpm > 0 ? data.avg_cpm + ' ₽' : 'Нет данных';
+      if (cpmVal) cpmVal.style.color = data.avg_cpm > 0 ? cpmColors[data.cpm_status] : '#555';
+      if (cpmSub) cpmSub.textContent = data.avg_cpm > 0 ? data.cpm_label : 'MPStats не предоставляет';
+      if (adpctVal) adpctVal.textContent = data.ad_pct + '%';
+      if (adpctVal) adpctVal.style.color = cpmColors[data.ad_pct_status];
+      if (adpctSub) adpctSub.textContent = data.ad_pct < 30 ? 'низкая конкуренция' : data.ad_pct < 60 ? 'умеренная' : 'высокая';
     }
 
     if (data.warehouse_stats) {
@@ -1228,6 +1270,18 @@ async function loadCharts(name) {
       window._chartData.cpm_status = data.cpm_status;
       window._chartData.ad_verdict = data.ad_verdict;
       window._chartData.top_ad_sellers = data.top_ad_sellers;
+      // Обновляем компактные метрики
+      var cpmColors = {green:'#4ade80', yellow:'#fbbf24', red:'#ef4444'};
+      var cpmVal = document.getElementById('metric-cpm-val');
+      var cpmSub = document.getElementById('metric-cpm-sub');
+      var adpctVal = document.getElementById('metric-adpct-val');
+      var adpctSub = document.getElementById('metric-adpct-sub');
+      if (cpmVal) cpmVal.textContent = data.avg_cpm > 0 ? data.avg_cpm + ' ₽' : 'Нет данных';
+      if (cpmVal) cpmVal.style.color = data.avg_cpm > 0 ? cpmColors[data.cpm_status] : '#555';
+      if (cpmSub) cpmSub.textContent = data.avg_cpm > 0 ? data.cpm_label : 'MPStats не предоставляет';
+      if (adpctVal) adpctVal.textContent = data.ad_pct + '%';
+      if (adpctVal) adpctVal.style.color = cpmColors[data.ad_pct_status];
+      if (adpctSub) adpctSub.textContent = data.ad_pct < 30 ? 'низкая конкуренция' : data.ad_pct < 60 ? 'умеренная' : 'высокая';
     }
 
     if (document.getElementById('adContent') && data.avg_cpm !== undefined) {
@@ -1734,6 +1788,11 @@ function isSeasonal(name) {
 function renderResult(d) {
   window.lastResult = d;
   window.currentNiche = d;
+  // Скрываем блоки агентов при новой нише
+  var ab = document.getElementById('adBlock');
+  if (ab) ab.style.display = 'none';
+  var wb = document.getElementById('warehouseBlock');
+  if (wb) wb.style.display = 'none';
   const verdictMap = {BUY: 'Рекомендуем входить', TEST: 'Тестовая закупка', SKIP: 'Не рекомендуем'};
   const insights = d.insights.map((t,i) => `<div class="insight-item"><div class="insight-num">${i+1}</div><div class="insight-text">${t}</div></div>`).join('');
   const hyps = d.hypotheses.map(t => `<div class="hyp-item">${t}</div>`).join('');
@@ -1750,12 +1809,15 @@ function renderResult(d) {
 
     <!-- ЗОНА 1: Метрики -->
     <div class="metrics-grid">
-      <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-value">${fmtCurrency(d.revenue_annual || d.revenue / 2)}</div><div class="metric-sub">за 12 мес</div></div>
-      <div class="metric-card"><div class="metric-label">Заказов в месяц</div><div class="metric-value">${d.orders.toLocaleString('ru')}</div><div class="metric-sub">${(d.orders/30).toFixed(0)} в день</div></div>
-      <div class="metric-card"><div class="metric-label">Продавцов</div><div class="metric-value">${d.sellers.toLocaleString('ru')}</div><div class="metric-sub">${d.sellers_with_sales} с продажами</div></div>
-      <div class="metric-card"><div class="metric-label">Выкуп</div><div class="metric-value">${(d.buyout_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.buyout_pct >= 0.8 ? 'отличный' : d.buyout_pct >= 0.6 ? 'хороший' : 'низкий'}</div></div>
-      <div class="metric-card"><div class="metric-label">Оборачиваемость (реальная)</div><div class="metric-value">${(() => { const real = d.buyout_pct > 0 ? Math.round(d.turnover / d.buyout_pct) : Math.round(d.turnover); return real > 365 ? "365+" : real; })()} дн</div><div class="metric-sub">${(() => { const real = d.buyout_pct > 0 ? Math.round(d.turnover / d.buyout_pct) : Math.round(d.turnover); return real <= 45 ? '<span class="turn-fast">🟢 быстро</span>' : real <= 90 ? '<span class="turn-seasonal">🟡 умеренно</span>' : '<span class="turn-slow">🔴 медленно</span>'; })()} <span style="font-size:10px;color:#444;">MPStats: ${Math.round(d.turnover)} дн</span></div></div>
-      <div class="metric-card"><div class="metric-label">Маржинальность</div><div class="metric-value">${(d.profit_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.profit_pct >= 0.35 ? 'высокая' : d.profit_pct >= 0.2 ? 'средняя' : 'низкая'} <span style="font-size:10px;color:#444;">до себест.</span></div></div>
+      <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-tooltip">Суммарная выручка всех продавцов в нише за 12 месяцев. Показывает размер рынка.</div><div class="metric-value">${fmtCurrency(d.revenue_annual || d.revenue / 2)}</div><div class="metric-sub">за 12 мес</div></div>
+      <div class="metric-card"><div class="metric-label">Заказов в месяц</div><div class="metric-tooltip">Среднемесячное количество заказов в нише. Чем больше — тем активнее спрос.</div><div class="metric-value">${d.orders.toLocaleString('ru')}</div><div class="metric-sub">${(d.orders/30).toFixed(0)} в день</div></div>
+      <div class="metric-card"><div class="metric-label">Продавцов</div><div class="metric-tooltip">Общее число продавцов и тех кто реально продаёт. Низкий % активных = высокая конкуренция среди немногих.</div><div class="metric-value">${d.sellers.toLocaleString('ru')}</div><div class="metric-sub">${d.sellers_with_sales} с продажами</div></div>
+      <div class="metric-card"><div class="metric-label">Выкуп</div><div class="metric-tooltip">Процент заказов которые покупатель не вернул. Низкий выкуп = высокие затраты на логистику возвратов.</div><div class="metric-value">${(d.buyout_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.buyout_pct >= 0.8 ? 'отличный' : d.buyout_pct >= 0.6 ? 'хороший' : 'низкий'}</div></div>
+      <div class="metric-card"><div class="metric-label">Оборачиваемость (реальная)</div><div class="metric-tooltip">Среднее время от поставки до продажи с учётом реального выкупа. Чем меньше — тем быстрее оборот капитала и меньше замороженных средств.</div><div class="metric-value">${(() => { const real = d.buyout_pct > 0 ? Math.round(d.turnover / d.buyout_pct) : Math.round(d.turnover); return real > 365 ? "365+" : real; })()} дн</div><div class="metric-sub">${(() => { const real = d.buyout_pct > 0 ? Math.round(d.turnover / d.buyout_pct) : Math.round(d.turnover); return real <= 45 ? '<span class="turn-fast">🟢 быстро</span>' : real <= 90 ? '<span class="turn-seasonal">🟡 умеренно</span>' : '<span class="turn-slow">🔴 медленно</span>'; })()} <span style="font-size:10px;color:#444;">MPStats: ${Math.round(d.turnover)} дн</span></div></div>
+      <div class="metric-card"><div class="metric-label">Маржинальность</div><div class="metric-tooltip">Доля прибыли после вычета комиссии WB и логистики, но ДО себестоимости товара.</div><div class="metric-value">${(d.profit_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.profit_pct >= 0.35 ? 'высокая' : d.profit_pct >= 0.2 ? 'средняя' : 'низкая'} <span style="font-size:10px;color:#444;">до себест.</span></div></div>
+      <div class="metric-card" id="metric-cpm"><div class="metric-label">Средний CPM</div><div class="metric-tooltip">Стоимость 1000 показов рекламы в нише. Чем ниже — тем дешевле реклама.</div><div class="metric-value" id="metric-cpm-val">—</div><div class="metric-sub" id="metric-cpm-sub">загружаем...</div></div>
+      <div class="metric-card" id="metric-adpct"><div class="metric-label">Товаров с рекламой</div><div class="metric-tooltip">Доля товаров которые продвигаются платной рекламой. Высокий % = высокая рекламная конкуренция.</div><div class="metric-value" id="metric-adpct-val">—</div><div class="metric-sub" id="metric-adpct-sub">загружаем...</div></div>
+      <div class="metric-card"><div class="metric-label">Упущенная выручка</div><div class="metric-tooltip">Выручка которую ниша теряет из-за дефицита товаров. Высокий % = возможность войти и занять долю рынка.</div><div class="metric-value" style="color:${(d.lost_revenue_pct||0) > 0.3 ? '#ef4444' : (d.lost_revenue_pct||0) > 0.15 ? '#fbbf24' : '#4ade80'};">${d.lost_revenue_pct !== undefined ? (d.lost_revenue_pct*100).toFixed(0) + '%' : '—'}</div><div class="metric-sub">${(d.lost_revenue_pct||0) > 0.3 ? 'высокий потенциал' : (d.lost_revenue_pct||0) > 0.15 ? 'умеренный' : 'низкий'}</div></div>
     </div>
 
     <!-- ЗОНА 3: Главный широкий график -->
@@ -1823,7 +1885,7 @@ function renderResult(d) {
     </div>
 
     <!-- ЗОНА 4д: Реклама WB -->
-    <div class="chart-card" id="adBlock" style="margin-bottom:16px;">
+    <div class="chart-card" id="adBlock" style="margin-bottom:16px;display:none;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div class="chart-title" style="margin:0;">📢 Анализ рекламы WB</div>
         <button id="adStrategyBtn" onclick="runAdAnalysis()" style="background:transparent;color:#6c63ff;border:1px solid #6c63ff44;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;opacity:0.7;">🎯 стратегия</button>
@@ -1840,7 +1902,7 @@ function renderResult(d) {
     </div>
 
     <!-- ЗОНА 4ж: Агент географии складов -->
-    <div class="chart-card" id="warehouseBlock" style="margin-bottom:16px;">
+    <div class="chart-card" id="warehouseBlock" style="margin-bottom:16px;display:none;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div class="chart-title" style="margin:0;">🏭 Стратегия поставок</div>
         <button id="warehouseBtn" onclick="runWarehouseAnalysis()" style="background:transparent;color:#38bdf8;border:1px solid #38bdf844;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;opacity:0.7;">📦 анализ</button>
@@ -2211,7 +2273,7 @@ async function runWarehouseAnalysis() {
   btn.disabled = true;
   btn.textContent = '⏳ Анализируем...';
   btn.style.opacity = '0.6';
-  container.innerHTML = '<div style="background:#0f0f13;border-radius:12px;padding:20px;text-align:center;color:#555;"><div style="font-size:24px;margin-bottom:8px;">🤖</div><div style="font-size:13px;">Claude анализирует стратегию поставок...</div></div>';
+  var wb = document.getElementById('warehouseBlock'); if (wb) { wb.style.display = 'block'; wb.scrollIntoView({behavior:'smooth'}); }  container.innerHTML = '<div style="background:#0f0f13;border-radius:12px;padding:20px;text-align:center;color:#555;"><div style="font-size:24px;margin-bottom:8px;">🤖</div><div style="font-size:13px;">Claude анализирует стратегию поставок...</div></div>';
   try {
     const d = window.currentNiche;
     const w = window._warehouseStats;
@@ -2306,7 +2368,7 @@ async function runAdAnalysis() {
   btn.disabled = true;
   btn.textContent = '⏳ Анализируем...';
   btn.style.opacity = '0.6';
-  container.innerHTML = '<div style="background:#0f0f13;border-radius:12px;padding:20px;text-align:center;color:#555;"><div style="font-size:24px;margin-bottom:8px;">🤖</div><div style="font-size:13px;">Claude анализирует рекламную нишу...</div><div style="font-size:11px;margin-top:6px;color:#444;">Обычно занимает 15-20 секунд</div></div>';
+  var ab = document.getElementById('adBlock'); if (ab) { ab.style.display = 'block'; ab.scrollIntoView({behavior:'smooth'}); }  container.innerHTML = '<div style="background:#0f0f13;border-radius:12px;padding:20px;text-align:center;color:#555;"><div style="font-size:24px;margin-bottom:8px;">🤖</div><div style="font-size:13px;">Claude анализирует рекламную нишу...</div><div style="font-size:11px;margin-top:6px;color:#444;">Обычно занимает 15-20 секунд</div></div>';
   try {
     const d = window.currentNiche;
     const cd = window._chartData || {};

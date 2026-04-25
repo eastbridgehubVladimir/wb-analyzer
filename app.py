@@ -1234,7 +1234,7 @@ async function loadCharts(name) {
       const cpmColors = { green: '#4ade80', yellow: '#fbbf24', red: '#ef4444' };
       const cpmEmoji = { green: '🟢', yellow: '🟡', red: '🔴' };
       let adHtml = `
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
           <div style="background:#0f0f13;border-radius:8px;padding:12px;">
             <div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">СРЕДНИЙ CPM</div>
             <div style="font-size:22px;font-weight:700;color:#fff;">${data.avg_cpm > 0 ? data.avg_cpm + ' ₽' : 'Нет данных'}</div>
@@ -1248,10 +1248,6 @@ async function loadCharts(name) {
           <div style="background:#0f0f13;border-radius:8px;padding:12px;">
             <div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">РЕКЛАМНАЯ НАГРУЗКА</div>
             <div style="font-size:14px;font-weight:700;color:${data.ad_verdict_color};margin-top:8px;">${data.ad_verdict}</div>
-          </div>
-          <div style="background:#0f0f13;border-radius:8px;padding:12px;">
-            <div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">ТОП РЕКЛАМОДАТЕЛИ</div>
-            ${data.top_ad_sellers.map(s => `<div style="font-size:11px;color:#aaa;margin-top:3px;">• ${s.name}</div>`).join('')}
           </div>
         </div>`;
       document.getElementById('adContent').innerHTML = adHtml;

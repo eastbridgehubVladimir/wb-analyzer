@@ -583,7 +583,7 @@ function showWatchlist(){
     var sn=n.name.includes(' / ')?n.name.split(' / ').slice(1).join(' / '):n.name;
     html+='<div style="background:#1a1a24;border:1px solid #6c63ff44;border-radius:12px;padding:16px;">';
     html+='<div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:8px;">'+sn+'</div>';
-    html+='<div style="font-size:13px;color:#555;margin-bottom:12px;">'+fmt(n.revenue)+'/мес</div>';
+    html+='<div style="font-size:13px;color:#555;margin-bottom:12px;">'+fmt(n.revenue/2)+'/год</div>';
     html+='<div style="display:flex;gap:8px;">';
     html+='<button id="wl-open-'+i+'" style="flex:1;background:#6c63ff22;border:1px solid #6c63ff44;border-radius:6px;color:#a78bfa;padding:6px;cursor:pointer;font-size:12px;">Открыть</button>';
     html+='<button id="wl-del-'+i+'" style="background:#ef444422;border:1px solid #ef444444;border-radius:6px;color:#ef4444;padding:6px 10px;cursor:pointer;font-size:12px;">✕</button>';
@@ -917,7 +917,7 @@ async function showPortfolio() {
             </div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div style="font-size:12px;color:#555;">${fmt(n.revenue)}/мес</div>
+            <div style="font-size:12px;color:#555;">${fmt(n.revenue/2)}/год</div>
             <div style="font-size:18px;font-weight:700;color:${n.score>=65?'#22c55e':n.score>=40?'#eab308':'#ef4444'}">${n.score}</div>
           </div>
         </div>
@@ -941,7 +941,7 @@ async function showTopNiches() {
         <div onclick="setQuery('${n.full}')" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:12px;padding:16px;cursor:pointer;" onmouseover="this.style.borderColor='#6c63ff'" onmouseout="this.style.borderColor='#2a2a3a'">
           <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:8px">${n.full}</div>
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="font-size:13px;color:#555">${fmt(n.revenue)}/мес</div>
+            <div style="font-size:13px;color:#555">${fmt(n.revenue/2)}/год</div>
             <div style="font-size:18px;font-weight:700;color:${n.score>=65?'#22c55e':n.score>=40?'#eab308':'#ef4444'}">${n.score}</div>
           </div>
         </div>
@@ -1009,10 +1009,10 @@ function filterCatalog() {
       <div>
         <div style="font-size:15px;color:#fff;font-weight:500;margin-bottom:6px;">${activeCatFilter !== 'Все' && n.name.includes(' / ') ? n.name.split(' / ').slice(1).join(' / ') : n.name}</div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
-          <span style="font-size:12px;color:#555;">${fmt(n.revenue)}/мес</span>
+          <span style="font-size:12px;color:#555;">${fmt(n.revenue/2)}/год</span>
           <span style="font-size:12px;color:#555;">${n.sellers} продавцов</span>
           <span style="font-size:12px;color:#555;">выкуп ${Math.round(n.buyout_pct*100)}%</span>
-          <span style="font-size:12px;color:#555;">прибыль ${Math.round(n.profit_pct*100)}%</span>
+          <span style="font-size:12px;color:#555;">маржа ${Math.round(n.profit_pct*100)}% до себест.</span>
         </div>
       </div>
       <div style="text-align:right;">
@@ -1809,7 +1809,7 @@ function renderResult(d) {
 
     <!-- ЗОНА 1: Метрики -->
     <div class="metrics-grid">
-      <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-tooltip">Суммарная выручка всех продавцов в нише за 12 месяцев. Показывает размер рынка.</div><div class="metric-value">${fmtCurrency(d.revenue_annual || d.revenue / 2)}</div><div class="metric-sub">за 12 мес</div></div>
+      <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-tooltip">Оценочная выручка всех продавцов за 12 месяцев (данные за ~2 года из БД, делённые на 2). Показывает размер рынка.</div><div class="metric-value">${fmtCurrency(d.revenue_annual || d.revenue / 2)}</div><div class="metric-sub">за 12 мес</div></div>
       <div class="metric-card"><div class="metric-label">Заказов в месяц</div><div class="metric-tooltip">Среднемесячное количество заказов в нише. Чем больше — тем активнее спрос.</div><div class="metric-value">${d.orders.toLocaleString('ru')}</div><div class="metric-sub">${(d.orders/30).toFixed(0)} в день</div></div>
       <div class="metric-card"><div class="metric-label">Продавцов</div><div class="metric-tooltip">Общее число продавцов и тех кто реально продаёт. Низкий % активных = высокая конкуренция среди немногих.</div><div class="metric-value">${d.sellers.toLocaleString('ru')}</div><div class="metric-sub">${d.sellers_with_sales} с продажами</div></div>
       <div class="metric-card"><div class="metric-label">Выкуп</div><div class="metric-tooltip">Процент заказов которые покупатель не вернул. Низкий выкуп = высокие затраты на логистику возвратов.</div><div class="metric-value">${(d.buyout_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.buyout_pct >= 0.8 ? 'отличный' : d.buyout_pct >= 0.6 ? 'хороший' : 'низкий'}</div></div>
@@ -2800,7 +2800,7 @@ class Handler(BaseHTTPRequestHandler):
 Курс к рублю: {rate}
 
 ДАННЫЕ НИШИ:
-- Выручка: {revenue:,.0f} ₽/мес
+- Выручка за период (~2 года): {revenue:,.0f} ₽ (~{revenue/2:,.0f} ₽/год)
 - Заказов: {int(revenue/avg_price) if avg_price > 0 else 0}/мес
 - Продавцов всего: {sellers}
 - Продавцов с продажами: {sellers_with_sales} ({round(sellers_with_sales/sellers*100) if sellers > 0 else 0}%)

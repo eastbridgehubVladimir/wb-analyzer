@@ -876,54 +876,257 @@ function refreshPortfolio() {
   portfolioOffset += 15;
   showPortfolio();
 }
+// ===== СИСТЕМА ПОДБОРА ПОРТФЕЛЯ =====
+var portfolioParams = null;
+
 async function showPortfolio() {
   hideAll();
   setActiveMenu(event.target);
   const div = document.getElementById('portfolio');
   div.style.display = 'block';
-  div.innerHTML = '<div style="color:#555;padding:20px">Загружаем рекомендации...</div>';
-  const r = await fetch('/portfolio?offset=' + portfolioOffset);
-  const data = await r.json();
-  if (data.error) { div.innerHTML = '<div style="color:#f00;padding:20px">' + data.error + '</div>'; return; }
+  renderPortfolioQuestionnaire(div);
+}
+
+function renderPortfolioQuestionnaire(div) {
   div.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-      <div>
-        <div style="font-size:20px;font-weight:700;color:#fff;">🎯 Рекомендации для закупки</div>
-        <div style="font-size:13px;color:#555;margin-top:4px;">Ниши с высокой вероятностью быстрой распродажи</div>
+    <div style="max-width:800px;margin:0 auto;">
+      <div style="margin-bottom:32px;">
+        <div style="font-size:22px;font-weight:700;color:#fff;margin-bottom:8px;">🎯 Подбор товарного портфеля</div>
+        <div style="font-size:14px;color:#555;">Ответьте на 5 вопросов — система подберёт оптимальные ниши для вашего бизнеса</div>
       </div>
-      <button onclick="refreshPortfolio()" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:8px 16px;color:#888;cursor:pointer;font-size:13px;">🔄 Показать другие</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
-      ${data.map((n,i) => `
-        <div onclick="setQuery('${n.full}')" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:12px;padding:16px;cursor:pointer;position:relative;" onmouseover="this.style.borderColor='#6c63ff'" onmouseout="this.style.borderColor='#2a2a3a'">
-          <div style="position:absolute;top:12px;right:12px;background:#6c63ff22;color:#a78bfa;border-radius:8px;padding:2px 8px;font-size:11px;font-weight:700;">#${i+1}</div>
-          <div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:10px;padding-right:32px;">${n.full}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
-            <div style="background:#0f0f13;border-radius:6px;padding:6px 8px;">
-              <div style="font-size:10px;color:#555;">Выкуп</div>
-              <div style="font-size:13px;font-weight:600;color:#22c55e;">${Math.round(n.buyout_pct*100)}%</div>
-            </div>
-            <div style="background:#0f0f13;border-radius:6px;padding:6px 8px;">
-              <div style="font-size:10px;color:#555;">Оборот</div>
-              <div style="font-size:13px;font-weight:600;color:#38bdf8;">${Math.round(n.turnover)} дн</div>
-            </div>
-            <div style="background:#0f0f13;border-radius:6px;padding:6px 8px;">
-              <div style="font-size:10px;color:#555;">Маржа</div>
-              <div style="font-size:13px;font-weight:600;color:#a78bfa;">${Math.round(n.profit_pct*100)}%</div>
-            </div>
-            <div style="background:#0f0f13;border-radius:6px;padding:6px 8px;">
-              <div style="font-size:10px;color:#555;">Цена</div>
-              <div style="font-size:13px;font-weight:600;color:#fff;">${Math.round(n.avg_price).toLocaleString('ru')}₽</div>
-            </div>
+
+      <!-- Вопрос 1: Бюджет на один SKU -->
+      <div style="background:#1a1a24;border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">ВОПРОС 1 из 5</div>
+        <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Бюджет на пробную партию одного SKU</div>
+        <div style="font-size:12px;color:#555;margin-bottom:16px;">Включает закупку + доставку карго из Китая</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="q1-options">
+          <div onclick="selectOption('q1','low')" id="q1-low" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:15px;font-weight:700;color:#4ade80;">до $500</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">~50 тыс ₽ · товары массового спроса</div>
           </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div style="font-size:12px;color:#555;">${fmt(n.revenue/2)}/год</div>
-            <div style="font-size:18px;font-weight:700;color:${n.score>=65?'#22c55e':n.score>=40?'#eab308':'#ef4444'}">${n.score}</div>
+          <div onclick="selectOption('q1','mid')" id="q1-mid" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:15px;font-weight:700;color:#38bdf8;">$500 — $2000</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">~50-180 тыс ₽ · средний сегмент</div>
+          </div>
+          <div onclick="selectOption('q1','high')" id="q1-high" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:15px;font-weight:700;color:#f59e0b;">$2000 — $5000</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">~180-450 тыс ₽ · премиум сегмент</div>
+          </div>
+          <div onclick="selectOption('q1','premium')" id="q1-premium" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:15px;font-weight:700;color:#a78bfa;">свыше $5000</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">450+ тыс ₽ · высокий чек</div>
           </div>
         </div>
-      `).join('')}
+      </div>
+
+      <!-- Вопрос 2: Цикличность -->
+      <div style="background:#1a1a24;border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">ВОПРОС 2 из 5</div>
+        <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Желаемая скорость оборота капитала</div>
+        <div style="font-size:12px;color:#555;margin-bottom:16px;">Доставка из Китая ~45 дней. Товар должен продаться до следующей поставки.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;" id="q2-options">
+          <div onclick="selectOption('q2','fast')" id="q2-fast" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:14px;font-weight:700;color:#4ade80;">8-12 циклов/год</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">Оборот каждые 30-45 дней</div>
+          </div>
+          <div onclick="selectOption('q2','medium')" id="q2-medium" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:14px;font-weight:700;color:#fbbf24;">4-6 циклов/год</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">Оборот каждые 60-90 дней</div>
+          </div>
+          <div onclick="selectOption('q2','slow')" id="q2-slow" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:14px;font-weight:700;color:#f59e0b;">2-4 цикла/год</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">Оборот каждые 90-180 дней</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вопрос 3: Сезонность -->
+      <div style="background:#1a1a24;border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">ВОПРОС 3 из 5</div>
+        <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Сезонные товары</div>
+        <div style="font-size:12px;color:#555;margin-bottom:16px;">Сезонные товары дают высокую маржу но требуют точного планирования поставок</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="q3-options">
+          <div onclick="selectOption('q3','no')" id="q3-no" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:14px;font-weight:700;color:#4ade80;">Только круглогодичные</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">Стабильный спрос весь год, меньше рисков</div>
+          </div>
+          <div onclick="selectOption('q3','yes')" id="q3-yes" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:14px;font-weight:700;color:#fbbf24;">Включая сезонные</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">Готовы планировать заранее, выше маржа</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вопрос 4: Конкуренция -->
+      <div style="background:#1a1a24;border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">ВОПРОС 4 из 5</div>
+        <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Уровень конкуренции</div>
+        <div style="font-size:12px;color:#555;margin-bottom:16px;">Свободные ниши легче войти, конкурентные — выше оборот</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;" id="q4-options">
+          <div onclick="selectOption('q4','low')" id="q4-low" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:13px;font-weight:700;color:#4ade80;">Свободные ниши</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">до 50 активных продавцов</div>
+          </div>
+          <div onclick="selectOption('q4','mid')" id="q4-mid" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:13px;font-weight:700;color:#fbbf24;">Умеренная</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">50-300 активных продавцов</div>
+          </div>
+          <div onclick="selectOption('q4','high')" id="q4-high" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:13px;font-weight:700;color:#f59e0b;">Готовы конкурировать</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">300+ продавцов, высокий спрос</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вопрос 5: Исключения -->
+      <div style="background:#1a1a24;border-radius:12px;padding:20px;margin-bottom:24px;">
+        <div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">ВОПРОС 5 из 5</div>
+        <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Исключить категории</div>
+        <div style="font-size:12px;color:#555;margin-bottom:16px;">Выберите категории которые не рассматриваете (можно несколько)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;" id="q5-options">
+          ${['Еда и напитки','Животные','Медицина','Крупногабарит','Ювелирка','Автотовары','Детское питание'].map(cat =>
+            `<div onclick="toggleExclude(this,'${cat}')" data-cat="${cat}" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:12px;color:#555;">${cat}</div>`
+          ).join('')}
+        </div>
+      </div>
+
+      <!-- Кнопка -->
+      <button onclick="runPortfolioAnalysis()" style="width:100%;background:linear-gradient(135deg,#6c63ff,#8b5cf6);color:#fff;border:none;border-radius:10px;padding:16px;font-size:15px;font-weight:700;cursor:pointer;">
+        🚀 Подобрать портфель
+      </button>
+
+      <div id="portfolio-result" style="margin-top:24px;"></div>
     </div>
   `;
+}
+
+function selectOption(question, value) {
+  // Убираем выделение со всех вариантов вопроса
+  document.querySelectorAll('#' + question + '-options .q-option').forEach(el => {
+    el.style.borderColor = '#2a2a3a';
+    el.style.background = '#0f0f13';
+  });
+  // Выделяем выбранный
+  var selected = document.getElementById(question + '-' + value);
+  if (selected) {
+    selected.style.borderColor = '#6c63ff';
+    selected.style.background = '#6c63ff11';
+  }
+  // Сохраняем ответ
+  if (!window.portfolioAnswers) window.portfolioAnswers = {};
+  window.portfolioAnswers[question] = value;
+}
+
+function toggleExclude(el, cat) {
+  if (!window.portfolioAnswers) window.portfolioAnswers = {};
+  if (!window.portfolioAnswers.q5) window.portfolioAnswers.q5 = [];
+  var idx = window.portfolioAnswers.q5.indexOf(cat);
+  if (idx >= 0) {
+    window.portfolioAnswers.q5.splice(idx, 1);
+    el.style.borderColor = '#2a2a3a';
+    el.style.color = '#555';
+    el.style.background = '#0f0f13';
+  } else {
+    window.portfolioAnswers.q5.push(cat);
+    el.style.borderColor = '#ef4444';
+    el.style.color = '#ef4444';
+    el.style.background = '#ef444411';
+  }
+}
+
+async function runPortfolioAnalysis() {
+  var answers = window.portfolioAnswers || {};
+  // Проверяем что ответили на обязательные вопросы
+  if (!answers.q1 || !answers.q2 || !answers.q3 || !answers.q4) {
+    alert('Пожалуйста ответьте на все вопросы 1-4');
+    return;
+  }
+
+  var resultDiv = document.getElementById('portfolio-result');
+  resultDiv.innerHTML = '<div style="background:#0f0f13;border-radius:12px;padding:30px;text-align:center;"><div style="font-size:32px;margin-bottom:12px;">🤖</div><div style="font-size:14px;color:#aaa;">Claude анализирует 7000+ ниш и подбирает портфель...</div><div style="font-size:12px;color:#555;margin-top:8px;">Обычно занимает 20-30 секунд</div></div>';
+
+  // Scroll to result
+  resultDiv.scrollIntoView({behavior:'smooth'});
+
+  try {
+    var resp = await fetch('/portfolio-ai', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({answers: answers, currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency]})
+    });
+    var data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    renderPortfolioResult(data, symbols[currentCurrency], rates[currentCurrency]);
+  } catch(e) {
+    resultDiv.innerHTML = '<div style="color:#ef4444;padding:16px;background:#1a0a0a;border-radius:8px;">❌ ' + e.message + '</div>';
+  }
+}
+
+function renderPortfolioResult(data, sym, rate) {
+  var div = document.getElementById('portfolio-result');
+  var fmtM = function(rub) {
+    if (!rub) return '—';
+    var v = Math.round(rub * rate);
+    if (v >= 1000000) return (v/1000000).toFixed(1) + ' млн ' + sym;
+    if (v >= 1000) return (v/1000).toFixed(0) + ' тыс ' + sym;
+    return v + ' ' + sym;
+  };
+
+  var niches = data.niches || [];
+  var summary = data.summary || {};
+
+  var html = '<div style="border-top:1px solid #1a1a2e;padding-top:24px;">';
+
+  // Заголовок с итогами
+  html += '<div style="background:linear-gradient(135deg,#1a1a2e,#0f0f1a);border-radius:12px;padding:20px;margin-bottom:24px;border:1px solid #6c63ff33;">' +
+    '<div style="font-size:10px;color:#6c63ff;letter-spacing:1px;margin-bottom:8px;">РЕКОМЕНДАЦИЯ AI</div>' +
+    '<div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:10px;">' + (summary.title||'Подобранный портфель') + '</div>' +
+    '<div style="font-size:13px;color:#aaa;line-height:1.6;margin-bottom:16px;">' + (summary.description||'') + '</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">' +
+      '<div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">НИШ В ПОРТФЕЛЕ</div><div style="font-size:18px;font-weight:700;color:#a78bfa;">' + niches.length + '</div></div>' +
+      '<div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">БЮДЖЕТ ВХОДА</div><div style="font-size:16px;font-weight:700;color:#38bdf8;">' + fmtM(summary.total_budget_rub) + '</div></div>' +
+      '<div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ПОТЕНЦИАЛ/МЕС</div><div style="font-size:16px;font-weight:700;color:#4ade80;">' + fmtM(summary.monthly_potential_rub) + '</div></div>' +
+      '<div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ОКУПАЕМОСТЬ</div><div style="font-size:16px;font-weight:700;color:#fbbf24;">' + (summary.payback_months||'—') + ' мес</div></div>' +
+    '</div>' +
+  '</div>';
+
+  // Карточки ниш
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">';
+  niches.forEach(function(n, i) {
+    var priorityColor = n.priority === 'high' ? '#4ade80' : n.priority === 'medium' ? '#fbbf24' : '#38bdf8';
+    var priorityLabel = n.priority === 'high' ? '🔥 Высокий приоритет' : n.priority === 'medium' ? '⭐ Средний приоритет' : '🌱 На перспективу';
+    html += '<div style="background:#1a1a24;border-radius:12px;padding:16px;border-left:3px solid ' + priorityColor + ';">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">' +
+        '<div>' +
+          '<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;">' + (n.name||'') + '</div>' +
+          '<div style="font-size:11px;color:' + priorityColor + ';">' + priorityLabel + '</div>' +
+        '</div>' +
+        '<button onclick="openNicheFromPortfolio(this)" data-full="' + (n.full||n.name||'') + '" style="background:#6c63ff22;border:1px solid #6c63ff44;border-radius:6px;padding:4px 10px;color:#a78bfa;font-size:11px;cursor:pointer;">Открыть</button>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">' +
+        '<div style="background:#0f0f13;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:2px;">ОБОРОТ</div><div style="font-size:13px;font-weight:700;color:#38bdf8;">' + (n.turnover_days||'—') + ' дн</div></div>' +
+        '<div style="background:#0f0f13;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:2px;">МАРЖА</div><div style="font-size:13px;font-weight:700;color:#a78bfa;">' + (n.margin_pct||'—') + '%</div></div>' +
+        '<div style="background:#0f0f13;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:2px;">ВЫКУП</div><div style="font-size:13px;font-weight:700;color:#4ade80;">' + (n.buyout_pct||'—') + '%</div></div>' +
+      '</div>' +
+      '<div style="background:#0f0f13;border-radius:8px;padding:10px;margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:11px;"><span style="color:#555;">Вход (закупка+доставка)</span><span style="color:#fff;">' + fmtM(n.entry_cost_rub) + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:11px;"><span style="color:#555;">Реклама старт</span><span style="color:#fff;">' + fmtM(n.ad_budget_rub) + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid #2a2a3a;padding-top:6px;"><span style="color:#aaa;">Потенциал/цикл</span><span style="color:#4ade80;font-weight:700;">' + fmtM(n.profit_per_cycle_rub) + '</span></div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:#555;line-height:1.5;">' + (n.reason||'') + '</div>' +
+      (n.seasonal_warning ? '<div style="margin-top:8px;background:#fbbf2422;border-radius:6px;padding:8px;font-size:11px;color:#fbbf24;">&#127810; ' + n.seasonal_warning + '</div>' : '') +
+    '</div>';
+  });
+  html += '</div>';
+
+  // Кнопка сохранить портфель
+  html += '<div style="margin-top:20px;display:flex;gap:12px;">' +
+  '<button onclick="resetPortfolioForm()" style="flex:1;background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:12px;color:#888;cursor:pointer;font-size:13px;">&#128260; Изменить параметры</button>' +
+  '</div>';
+
+  html += '</div>';
+  div.innerHTML = html;
 }
 
 async function showTopNiches() {
@@ -1967,6 +2170,12 @@ function toggleStickyWL(btn) {
   btn.style.color = inWl ? '#a78bfa' : '#888';
 }
 
+function resetPortfolioForm() {
+  window.portfolioAnswers = {};
+  var div = document.getElementById('portfolio');
+  if (div) renderPortfolioQuestionnaire(div);
+}
+
 function clearMonitor() { document.getElementById('adMonitorContent').innerHTML=''; }
 
 // ===== АГЕНТ ЮНИТ-ЭКОНОМИКИ =====
@@ -2706,6 +2915,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
 
 
+
         elif self.path.startswith('/portfolio'):
             try:
                 from urllib.parse import parse_qs, urlparse
@@ -3342,7 +3552,101 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
 
     def do_POST(self):
-        if self.path == '/ad-analysis':
+        if self.path == '/portfolio-ai':
+            try:
+                import anthropic
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                answers = body.get('answers', {})
+                q1 = answers.get('q1', 'mid')
+                q2 = answers.get('q2', 'medium')
+                q3 = answers.get('q3', 'no')
+                q4 = answers.get('q4', 'mid')
+                q5 = answers.get('q5', [])
+                usd_rate = 90
+                budget_map = {'low':(0,500),'mid':(500,2000),'high':(2000,5000),'premium':(5000,99999)}
+                cycle_map = {'fast':(0,45),'medium':(45,90),'slow':(90,180)}
+                comp_map = {'low':(0,50),'mid':(50,300),'high':(300,9999)}
+                budget_range = budget_map.get(q1,(500,2000))
+                cycle_range = cycle_map.get(q2,(45,90))
+                comp_range = comp_map.get(q4,(50,300))
+                price_min = budget_range[0] * usd_rate / 50 / 0.5
+                price_max = budget_range[1] * usd_rate / 50 / 0.3
+                exclude_map = {
+                    'Еда и напитки': ['еда','напиток','чай','кофе','шоколад','конфет'],
+                    'Животные': ['животн','собак','кошк'],
+                    'Медицина': ['медицин','лекарств','витамин'],
+                    'Крупногабарит': ['мебель','диван','кровать','шкаф','матрас'],
+                    'Ювелирка': ['золот','серебр','ювелир'],
+                    'Автотовары': ['автомобил','шин'],
+                    'Детское питание': ['детское питание'],
+                }
+                exclude_words = []
+                for cat in q5:
+                    if cat in exclude_map:
+                        exclude_words.extend(exclude_map[cat])
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                sql = 'SELECT name, COALESCE(display_name,name), revenue, avg_price, buyout_pct, turnover, profit_pct, sellers_with_sales, commission, lost_revenue_pct FROM niches WHERE revenue IS NOT NULL AND revenue > 5000000 AND avg_price BETWEEN %s AND %s AND turnover BETWEEN %s AND %s AND sellers_with_sales BETWEEN %s AND %s AND buyout_pct > 0.55 AND profit_pct > 0.20 AND path_verified = TRUE'
+                if q3 == 'no':
+                    sql += ' AND turnover <= 90'
+                for w in exclude_words:
+                    sql += ' AND LOWER(name) NOT LIKE %s'
+                sql += ' ORDER BY (buyout_pct*0.3+profit_pct*0.3+(1.0/GREATEST(turnover,1))*100*0.4) DESC LIMIT 50'
+                params = [price_min, price_max, cycle_range[0], cycle_range[1], comp_range[0], comp_range[1]]
+                params += ['%'+w+'%' for w in exclude_words]
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+                if not rows:
+                    cur.execute('SELECT name, COALESCE(display_name,name), revenue, avg_price, buyout_pct, turnover, profit_pct, sellers_with_sales, commission, lost_revenue_pct FROM niches WHERE revenue IS NOT NULL AND revenue > 10000000 AND buyout_pct > 0.6 AND profit_pct > 0.25 AND turnover < 90 AND path_verified = TRUE ORDER BY buyout_pct DESC LIMIT 50')
+                    rows = cur.fetchall()
+                cur.close(); conn.close()
+                niches_data = []
+                for row in rows[:30]:
+                    nm,dn,rev,ap,bp,tv,pp,sw,cm,lrp = row
+                    ap=float(ap or 0); bp=float(bp or 0); tv=float(tv or 30)
+                    pp=float(pp or 0); cm=float(cm or 0.15)
+                    pp_cost=ap*0.35; batch=50
+                    purchase=pp_cost*batch; delivery=batch*0.3*2.5*usd_rate
+                    customs=purchase*0.10; vat=(purchase+customs)*0.20
+                    ms=max(1,int(30/max(tv,1)*batch)); ad=ms*ap*bp*0.15
+                    entry=purchase+delivery+customs+vat+15000
+                    profit_u=(ap-pp_cost-ap*cm-120)*bp; profit_c=profit_u*batch
+                    niches_data.append({'name':dn,'full':nm,'avg_price':round(ap),'turnover':round(tv),'buyout_pct':round(bp*100),'profit_pct':round(pp*100),'entry_cost_rub':round(entry),'ad_budget_rub':round(ad),'profit_cycle_rub':round(profit_c)})
+                lines = []
+                for i,n in enumerate(niches_data):
+                    lines.append(str(i+1)+'. '+n['name']+' | цена '+str(n['avg_price'])+'руб | оборот '+str(n['turnover'])+'дн | выкуп '+str(n['buyout_pct'])+'% | маржа '+str(n['profit_pct'])+'% | вход '+str(n['entry_cost_rub'])+'руб | прибыль '+str(n['profit_cycle_rub'])+'руб')
+                nt = chr(10).join(lines)
+                bl={'low':'до $500','mid':'$500-2000','high':'$2000-5000','premium':'свыше $5000'}
+                cl={'fast':'8-12 циклов/год','medium':'4-6 циклов/год','slow':'2-4 цикла/год'}
+                sez = 'Да' if q3=='yes' else 'Нет'
+                excl = ', '.join(q5) if q5 else 'нет'
+                prompt = 'Ты эксперт WB. Отбери 8-10 ниш для стартового портфеля торговой компании.' + chr(10)
+                prompt += 'ПАРАМЕТРЫ:' + chr(10)
+                prompt += 'Бюджет на 1 SKU: ' + bl.get(q1,q1) + chr(10)
+                prompt += 'Оборот: ' + cl.get(q2,q2) + chr(10)
+                prompt += 'Сезонные товары: ' + sez + chr(10)
+                prompt += 'Конкуренция: ' + q4 + chr(10)
+                prompt += 'Исключены: ' + excl + chr(10)
+                prompt += 'Доставка из Китая: 45 дней карго' + chr(10) + chr(10)
+                prompt += 'КАНДИДАТЫ:' + chr(10) + nt + chr(10) + chr(10)
+                prompt += 'Диверсификация по категориям. Баланс быстрые+маржинальные+стабильные.' + chr(10)
+                prompt += 'Верни ТОЛЬКО валидный JSON без markdown:' + chr(10)
+                prompt += '{"summary":{"title":"название","description":"3-4 предложения","total_budget_rub":0,"monthly_potential_rub":0,"payback_months":0},"niches":[{"name":"название","full":"полное","priority":"high|medium|low","turnover_days":0,"margin_pct":0,"buyout_pct":0,"entry_cost_rub":0,"ad_budget_rub":0,"profit_per_cycle_rub":0,"reason":"2-3 предложения","seasonal_warning":null}]}'
+                client=anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+                msg=client.messages.create(model='claude-sonnet-4-5',max_tokens=3000,messages=[{'role':'user','content':prompt}])
+                raw=msg.content[0].text.strip().replace('```json','').replace('```','').strip()
+                result=json.loads(raw)
+                self.send_response(200)
+                self.send_header('Content-type','application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(result,ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type','application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error':str(e)}).encode('utf-8'))
+        elif self.path == '/ad-analysis':
             try:
                 import anthropic
                 length = int(self.headers.get('Content-Length', 0))

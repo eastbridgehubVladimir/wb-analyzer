@@ -264,9 +264,9 @@ HTML = """<!DOCTYPE html>
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f13; color: #e8e8e8; min-height: 100vh; }
 .header { background: #1a1a24; border-bottom: 1px solid #2a2a3a; padding: 20px 40px; display: flex; align-items: center; gap: 16px; }
 .page-wrap { display: flex; min-height: calc(100vh - 57px); }
-.sidebar { width: 200px; background: #141418; border-right: 1px solid #2a2a3a; padding: 16px; flex-shrink: 0; }
+.sidebar { width: 220px; background: #141418; border-right: 1px solid #2a2a3a; padding: 16px; flex-shrink: 0; }
 .sidebar-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
-.sidebar-item { display: flex; align-items: center; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 15px; color: #888; margin-bottom: 4px; transition: all 0.15s; }
+.sidebar-item { display: flex; align-items: center; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 16px; color: #888; margin-bottom: 4px; transition: all 0.15s; }
 .sidebar-item:hover { background: #1a1a24; color: #ddd; }
 .sidebar-item.active { background: #6c63ff22; color: #6c63ff; }
 .content-area { flex: 1; overflow-y: auto; }
@@ -424,8 +424,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
   <div class="sidebar-item active" onclick="showCatalog()">🔍 Все ниши</div>
   <div class="sidebar-item" onclick="showTopNiches()">⭐ Топ ниши</div>
-  <div class="sidebar-item" onclick="showPortfolio()">🎯 Рекомендации</div>
+  <div class="sidebar-item" onclick="showPortfolio()">🎯 Подбор</div>
   <div class="sidebar-item" onclick="showCalc()">🧮 Калькулятор</div>
+  <div class="sidebar-item" onclick="showPortfolioStub()">📦 Портфель</div>
   <div class="sidebar-item" id="watchlist-menu" onclick="showWatchlist()">📌 В работе <span id="watchlist-count" style="background:#6c63ff33;color:#a78bfa;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;"></span></div>
 </div>
 <div class="content-area">
@@ -443,7 +444,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div id="portfolio" style="display:none;margin-top:24px;"></div>
   <div id="watchlist" style="display:none;margin-top:24px;"></div><div id="catalog" style="display:none;margin-top:24px;">
     <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
-      <input id="cat-search" placeholder="Фильтр по названию..." style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px 14px;color:#fff;font-size:13px;outline:none;flex:1;min-width:200px;" oninput="filterCatalog()"/>
+      <input id="cat-search" placeholder="Фильтр по названию..." style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px 14px;color:#fff;font-size:13px;outline:none;flex:1;min-width:220px;" oninput="filterCatalog()"/>
       <select id="cat-sort" onchange="filterCatalog()" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px 14px;color:#888;font-size:13px;outline:none;">
         <option value="revenue">По выручке</option>
         <option value="orders">По заказам</option>
@@ -889,7 +890,7 @@ async function showPortfolio() {
 
 function renderPortfolioQuestionnaire(div) {
   div.innerHTML = `
-    <div style="max-width:800px;margin:0 auto;">
+    <div style="max-width:1100px;margin:0 auto;">
       <div style="margin-bottom:32px;">
         <div style="font-size:22px;font-weight:700;color:#fff;margin-bottom:8px;">🎯 Подбор товарного портфеля</div>
         <div style="font-size:14px;color:#555;">Ответьте на 5 вопросов — система подберёт оптимальные ниши для вашего бизнеса</div>
@@ -900,22 +901,26 @@ function renderPortfolioQuestionnaire(div) {
         <div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">ВОПРОС 1 из 5</div>
         <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Бюджет на пробную партию одного SKU</div>
         <div style="font-size:12px;color:#555;margin-bottom:16px;">Включает закупку + доставку карго из Китая</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="q1-options">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;" id="q1-options">
+          <div onclick="selectOption('q1','micro')" id="q1-micro" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:15px;font-weight:700;color:#4ade80;">до $200</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">200 шт · $0.5-1/шт · цена до 300₽ · расходники</div>
+          </div>
           <div onclick="selectOption('q1','low')" id="q1-low" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
-            <div style="font-size:15px;font-weight:700;color:#4ade80;">до $500</div>
-            <div style="font-size:11px;color:#555;margin-top:4px;">~50 тыс ₽ · товары массового спроса</div>
+            <div style="font-size:15px;font-weight:700;color:#38bdf8;">$200 — $500</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">150 шт · $1.3-3.3/шт · цена 300-1000₽</div>
           </div>
           <div onclick="selectOption('q1','mid')" id="q1-mid" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
-            <div style="font-size:15px;font-weight:700;color:#38bdf8;">$500 — $2000</div>
-            <div style="font-size:11px;color:#555;margin-top:4px;">~50-180 тыс ₽ · средний сегмент</div>
+            <div style="font-size:15px;font-weight:700;color:#fbbf24;">$500 — $1500</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">100 шт · $5-15/шт · цена 1000-4000₽</div>
           </div>
           <div onclick="selectOption('q1','high')" id="q1-high" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
-            <div style="font-size:15px;font-weight:700;color:#f59e0b;">$2000 — $5000</div>
-            <div style="font-size:11px;color:#555;margin-top:4px;">~180-450 тыс ₽ · премиум сегмент</div>
+            <div style="font-size:15px;font-weight:700;color:#f59e0b;">$1500 — $3000</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">50 шт · $30-60/шт · цена 4000-12000₽</div>
           </div>
           <div onclick="selectOption('q1','premium')" id="q1-premium" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
-            <div style="font-size:15px;font-weight:700;color:#a78bfa;">свыше $5000</div>
-            <div style="font-size:11px;color:#555;margin-top:4px;">450+ тыс ₽ · высокий чек</div>
+            <div style="font-size:15px;font-weight:700;color:#a78bfa;">$3000 — $7000</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">20 шт · $150-350/шт · цена 12000-45000₽</div>
           </div>
         </div>
       </div>
@@ -985,7 +990,7 @@ function renderPortfolioQuestionnaire(div) {
         <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Исключить категории</div>
         <div style="font-size:12px;color:#555;margin-bottom:16px;">Выберите категории которые не рассматриваете (можно несколько)</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;" id="q5-options">
-          ${['Еда и напитки','Животные','Медицина','Крупногабарит','Ювелирка','Автотовары','Детское питание'].map(cat =>
+          ${['Еда и напитки','Животные','Медицина','Крупногабарит (мебель)','Ювелирка','Автотовары','Детское питание','Строительные материалы','Электроника','Спортивный инвентарь','Садовый инвентарь','Музыкальные инструменты','Антиквариат','Пиротехника'].map(cat =>
             `<div onclick="toggleExclude(this,'${cat}')" data-cat="${cat}" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:12px;color:#555;">${cat}</div>`
           ).join('')}
         </div>
@@ -1123,8 +1128,8 @@ function renderPortfolioResult(data, sym, rate) {
   // Кнопка сохранить портфель
   html += '<div style="margin-top:20px;display:flex;gap:12px;">' +
   '<button onclick="resetPortfolioForm()" style="flex:1;background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:12px;color:#888;cursor:pointer;font-size:13px;">&#128260; Изменить параметры</button>' +
+  '<button onclick="runPortfolioAnalysis()" style="flex:1;background:#6c63ff22;border:1px solid #6c63ff44;border-radius:8px;padding:12px;color:#a78bfa;cursor:pointer;font-size:13px;">&#128260; Показать другие варианты</button>' +
   '</div>';
-
   html += '</div>';
   div.innerHTML = html;
 }
@@ -1415,7 +1420,7 @@ async function loadCharts(name) {
       data.top_items.forEach((item, i) => {
         html += `<tr style="border-bottom:1px solid #1a1a2e;cursor:pointer;" onmouseover="this.style.background='#1a1a2e'" onmouseout="this.style.background=''">`; 
         html += `<td style="padding:8px;color:#555;">${i+1}</td>`;
-        html += `<td style="padding:8px;color:#ddd;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.name}</td>`;
+        html += `<td style="padding:8px;color:#ddd;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.name}</td>`;
         html += `<td style="padding:8px;color:#888;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.seller}</td>`;
         html += `<td style="padding:8px;color:#fff;text-align:right;">${fmtCurrency(item.price)}</td>`;
         html += `<td style="padding:8px;color:#38bdf8;text-align:right;">${fmtCurrency(item.revenue * 1000)}</td>`;
@@ -2170,10 +2175,25 @@ function toggleStickyWL(btn) {
   btn.style.color = inWl ? '#a78bfa' : '#888';
 }
 
+function openNicheFromPortfolio(btn) {
+  var full = btn.getAttribute('data-full');
+  if (full) { setQuery(full); analyze(); }
+}
+
 function resetPortfolioForm() {
   window.portfolioAnswers = {};
   var div = document.getElementById('portfolio');
   if (div) renderPortfolioQuestionnaire(div);
+}
+
+function showPortfolioStub() {
+  hideAll();
+  setActiveMenu(event.target);
+  var div = document.createElement('div');
+  div.style.cssText = 'padding:60px 40px;text-align:center;';
+  div.innerHTML = '<div style="font-size:48px;margin-bottom:16px;">📦</div><div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:8px;">Товарный портфель</div><div style="font-size:14px;color:#555;">Здесь будет отображаться ваш реальный товарный портфель — товары которые вы закупаете и продаёте на WB.</div><div style="margin-top:24px;background:#6c63ff22;border:1px solid #6c63ff44;border-radius:8px;padding:12px 20px;display:inline-block;font-size:13px;color:#a78bfa;">🚧 В разработке</div>';
+  document.getElementById('catalog').style.display = 'block';
+  document.getElementById('catalog').innerHTML = div.outerHTML;
 }
 
 function clearMonitor() { document.getElementById('adMonitorContent').innerHTML=''; }
@@ -2723,7 +2743,7 @@ async function submitMonitor(month) {
 </div>
 </div>
 </div>
-  <div id="sticky-agents" style="display:none;position:fixed;bottom:0;left:200px;right:0;background:#0d0d14;border-top:1px solid #1a1a2e;padding:8px 24px;z-index:1000;box-shadow:0 -4px 20px rgba(0,0,0,0.5);">
+  <div id="sticky-agents" style="display:none;position:fixed;bottom:0;left:220px;right:0;background:#0d0d14;border-top:1px solid #1a1a2e;padding:8px 24px;z-index:1000;box-shadow:0 -4px 20px rgba(0,0,0,0.5);">
     <div style="display:flex;align-items:center;gap:8px;">
       <span style="font-size:10px;color:#333;margin-right:4px;white-space:nowrap;">AI:</span>
       <button onclick="deepAnalysis(window.currentNiche);setTimeout(function(){var el=document.getElementById('deep-analysis-block');if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth'});}},500)" style="background:#0f1a0f;border:1px solid #22c55e44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#22c55e;font-size:11px;white-space:nowrap;">&#128269; Глубокий анализ</button>
@@ -3564,22 +3584,30 @@ class Handler(BaseHTTPRequestHandler):
                 q4 = answers.get('q4', 'mid')
                 q5 = answers.get('q5', [])
                 usd_rate = 90
-                budget_map = {'low':(0,500),'mid':(500,2000),'high':(2000,5000),'premium':(5000,99999)}
+                budget_map = {'micro':(0,200),'low':(200,500),'mid':(500,1500),'high':(1500,3000),'premium':(3000,7000)}
                 cycle_map = {'fast':(0,45),'medium':(45,90),'slow':(90,180)}
                 comp_map = {'low':(0,50),'mid':(50,300),'high':(300,9999)}
                 budget_range = budget_map.get(q1,(500,2000))
                 cycle_range = cycle_map.get(q2,(45,90))
                 comp_range = comp_map.get(q4,(50,300))
-                price_min = budget_range[0] * usd_rate / 50 / 0.5
-                price_max = budget_range[1] * usd_rate / 50 / 0.3
+                # Смягчённые ценовые диапазоны для большего охвата
+                price_min = budget_range[0] * usd_rate / 100 / 0.5
+                price_max = budget_range[1] * usd_rate / 20 / 0.3
                 exclude_map = {
-                    'Еда и напитки': ['еда','напиток','чай','кофе','шоколад','конфет'],
-                    'Животные': ['животн','собак','кошк'],
-                    'Медицина': ['медицин','лекарств','витамин'],
-                    'Крупногабарит': ['мебель','диван','кровать','шкаф','матрас'],
-                    'Ювелирка': ['золот','серебр','ювелир'],
-                    'Автотовары': ['автомобил','шин'],
-                    'Детское питание': ['детское питание'],
+                    'Еда и напитки': ['еда','напиток','чай','кофе','шоколад','конфет','продукт','бакалея'],
+                    'Животные': ['животн','собак','кошк','питомц','ветерин'],
+                    'Медицина': ['медицин','лекарств','витамин','бад','аптек'],
+                    'Крупногабарит (мебель)': ['мебель','диван','кровать','шкаф','матрас','стол','стул','комод'],
+                    'Ювелирка': ['золот','серебр','ювелир','брилиант'],
+                    'Автотовары': ['автомобил','шин','масл моторн','автозапч'],
+                    'Детское питание': ['детское питание','смесь молочн','пюре детск'],
+                    'Строительные материалы': ['строительн','цемент','кирпич','краск','штукатур','ламинат'],
+                    'Электроника': ['смартфон','ноутбук','планшет','телевизор','холодильник','стиральн'],
+                    'Спортивный инвентарь': ['тренажер','велосипед','самокат','скейт','ролик'],
+                    'Садовый инвентарь': ['садов','газонокос','культиват','теплиц'],
+                    'Музыкальные инструменты': ['гитар','пианин','скрипк','барабан'],
+                    'Антиквариат': ['антиквар','винтаж','коллекцион'],
+                    'Пиротехника': ['пиротехник','фейерверк','петард'],
                 }
                 exclude_words = []
                 for cat in q5:
@@ -3592,7 +3620,7 @@ class Handler(BaseHTTPRequestHandler):
                     sql += ' AND turnover <= 90'
                 for w in exclude_words:
                     sql += ' AND LOWER(name) NOT LIKE %s'
-                sql += ' ORDER BY (buyout_pct*0.3+profit_pct*0.3+(1.0/GREATEST(turnover,1))*100*0.4) DESC LIMIT 50'
+                sql += ' ORDER BY (buyout_pct*0.3+profit_pct*0.3+(1.0/GREATEST(turnover,1))*100*0.4) DESC LIMIT 100'
                 params = [price_min, price_max, cycle_range[0], cycle_range[1], comp_range[0], comp_range[1]]
                 params += ['%'+w+'%' for w in exclude_words]
                 cur.execute(sql, params)
@@ -3606,7 +3634,18 @@ class Handler(BaseHTTPRequestHandler):
                     nm,dn,rev,ap,bp,tv,pp,sw,cm,lrp = row
                     ap=float(ap or 0); bp=float(bp or 0); tv=float(tv or 30)
                     pp=float(pp or 0); cm=float(cm or 0.15)
-                    pp_cost=ap*0.35; batch=50
+                    # Размер партии и закупочная цена зависят от бюджетного сегмента
+                    if q1 == 'micro':    # до $200
+                        batch = 200; cost_pct = 0.28
+                    elif q1 == 'low':    # $200-500
+                        batch = 150; cost_pct = 0.30
+                    elif q1 == 'mid':    # $500-1500
+                        batch = 100; cost_pct = 0.32
+                    elif q1 == 'high':   # $1500-3000
+                        batch = 50; cost_pct = 0.35
+                    else:                # $3000-7000
+                        batch = 20; cost_pct = 0.38
+                    pp_cost=ap*cost_pct
                     purchase=pp_cost*batch; delivery=batch*0.3*2.5*usd_rate
                     customs=purchase*0.10; vat=(purchase+customs)*0.20
                     ms=max(1,int(30/max(tv,1)*batch)); ad=ms*ap*bp*0.15
@@ -3617,20 +3656,21 @@ class Handler(BaseHTTPRequestHandler):
                 for i,n in enumerate(niches_data):
                     lines.append(str(i+1)+'. '+n['name']+' | цена '+str(n['avg_price'])+'руб | оборот '+str(n['turnover'])+'дн | выкуп '+str(n['buyout_pct'])+'% | маржа '+str(n['profit_pct'])+'% | вход '+str(n['entry_cost_rub'])+'руб | прибыль '+str(n['profit_cycle_rub'])+'руб')
                 nt = chr(10).join(lines)
-                bl={'low':'до $500','mid':'$500-2000','high':'$2000-5000','premium':'свыше $5000'}
+                bl={'micro':'до $200','low':'$200-500','mid':'$500-1500','high':'$1500-3000','premium':'$3000-7000'}
                 cl={'fast':'8-12 циклов/год','medium':'4-6 циклов/год','slow':'2-4 цикла/год'}
                 sez = 'Да' if q3=='yes' else 'Нет'
                 excl = ', '.join(q5) if q5 else 'нет'
                 prompt = 'Ты эксперт WB. Отбери 8-10 ниш для стартового портфеля торговой компании.' + chr(10)
                 prompt += 'ПАРАМЕТРЫ:' + chr(10)
-                prompt += 'Бюджет на 1 SKU: ' + bl.get(q1,q1) + chr(10)
+                batch_info = {'micro':'200 шт по ~$0.5-1/шт','low':'150 шт по ~$1.3-3.3/шт','mid':'100 шт по ~$5-15/шт','high':'50 шт по ~$30-60/шт','premium':'20 шт по ~$150-350/шт'}
+                prompt += 'Бюджет на 1 SKU: ' + bl.get(q1,q1) + ' (пробная партия: ' + batch_info.get(q1,'50 шт') + ')' + chr(10)
                 prompt += 'Оборот: ' + cl.get(q2,q2) + chr(10)
                 prompt += 'Сезонные товары: ' + sez + chr(10)
                 prompt += 'Конкуренция: ' + q4 + chr(10)
                 prompt += 'Исключены: ' + excl + chr(10)
                 prompt += 'Доставка из Китая: 45 дней карго' + chr(10) + chr(10)
                 prompt += 'КАНДИДАТЫ:' + chr(10) + nt + chr(10) + chr(10)
-                prompt += 'Диверсификация по категориям. Баланс быстрые+маржинальные+стабильные.' + chr(10)
+                prompt += 'ОБЯЗАТЕЛЬНО выбери ровно 10-12 ниш. Диверсификация по категориям. Баланс: быстрые(оборот<45дн) + маржинальные(маржа>60%) + стабильные.' + chr(10)
                 prompt += 'Верни ТОЛЬКО валидный JSON без markdown:' + chr(10)
                 prompt += '{"summary":{"title":"название","description":"3-4 предложения","total_budget_rub":0,"monthly_potential_rub":0,"payback_months":0},"niches":[{"name":"название","full":"полное","priority":"high|medium|low","turnover_days":0,"margin_pct":0,"buyout_pct":0,"entry_cost_rub":0,"ad_budget_rub":0,"profit_per_cycle_rub":0,"reason":"2-3 предложения","seasonal_warning":null}]}'
                 client=anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))

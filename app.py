@@ -1366,7 +1366,7 @@ async function loadCharts(name) {
           datasets: [{
             data: sellerPct,
             backgroundColor: [
-              '#ec4899', '#f97316', '#fbbf24', '#4ade80',
+              '#06b6d4', '#f97316', '#fbbf24', '#4ade80',
               '#38bdf8', '#a78bfa', '#fb7185', '#34d399',
               '#6b7280'
             ],
@@ -1390,7 +1390,7 @@ async function loadCharts(name) {
 
     // Статистика продавцов
     if (document.getElementById('sellersStats') && data.seller_labels && data.seller_pct) {
-      const colors = ['#ec4899','#f97316','#fbbf24','#4ade80','#38bdf8','#a78bfa','#fb7185','#34d399','#6b7280'];
+      const colors = ['#06b6d4','#f97316','#fbbf24','#4ade80','#38bdf8','#a78bfa','#fb7185','#34d399','#6b7280'];
       let html = '<div style="font-size:10px;color:#555;margin-bottom:6px;letter-spacing:1px;">ДОЛЯ РЫНКА</div>';
       data.seller_labels.forEach((label, i) => {
         const pct = data.seller_pct[i] || 0;
@@ -1680,7 +1680,7 @@ function openChartModal(title, type, labels, data, color, isHorizontal) {
     return;
   }
   if (type === 'doughnut') {
-    const doughnutColors = ['#ec4899','#f97316','#fbbf24','#4ade80','#38bdf8','#a78bfa','#fb7185','#34d399','#6b7280'];
+    const doughnutColors = ['#06b6d4','#f97316','#fbbf24','#4ade80','#38bdf8','#a78bfa','#fb7185','#34d399','#6b7280'];
     modalChartInstance = new Chart(modalCanvas, {
       type: 'doughnut',
       data: { labels: labels, datasets: [{ data: data, backgroundColor: doughnutColors, borderColor: '#0f0f13', borderWidth: 2 }] },
@@ -2021,7 +2021,7 @@ function renderResult(d) {
       <div class="metric-card"><div class="metric-label">Заказов в месяц</div><div class="metric-tooltip">Среднемесячное количество заказов в нише. Чем больше — тем активнее спрос.</div><div class="metric-value">${d.orders.toLocaleString('ru')}</div><div class="metric-sub">${(d.orders/30).toFixed(0)} в день</div></div>
       <div class="metric-card"><div class="metric-label">Продавцов</div><div class="metric-tooltip">Общее число продавцов и тех кто реально продаёт. Низкий % активных = высокая конкуренция среди немногих.</div><div class="metric-value">${d.sellers.toLocaleString('ru')}</div><div class="metric-sub">${d.sellers_with_sales} с продажами</div></div>
       <div class="metric-card"><div class="metric-label">Выкуп</div><div class="metric-tooltip">Процент заказов которые покупатель не вернул. Низкий выкуп = высокие затраты на логистику возвратов.</div><div class="metric-value">${(d.buyout_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.buyout_pct >= 0.8 ? 'отличный' : d.buyout_pct >= 0.6 ? 'хороший' : 'низкий'}</div></div>
-      <div class="metric-card"><div class="metric-label">Оборачиваемость (реальная)</div><div class="metric-tooltip">Среднее время от поставки до продажи с учётом реального выкупа. Чем меньше — тем быстрее оборот капитала и меньше замороженных средств.</div><div class="metric-value">${(() => { const real = d.buyout_pct > 0 ? Math.round(d.turnover / d.buyout_pct) : Math.round(d.turnover); return real > 365 ? "365+" : real; })()} дн</div><div class="metric-sub">${(() => { const real = d.buyout_pct > 0 ? Math.round(d.turnover / d.buyout_pct) : Math.round(d.turnover); return real <= 45 ? '<span class="turn-fast">🟢 быстро</span>' : real <= 90 ? '<span class="turn-seasonal">🟡 умеренно</span>' : '<span class="turn-slow">🔴 медленно</span>'; })()} <span style="font-size:10px;color:#444;">MPStats: ${Math.round(d.turnover)} дн</span></div></div>
+      <div class="metric-card"><div class="metric-label">Оборачиваемость (реальная)</div><div class="metric-tooltip">Среднее время продажи партии товара по данным MPStats (остаток / среднедневные продажи). Значение 1-2 дня = товар продаётся очень быстро. Чем меньше — тем быстрее оборот капитала.</div><div class="metric-value">${(() => { const real = d.buyout_pct > 0 ? Math.round(d.turnover / d.buyout_pct) : Math.round(d.turnover); return real > 365 ? "365+" : real; })()} дн</div><div class="metric-sub">${(() => { const real = d.buyout_pct > 0 ? Math.round(d.turnover / d.buyout_pct) : Math.round(d.turnover); return real <= 45 ? '<span class="turn-fast">🟢 быстро</span>' : real <= 90 ? '<span class="turn-seasonal">🟡 умеренно</span>' : '<span class="turn-slow">🔴 медленно</span>'; })()} <span style="font-size:10px;color:#444;">MPStats: ${Math.round(d.turnover)} дн</span></div></div>
       <div class="metric-card"><div class="metric-label">Маржинальность</div><div class="metric-tooltip">Доля прибыли после вычета комиссии WB и логистики, но ДО себестоимости товара.</div><div class="metric-value">${(d.profit_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.profit_pct >= 0.35 ? 'высокая' : d.profit_pct >= 0.2 ? 'средняя' : 'низкая'} <span style="font-size:10px;color:#444;">до себест.</span></div></div>
       <div class="metric-card" id="metric-cpm"><div class="metric-label">Средний CPM</div><div class="metric-tooltip">Стоимость 1000 показов рекламы в нише. Чем ниже — тем дешевле реклама.</div><div class="metric-value" id="metric-cpm-val">—</div><div class="metric-sub" id="metric-cpm-sub">загружаем...</div></div>
       <div class="metric-card" id="metric-adpct"><div class="metric-label">Товаров с рекламой</div><div class="metric-tooltip">Доля товаров которые продвигаются платной рекламой. Высокий % = высокая рекламная конкуренция.</div><div class="metric-value" id="metric-adpct-val">—</div><div class="metric-sub" id="metric-adpct-sub">загружаем...</div></div>
@@ -2074,7 +2074,7 @@ function renderResult(d) {
 
     <!-- ЗОНА 4в+4г: Топ продавцы + Прогноз -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch;">
-    <div class="chart-card" style="display:flex;flex-direction:column;height:320px;" onclick="openChartModal('🏆 Топ продавцы ниши', 'doughnut', window._chartData.seller_labels, window._chartData.seller_pct || window._chartData.seller_data, '#ec4899', false)">
+    <div class="chart-card" style="display:flex;flex-direction:column;height:320px;" onclick="openChartModal('🏆 Топ продавцы ниши', 'doughnut', window._chartData.seller_labels, window._chartData.seller_pct || window._chartData.seller_data, '#06b6d4', false)">
       <div class="chart-title">🏆 Топ продавцы ниши (доля рынка) <span style="font-size:10px;color:#555;">🔍</span></div>
       <div style="display:flex;gap:8px;align-items:center;height:260px;">
         <div style="height:250px;width:250px;position:relative;flex-shrink:0;"><canvas id="sellersChart"></canvas></div>
@@ -2150,6 +2150,18 @@ function renderResult(d) {
         <div id="unit-result-block" style="margin-top:16px;"></div>
       </div>
     </div>
+
+    <!-- ЗОНА 8: Документы и сертификация -->
+    <div id="docs-block" style="display:none;margin-top:24px;">
+      <div class="ai-card">
+        <div class="ai-header">
+          <div class="ai-dot" style="background:#06b6d4;"></div>
+          <div class="ai-title">📋 Документы и сертификация</div>
+          <div id="docs-loading" style="display:none;margin-left:12px;font-size:12px;color:#555;">Анализируем...</div>
+        </div>
+        <div id="docs-content" style="margin-top:16px;"></div>
+      </div>
+    </div>
   `;
   document.getElementById('result').style.display = 'block';
   loadCharts(d.name);
@@ -2175,6 +2187,25 @@ function toggleStickyWL(btn) {
   btn.style.color = inWl ? '#a78bfa' : '#888';
 }
 
+function convertDocsCost(rubStr) {
+  // Конвертируем строку с рублями в BYN (1 BYN = 27.7 RUB)
+  if (!rubStr) return '—';
+  var bynRate = 27.7;
+  // Извлекаем числа из строки
+  var numbers = rubStr.match(/\d[\d\s]*/g);
+  if (!numbers) return rubStr;
+  var result = rubStr;
+  numbers.forEach(function(numStr) {
+    var num = parseInt(numStr.replace(/\s/g,''));
+    if (num > 1000) {
+      var byn = Math.round(num / bynRate);
+      var bynFormatted = byn.toLocaleString('ru');
+      result = result.replace(numStr.trim(), bynFormatted);
+    }
+  });
+  return result + ' Br';
+}
+
 function openNicheFromPortfolio(btn) {
   var full = btn.getAttribute('data-full');
   if (full) { setQuery(full); analyze(); }
@@ -2194,6 +2225,129 @@ function showPortfolioStub() {
   div.innerHTML = '<div style="font-size:48px;margin-bottom:16px;">📦</div><div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:8px;">Товарный портфель</div><div style="font-size:14px;color:#555;">Здесь будет отображаться ваш реальный товарный портфель — товары которые вы закупаете и продаёте на WB.</div><div style="margin-top:24px;background:#6c63ff22;border:1px solid #6c63ff44;border-radius:8px;padding:12px 20px;display:inline-block;font-size:13px;color:#a78bfa;">🚧 В разработке</div>';
   document.getElementById('catalog').style.display = 'block';
   document.getElementById('catalog').innerHTML = div.outerHTML;
+}
+
+async function runDocsAnalysis() {
+  const d = window.currentNiche;
+  if (!d) return;
+  const block = document.getElementById('docs-block');
+  const container = document.getElementById('docs-content');
+  const loading = document.getElementById('docs-loading');
+  if (block) { block.style.display = 'block'; block.scrollIntoView({behavior:'smooth'}); }
+  if (loading) loading.style.display = 'block';
+  container.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">&#128203; Claude анализирует требования к документам...</div>';
+  try {
+    const resp = await fetch('/docs-analysis', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        niche_name: d.name,
+        display_name: d.display_name || d.name,
+        avg_price: d.avg_price || 0,
+        commission: d.commission || 0
+      })
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    if (loading) loading.style.display = 'none';
+    renderDocsResult(result);
+  } catch(e) {
+    if (loading) loading.style.display = 'none';
+    container.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;">❌ ' + e.message + '</div>';
+  }
+}
+
+function renderDocsResult(data) {
+  const container = document.getElementById('docs-content');
+  const r = data;
+  const complexityColor = {low:'#4ade80', medium:'#fbbf24', high:'#ef4444'};
+  const complexityLabel = {low:'🟢 Простая', medium:'🟡 Умеренная', high:'🔴 Сложная'};
+
+  let html = '';
+
+  // Общая сложность
+  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid ' + (complexityColor[r.complexity]||'#fbbf24') + ';">' +
+    '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:6px;">СЛОЖНОСТЬ ОФОРМЛЕНИЯ</div>' +
+    '<div style="font-size:16px;font-weight:700;color:' + (complexityColor[r.complexity]||'#fbbf24') + ';margin-bottom:8px;">' + (complexityLabel[r.complexity]||'🟡 Умеренная') + '</div>' +
+    '<div style="font-size:13px;color:#ccc;line-height:1.6;">' + (r.summary||'') + '</div>' +
+  '</div>';
+
+  // Документы для WB
+  if (r.wb_docs && r.wb_docs.length > 0) {
+    html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ДОКУМЕНТЫ ДЛЯ WB</div>';
+    r.wb_docs.forEach(function(doc) {
+      const reqColor = doc.required ? '#ef4444' : '#fbbf24';
+      html += '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">' +
+        '<div style="min-width:60px;background:' + reqColor + '22;border-radius:4px;padding:2px 6px;font-size:10px;color:' + reqColor + ';text-align:center;white-space:nowrap;">' + (doc.required ? 'Обязательно' : 'Желательно') + '</div>' +
+        '<div>' +
+          '<div style="font-size:12px;color:#fff;font-weight:600;">' + doc.name + '</div>' +
+          '<div style="font-size:11px;color:#555;margin-top:2px;">' + doc.description + '</div>' +
+          (doc.cost && doc.cost != '0' ? '<div style="font-size:11px;color:#a78bfa;margin-top:2px;">&#128176; ' + doc.cost + ' ₽</div>' : '') +
+          (doc.duration ? '<div style="font-size:11px;color:#38bdf8;margin-top:2px;">&#9201; ' + doc.duration + '</div>' : '') +
+          (doc.where_rb ? '<div style="font-size:11px;color:#4ade80;margin-top:4px;">&#127463;&#127486; РБ: ' + doc.where_rb + '</div>' : '') +
+          (doc.where_rf ? '<div style="font-size:11px;color:#f59e0b;margin-top:2px;">&#127479;&#127482; РФ: ' + doc.where_rf + '</div>' : '') +
+          (doc.better_in ? '<div style="font-size:10px;color:#555;margin-top:2px;">Рекомендуем: ' + doc.better_in + '</div>' : '') +
+        '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Таможенные документы РБ
+  if (r.customs_docs && r.customs_docs.length > 0) {
+    html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ТАМОЖНЯ И ВВОЗ В РБ</div>';
+    r.customs_docs.forEach(function(doc) {
+      html += '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">' +
+        '<div style="color:#38bdf8;font-size:14px;">&#128230;</div>' +
+        '<div style="font-size:12px;color:#aaa;line-height:1.5;">' + doc + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Документы от китайского поставщика
+  if (r.supplier_docs && r.supplier_docs.length > 0) {
+    html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ЗАПРОСИТЬ У КИТАЙСКОГО ПОСТАВЩИКА</div>';
+    r.supplier_docs.forEach(function(doc) {
+      var acceptColor = doc.accepted_in_eaes ? '#4ade80' : '#fbbf24';
+      var acceptLabel = doc.accepted_in_eaes ? '✓ Принимается в ЕАЭС' : '⚠ Требует переоформления';
+      html += '<div style="margin-bottom:10px;padding:10px;background:#1a1a24;border-radius:8px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+          '<div style="font-size:12px;color:#fff;font-weight:600;">' + doc.name + '</div>' +
+          '<div style="font-size:10px;color:' + acceptColor + ';">' + acceptLabel + '</div>' +
+        '</div>' +
+        '<div style="font-size:11px;color:#555;">' + doc.description + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Риски и особенности
+  if (r.risks && r.risks.length > 0) {
+    html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">' +
+      '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">РИСКИ И ОСОБЕННОСТИ</div>';
+    r.risks.forEach(function(risk) {
+      html += '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">' +
+        '<div style="color:#fbbf24;font-size:14px;">&#9888;</div>' +
+        '<div style="font-size:12px;color:#aaa;line-height:1.5;">' + risk + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Итоговые затраты
+  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;">' +
+    '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ИТОГОВЫЕ ЗАТРАТЫ НА ДОКУМЕНТЫ</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+      '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">СТОИМОСТЬ</div><div style="font-size:14px;font-weight:700;color:#84cc16;">'+(r.total_cost_byn||convertDocsCost(r.total_cost||''))+' Br</div><div style="font-size:10px;color:#555;margin-top:2px;">'+(r.total_cost||'')+'</div></div>' +
+      '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">СРОК</div><div style="font-size:16px;font-weight:700;color:#84cc16;">' + (r.total_duration||'2-4 недели') + '</div></div>' +
+    '</div>' +
+  '</div>';
+
+  container.innerHTML = html;
 }
 
 function clearMonitor() { document.getElementById('adMonitorContent').innerHTML=''; }
@@ -2750,6 +2904,7 @@ async function submitMonitor(month) {
       <button onclick="showUnitEconomy();setTimeout(function(){var el=document.getElementById('unit-economy-block');if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth'});}},300)" style="background:#1a150a;border:1px solid #f59e0b44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#f59e0b;font-size:11px;white-space:nowrap;">&#129518; Юнит-экономика</button>
       <button onclick="runAdAnalysis();setTimeout(function(){var el=document.getElementById('adBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0f0f1a;border:1px solid #6c63ff44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#a78bfa;font-size:11px;white-space:nowrap;">&#127919; Реклама</button>
       <button onclick="runWarehouseAnalysis();setTimeout(function(){var el=document.getElementById('warehouseBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0a1520;border:1px solid #38bdf844;border-radius:7px;padding:6px 12px;cursor:pointer;color:#38bdf8;font-size:11px;white-space:nowrap;">&#128230; Поставки</button>
+      <button onclick="runDocsAnalysis()" style="background:#1a120a;border:1px solid #d9770644;border-radius:7px;padding:6px 12px;cursor:pointer;color:#d97706;font-size:11px;white-space:nowrap;">&#128203; Документы</button>
       <div style="flex:1;"></div>
       <button id="sticky-wl-btn" onclick="toggleStickyWL(this)" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:7px;padding:6px 14px;cursor:pointer;color:#888;font-size:11px;white-space:nowrap;">&#128278; В работе</button>
     </div>
@@ -3594,7 +3749,7 @@ class Handler(BaseHTTPRequestHandler):
                 price_min = budget_range[0] * usd_rate / 100 / 0.5
                 price_max = budget_range[1] * usd_rate / 20 / 0.3
                 exclude_map = {
-                    'Еда и напитки': ['еда','напиток','чай','кофе','шоколад','конфет','продукт','бакалея'],
+                    'Еда и напитки': ['еда','напиток','чай','кофе','шоколад','конфет','продукт','бакалея','сухое','сливк','молок','мука','крупа','сахар','соль','масло подсолн','майонез','соус','уксус','специ','приправ','паста кунжут','закваск','йогурт','кефир','творог','сыр','колбас','мясо','рыб','морепрод','овощ','фрукт','ягод','орех','семен','злак','хлеб','печень','конфет','мармелад','пастил','зефир','варень','джем','мед натур'],
                     'Животные': ['животн','собак','кошк','питомц','ветерин'],
                     'Медицина': ['медицин','лекарств','витамин','бад','аптек'],
                     'Крупногабарит (мебель)': ['мебель','диван','кровать','шкаф','матрас','стол','стул','комод'],
@@ -4135,6 +4290,78 @@ class Handler(BaseHTTPRequestHandler):
                     'calc_details': calc_details,
                     'recommendation': recommendation
                 }, ensure_ascii=False).encode('utf-8'))
+
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+
+        elif self.path == '/docs-analysis':
+            try:
+                import anthropic
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                niche_name = body.get('niche_name', '')
+                display_name = body.get('display_name', niche_name)
+                avg_price = body.get('avg_price', 0)
+
+                prompt = f"""Ты эксперт по сертификации и документообороту для торговли на Wildberries.
+Торговая компания зарегистрирована в Республике Беларусь (РБ), закупает товары в Китае и продаёт на WB в РФ и РБ.
+
+НИША: {display_name}
+Средняя цена товара: {avg_price} руб
+
+Дай детальный анализ по 5 блокам:
+1. ДОКУМЕНТЫ ДЛЯ WB — что требует маркетплейс
+2. СЕРТИФИКАЦИЯ В ЕАЭС — декларации и сертификаты ТР ТС
+3. ГДЕ ПОЛУЧАТЬ — конкретные организации в РБ (БелГИСС, БГЦА) и РФ (Ростест, Роспотребнадзор), где выгоднее
+4. ЧТО ЗАПРОСИТЬ У КИТАЙСКОГО ПОСТАВЩИКА — CoA, ISO, CE, Test reports, что принимается в ЕАЭС
+5. ТАМОЖНЯ РБ — документы для ввоза из Китая
+
+Верни ТОЛЬКО валидный JSON без markdown:
+{{
+  "complexity": "low|medium|high",
+  "summary": "3-4 предложения об общей сложности для белорусской компании",
+  "wb_docs": [
+    {{
+      "name": "название",
+      "required": true,
+      "description": "что это и зачем",
+      "cost": "стоимость в рублях РФ",
+      "duration": "срок получения",
+      "where_rb": "где получить в РБ",
+      "where_rf": "где получить в РФ",
+      "better_in": "РБ или РФ"
+    }}
+  ],
+  "supplier_docs": [
+    {{
+      "name": "документ от поставщика",
+      "description": "что даёт",
+      "accepted_in_eaes": true
+    }}
+  ],
+  "customs_docs": ["таможенное требование"],
+  "risks": ["риск"],
+  "total_cost": "общая стоимость в руб РФ",
+  "total_cost_byn": "общая стоимость в белорусских рублях",
+  "total_duration": "общий срок"
+}}"""
+
+                client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+                message = client.messages.create(
+                    model="claude-sonnet-4-5",
+                    max_tokens=4000,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                raw = message.content[0].text.strip().replace('```json','').replace('```','').strip()
+                result = json.loads(raw)
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
 
             except Exception as e:
                 self.send_response(500)

@@ -987,13 +987,29 @@ function renderPortfolioQuestionnaire(div) {
       <!-- Вопрос 5: Исключения -->
       <div style="background:#1a1a24;border-radius:12px;padding:20px;margin-bottom:24px;">
         <div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">ВОПРОС 5 из 5</div>
-        <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Исключить категории</div>
-        <div style="font-size:12px;color:#555;margin-bottom:16px;">Выберите категории которые не рассматриваете (можно несколько)</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;" id="q5-options">
-          ${['Еда и напитки','Животные','Медицина','Крупногабарит (мебель)','Ювелирка','Автотовары','Детское питание','Строительные материалы','Электроника','Спортивный инвентарь','Садовый инвентарь','Музыкальные инструменты','Антиквариат','Пиротехника'].map(cat =>
-            `<div onclick="toggleExclude(this,'${cat}')" data-cat="${cat}" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:12px;color:#555;">${cat}</div>`
+        <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Приоритетные направления</div>
+        <div style="font-size:12px;color:#555;margin-bottom:16px;">Выберите 2-4 направления в которых хотите работать</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;" id="q5-options">
+          ${[
+            {cat:'Здоровье и медицина', icon:'🏥', desc:'тонометры, бандажи, витамины'},
+            {cat:'Красота и уход', icon:'💄', desc:'косметика, уход за кожей и волосами'},
+            {cat:'Одежда и аксессуары', icon:'👕', desc:'одежда, сумки, украшения'},
+            {cat:'Дом и интерьер', icon:'🏠', desc:'декор, текстиль, организация'},
+            {cat:'Канцелярия и офис', icon:'📚', desc:'канцтовары, расходники, орг.техника'},
+            {cat:'Детские товары', icon:'🧸', desc:'игрушки, одежда, аксессуары'},
+            {cat:'Спорт и активный отдых', icon:'🏋️', desc:'тренажёры, экипировка, питание'},
+            {cat:'Инструменты и хозтовары', icon:'🔧', desc:'инструменты, уборка, ремонт'},
+            {cat:'Электроника и гаджеты', icon:'📱', desc:'аксессуары, умный дом, гаджеты'},
+            {cat:'Автотовары', icon:'🚗', desc:'аксессуары, уход, запчасти'}
+          ].map(item =>
+            '<div onclick="toggleDirection(this,this.dataset.cat)" data-cat="'+item.cat+'" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:12px;cursor:pointer;">' +
+            '<div style="font-size:20px;margin-bottom:4px;">'+item.icon+'</div>' +
+            '<div style="font-size:12px;font-weight:600;color:#888;margin-bottom:2px;">'+item.cat+'</div>' +
+            '<div style="font-size:10px;color:#444;">'+item.desc+'</div>' +
+            '</div>'
           ).join('')}
         </div>
+        <div style="font-size:11px;color:#444;margin-top:10px;">* Если не выбрано ни одного — ищем по всем направлениям</div>
       </div>
 
       <!-- Кнопка -->
@@ -1024,19 +1040,28 @@ function selectOption(question, value) {
 }
 
 function toggleExclude(el, cat) {
+  toggleDirection(el, cat);
+}
+
+function toggleDirection(el, cat) {
   if (!window.portfolioAnswers) window.portfolioAnswers = {};
   if (!window.portfolioAnswers.q5) window.portfolioAnswers.q5 = [];
   var idx = window.portfolioAnswers.q5.indexOf(cat);
+  // Максимум 4 направления
   if (idx >= 0) {
     window.portfolioAnswers.q5.splice(idx, 1);
     el.style.borderColor = '#2a2a3a';
-    el.style.color = '#555';
+    el.querySelector('div:nth-child(2)').style.color = '#888';
     el.style.background = '#0f0f13';
   } else {
+    if (window.portfolioAnswers.q5.length >= 4) {
+      alert('Выберите не более 4 направлений');
+      return;
+    }
     window.portfolioAnswers.q5.push(cat);
-    el.style.borderColor = '#ef4444';
-    el.style.color = '#ef4444';
-    el.style.background = '#ef444411';
+    el.style.borderColor = '#6c63ff';
+    el.querySelector('div:nth-child(2)').style.color = '#a78bfa';
+    el.style.background = '#6c63ff11';
   }
 }
 
@@ -3764,10 +3789,34 @@ class Handler(BaseHTTPRequestHandler):
                     'Антиквариат': ['антиквар','винтаж','коллекцион'],
                     'Пиротехника': ['пиротехник','фейерверк','петард'],
                 }
+                # q5 теперь — приоритетные направления (не исключения)
+                direction_map = {
+                    'Здоровье и медицина': ['здоровь','медицин','бандаж','корсет','тонометр','ортопед','компрессион','стельк','небулайз','ингалятор','пульсоксим','глюкометр','термометр'],
+                    'Красота и уход': ['красот','косметик','уход','крем','шампун','маск','сыворотк','тушь','помад','тональн','скраб','лосьон','духи','парфюм'],
+                    'Одежда и аксессуары': ['одежд','платье','блузк','джемпер','свитер','брюки','джинс','юбк','куртк','пальто','шарф','перчатк','сумк','рюкзак','кошелек'],
+                    'Дом и интерьер': ['дом','интерьер','декор','подушк','плед','штор','ковер','органайзер','вешалк','зеркал','свечи','фоторамк'],
+                    'Канцелярия и офис': ['канцеляр','тетрадь','ручк','карандаш','папк','файл','степлер','ножниц','маркер','блокнот','ленты чеков'],
+                    'Детские товары': ['детск','игрушк','пупс','конструктор','кубик','пазл','пеленальн','стерилизатор','весы детск','слюнявчик'],
+                    'Спорт и активный отдых': ['спорт','турник','гантел','коврик для йог','эспандер','скакалк','фитнес','бокс перчатк'],
+                    'Инструменты и хозтовары': ['инструмент','отвертк','молоток','пассатиж','уборк','швабр','щетк','губк','перчатки хоз'],
+                    'Электроника и гаджеты': ['гаджет','наушник','зарядк','кабель','чехол','повербанк','умн','смарт','bluetooth'],
+                    'Автотовары': ['автомобил','авто аксессуар','держатель телефон','видеорегистратор','ароматизатор авто'],
+                }
+                
                 exclude_words = []
-                for cat in q5:
-                    if cat in exclude_map:
-                        exclude_words.extend(exclude_map[cat])
+                direction_filter = []
+                
+                if q5:  # Если выбраны направления — ищем только в них
+                    for direction in q5:
+                        if direction in direction_map:
+                            direction_filter.extend(direction_map[direction])
+                # Если направления не выбраны — ищем везде, но исключаем проблемные категории
+                default_exclude = {
+                    'еда': ['молок','сливк','кефир','творог','йогурт','сыр','масло подсолн','мука','крупа','сахар','соль','чай листов','кофе зерн','какао порош','шоколад','конфет','печень слад','пастил','мармелад','варень','джем','мед натур','закваск','паста кунжут','соус','майонез','уксус'],
+                }
+                if not q5:  # Без выбора направлений — исключаем еду по умолчанию
+                    for words in default_exclude.values():
+                        exclude_words.extend(words)
                 conn = psycopg2.connect(DB)
                 cur = conn.cursor()
                 sql = 'SELECT name, COALESCE(display_name,name), revenue, avg_price, buyout_pct, turnover, profit_pct, sellers_with_sales, commission, lost_revenue_pct FROM niches WHERE revenue IS NOT NULL AND revenue > 5000000 AND avg_price BETWEEN %s AND %s AND turnover BETWEEN %s AND %s AND sellers_with_sales BETWEEN %s AND %s AND buyout_pct > 0.55 AND profit_pct > 0.20 AND path_verified = TRUE'
@@ -3775,9 +3824,14 @@ class Handler(BaseHTTPRequestHandler):
                     sql += ' AND turnover <= 90'
                 for w in exclude_words:
                     sql += ' AND LOWER(name) NOT LIKE %s'
+                if direction_filter:
+                    dir_conditions = ' OR '.join(['LOWER(name) LIKE %s' for _ in direction_filter])
+                    sql += ' AND (' + dir_conditions + ')'
                 sql += ' ORDER BY (buyout_pct*0.3+profit_pct*0.3+(1.0/GREATEST(turnover,1))*100*0.4) DESC LIMIT 100'
                 params = [price_min, price_max, cycle_range[0], cycle_range[1], comp_range[0], comp_range[1]]
                 params += ['%'+w+'%' for w in exclude_words]
+                if direction_filter:
+                    params += ['%'+w+'%' for w in direction_filter]
                 cur.execute(sql, params)
                 rows = cur.fetchall()
                 if not rows:

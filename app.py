@@ -1120,7 +1120,7 @@ function renderPortfolioResult(data, sym, rate) {
         '<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid #2a2a3a;padding-top:6px;"><span style="color:#aaa;">Потенциал/цикл</span><span style="color:#4ade80;font-weight:700;">' + fmtM(n.profit_per_cycle_rub) + '</span></div>' +
       '</div>' +
       '<div style="font-size:11px;color:#555;line-height:1.5;">' + (n.reason||'') + '</div>' +
-      (n.seasonal_warning ? '<div style="margin-top:8px;background:#fbbf2422;border-radius:6px;padding:8px;font-size:11px;color:#fbbf24;">&#127810; ' + n.seasonal_warning + '</div>' : '') +
+      (n.seasonal_warning ? '<div style="margin-top:8px;background:#fbbf2422;border:1px solid #fbbf2444;border-radius:6px;padding:10px;font-size:11px;color:#fbbf24;"><div style="font-weight:600;margin-bottom:3px;">&#127810; Сезонный товар</div><div style="color:#aaa;">' + n.seasonal_warning + '</div></div>' : '') +
     '</div>';
   });
   html += '</div>';
@@ -3645,16 +3645,52 @@ class Handler(BaseHTTPRequestHandler):
                         batch = 50; cost_pct = 0.35
                     else:                # $3000-7000
                         batch = 20; cost_pct = 0.38
-                    pp_cost=ap*cost_pct
-                    purchase=pp_cost*batch; delivery=batch*0.3*2.5*usd_rate
-                    customs=purchase*0.10; vat=(purchase+customs)*0.20
-                    ms=max(1,int(30/max(tv,1)*batch)); ad=ms*ap*bp*0.15
-                    entry=purchase+delivery+customs+vat+15000
-                    profit_u=(ap-pp_cost-ap*cm-120)*bp; profit_c=profit_u*batch
+                    # Закупочная цена зависит от сегмента
+                    pp_cost = ap * cost_pct
+
+                    # Вес единицы товара зависит от цены (грубая оценка)
+                    if ap < 500:       weight_kg = 0.1   # мелочь
+                    elif ap < 1500:    weight_kg = 0.3   # лёгкий товар
+                    elif ap < 5000:    weight_kg = 0.8   # средний товар
+                    elif ap < 15000:   weight_kg = 2.0   # тяжёлый товар
+                    else:              weight_kg = 5.0   # крупный товар
+
+                    # Стоимость карго доставки из Китая в РБ
+                    # Карго: $2.5-4/кг авиа или $1.5-2/кг ж/д
+                    cargo_rate_usd = 3.0  # средний карго тариф $/кг
+                    delivery = batch * weight_kg * cargo_rate_usd * usd_rate
+
+                    # Таможня РБ: пошлина 10% + НДС 20%
+                    purchase = pp_cost * batch
+                    customs = purchase * 0.10
+                    vat = (purchase + customs) * 0.20
+
+                    # Реклама: 10-15% от выручки первого месяца
+                    monthly_orders = max(1, int(30 / max(tv, 1) * batch * float(bp)))
+                    monthly_revenue = monthly_orders * ap
+                    ad = monthly_revenue * 0.12
+
+                    # Оформление карточки (фото, инфографика, SEO)
+                    card_cost = 15000
+
+                    # Полная стоимость входа
+                    entry = purchase + delivery + customs + vat + card_cost
+
+                    # Логистика WB зависит от веса/объёма
+                    if weight_kg <= 0.5:    wb_log = 75
+                    elif weight_kg <= 1.5:  wb_log = 120
+                    elif weight_kg <= 5:    wb_log = 200
+                    else:                   wb_log = 350
+
+                    # Прибыль за цикл (с учётом выкупа и возвратов)
+                    wb_commission = ap * float(cm)
+                    profit_u = (ap - pp_cost - wb_commission - wb_log) * float(bp)
+                    profit_c = profit_u * batch
                     niches_data.append({'name':dn,'full':nm,'avg_price':round(ap),'turnover':round(tv),'buyout_pct':round(bp*100),'profit_pct':round(pp*100),'entry_cost_rub':round(entry),'ad_budget_rub':round(ad),'profit_cycle_rub':round(profit_c)})
                 lines = []
                 for i,n in enumerate(niches_data):
-                    lines.append(str(i+1)+'. '+n['name']+' | цена '+str(n['avg_price'])+'руб | оборот '+str(n['turnover'])+'дн | выкуп '+str(n['buyout_pct'])+'% | маржа '+str(n['profit_pct'])+'% | вход '+str(n['entry_cost_rub'])+'руб | прибыль '+str(n['profit_cycle_rub'])+'руб')
+                    seasonal_note = ' | СЕЗОННЫЙ: ' + n.get('seasonal_info','') if n.get('seasonal_info') else ''
+                    lines.append(str(i+1)+'. '+n['name']+' | цена '+str(n['avg_price'])+'руб | оборот '+str(n['turnover'])+'дн | выкуп '+str(n['buyout_pct'])+'% | маржа '+str(n['profit_pct'])+'% | вход '+str(n['entry_cost_rub'])+'руб | прибыль '+str(n['profit_cycle_rub'])+'руб'+seasonal_note)
                 nt = chr(10).join(lines)
                 bl={'micro':'до $200','low':'$200-500','mid':'$500-1500','high':'$1500-3000','premium':'$3000-7000'}
                 cl={'fast':'8-12 циклов/год','medium':'4-6 циклов/год','slow':'2-4 цикла/год'}
@@ -3670,6 +3706,72 @@ class Handler(BaseHTTPRequestHandler):
                 prompt += 'Исключены: ' + excl + chr(10)
                 prompt += 'Доставка из Китая: 45 дней карго' + chr(10) + chr(10)
                 prompt += 'КАНДИДАТЫ:' + chr(10) + nt + chr(10) + chr(10)
+                # Сезонный календарь — когда заказывать товар
+                seasonal_calendar = {
+                    # (месяц начала сезона, месяц конца сезона, когда заказывать)
+                    'купальн': (5, 8, 3, 'Заказать в марте, пик июнь-июль'),
+                    'плавк': (5, 8, 3, 'Заказать в марте, пик июнь-август'),
+                    'пляж': (5, 8, 3, 'Заказать в марте-апреле'),
+                    'сарафан': (4, 8, 2, 'Заказать в феврале, пик май-июль'),
+                    'шорты': (4, 8, 2, 'Заказать в феврале-марте'),
+                    'зонт': (4, 9, 2, 'Заказать в феврале, актуален весь сезон'),
+                    'дождевик': (3, 10, 1, 'Заказать в январе, пик апрель-май'),
+                    'купальник': (5, 8, 3, 'Заказать в марте'),
+                    'лыж': (11, 3, 9, 'Заказать в сентябре, пик декабрь-февраль'),
+                    'сноуборд': (11, 3, 9, 'Заказать в сентябре'),
+                    'коньк': (11, 3, 9, 'Заказать в сентябре-октябре'),
+                    'санк': (11, 2, 9, 'Заказать в сентябре, пик декабрь-январь'),
+                    'пуховик': (10, 2, 8, 'Заказать в августе, пик октябрь-январь'),
+                    'шуб': (10, 2, 8, 'Заказать в августе'),
+                    'шапк': (10, 2, 8, 'Заказать в августе-сентябре'),
+                    'варежк': (10, 2, 8, 'Заказать в августе'),
+                    'перчатк': (10, 2, 8, 'Заказать в августе'),
+                    'термобель': (10, 3, 8, 'Заказать в августе'),
+                    'новогод': (11, 1, 9, 'Заказать в сентябре, пик декабрь'),
+                    'ёлочн': (11, 1, 9, 'Заказать в сентябре'),
+                    'гирлянд': (11, 1, 9, 'Заказать в сентябре'),
+                    'мангал': (4, 8, 2, 'Заказать в феврале, пик май-июль'),
+                    'барбекю': (4, 8, 2, 'Заказать в феврале'),
+                    'садов': (3, 9, 1, 'Заказать в январе, пик апрель-август'),
+                    'огород': (3, 7, 1, 'Заказать в январе'),
+                    'палатк': (4, 9, 2, 'Заказать в феврале, пик май-август'),
+                    'спальный мешок': (4, 9, 2, 'Заказать в феврале'),
+                    'велосипед': (3, 9, 1, 'Заказать в январе, пик апрель-июль'),
+                    'самокат': (3, 9, 1, 'Заказать в январе-феврале'),
+                    'роллер': (4, 9, 2, 'Заказать в феврале'),
+                    'кепи': (4, 9, 2, 'Заказать в феврале'),
+                    'панам': (4, 9, 2, 'Заказать в феврале'),
+                    'солнцезащитн': (4, 9, 2, 'Заказать в феврале'),
+                    'крем солнц': (4, 9, 2, 'Заказать в феврале'),
+                    'репеллент': (4, 9, 2, 'Заказать в феврале'),
+                    'пасхальн': (3, 4, 1, 'Заказать в январе, пик март-апрель'),
+                    'валентин': (1, 2, 11, 'Заказать в ноябре, пик февраль'),
+                    'школьн': (7, 9, 5, 'Заказать в мае, пик август'),
+                    'рюкзак школ': (7, 9, 5, 'Заказать в мае'),
+                }
+
+                # Определяем сезонность каждой ниши
+                import datetime
+                current_month = datetime.datetime.now().month
+                for n in niches_data:
+                    name_lower = n['name'].lower()
+                    seasonal_info = None
+                    for keyword, (start_m, end_m, order_m, advice) in seasonal_calendar.items():
+                        if keyword in name_lower:
+                            # Считаем сколько месяцев до нужно заказать
+                            months_until_order = (order_m - current_month) % 12
+                            if months_until_order == 0:
+                                urgency = 'СРОЧНО — время заказывать СЕЙЧАС'
+                            elif months_until_order <= 1:
+                                urgency = f'Заказать через {months_until_order} мес'
+                            elif months_until_order <= 2:
+                                urgency = f'Заказать через {months_until_order} мес'
+                            else:
+                                urgency = f'Заказать через {months_until_order} мес'
+                            seasonal_info = f'{advice}. {urgency}.'
+                            break
+                    n['seasonal_info'] = seasonal_info
+
                 prompt += 'ОБЯЗАТЕЛЬНО выбери ровно 10-12 ниш. Диверсификация по категориям. Баланс: быстрые(оборот<45дн) + маржинальные(маржа>60%) + стабильные.' + chr(10)
                 prompt += 'Верни ТОЛЬКО валидный JSON без markdown:' + chr(10)
                 prompt += '{"summary":{"title":"название","description":"3-4 предложения","total_budget_rub":0,"monthly_potential_rub":0,"payback_months":0},"niches":[{"name":"название","full":"полное","priority":"high|medium|low","turnover_days":0,"margin_pct":0,"buyout_pct":0,"entry_cost_rub":0,"ad_budget_rub":0,"profit_per_cycle_rub":0,"reason":"2-3 предложения","seasonal_warning":null}]}'

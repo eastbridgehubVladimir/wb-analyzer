@@ -904,23 +904,23 @@ function renderPortfolioQuestionnaire(div) {
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;" id="q1-options">
           <div onclick="selectOption('q1','micro')" id="q1-micro" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:15px;font-weight:700;color:#4ade80;">до $200</div>
-            <div style="font-size:11px;color:#555;margin-top:4px;">200 шт · $0.5-1/шт · цена до 300₽ · расходники</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">200 шт · $0.5-1/шт · цена до 400₽ · расходники</div>
           </div>
           <div onclick="selectOption('q1','low')" id="q1-low" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:15px;font-weight:700;color:#38bdf8;">$200 — $500</div>
-            <div style="font-size:11px;color:#555;margin-top:4px;">150 шт · $1.3-3.3/шт · цена 300-1000₽</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">150 шт · $1-3.3/шт · цена 300-1200₽</div>
           </div>
           <div onclick="selectOption('q1','mid')" id="q1-mid" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:15px;font-weight:700;color:#fbbf24;">$500 — $1500</div>
-            <div style="font-size:11px;color:#555;margin-top:4px;">100 шт · $5-15/шт · цена 1000-4000₽</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">100 шт · $3-15/шт · цена 800-5000₽</div>
           </div>
           <div onclick="selectOption('q1','high')" id="q1-high" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:15px;font-weight:700;color:#f59e0b;">$1500 — $3000</div>
-            <div style="font-size:11px;color:#555;margin-top:4px;">50 шт · $30-60/шт · цена 4000-12000₽</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">50 шт · $15-60/шт · цена 3500-18500₽</div>
           </div>
           <div onclick="selectOption('q1','premium')" id="q1-premium" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:15px;font-weight:700;color:#a78bfa;">$3000 — $7000</div>
-            <div style="font-size:11px;color:#555;margin-top:4px;">20 шт · $150-350/шт · цена 12000-45000₽</div>
+            <div style="font-size:11px;color:#555;margin-top:4px;">20 шт · $60-350/шт · цена 12000-99000₽</div>
           </div>
         </div>
       </div>
@@ -1192,7 +1192,7 @@ async function showCatalog() {
   hideAll();
   setActiveMenu(event.target);
   document.getElementById('catalog').style.display = 'block';
-  document.querySelector('.search-box').style.display = 'none';
+  // search-box остаётся видимым в каталоге
   if (catalogData.length > 0) { filterCatalog(); return; }
   document.getElementById('cat-list').innerHTML = '<div style="color:#555;padding:20px">Загружаем ниши...</div>';
   const r = await fetch('/catalog');
@@ -3771,8 +3771,16 @@ class Handler(BaseHTTPRequestHandler):
                 cycle_range = cycle_map.get(q2,(45,90))
                 comp_range = comp_map.get(q4,(50,300))
                 # Смягчённые ценовые диапазоны для большего охвата
-                price_min = budget_range[0] * usd_rate / 100 / 0.5
-                price_max = budget_range[1] * usd_rate / 20 / 0.3
+                # Цена продажи = бюджет / партия / cost_pct
+                # Перекрывающиеся диапазоны чтобы не было пробелов
+                batch_map = {'micro':200,'low':150,'mid':100,'high':50,'premium':20}
+                cpct_map = {'micro':0.28,'low':0.30,'mid':0.32,'high':0.35,'premium':0.38}
+                b = batch_map.get(q1, 100)
+                cp = cpct_map.get(q1, 0.32)
+                # Минимальная цена — от предыдущего сегмента (перекрытие)
+                prev_max_map = {'micro':0,'low':0,'mid':320,'high':1000,'premium':4000}
+                price_min = max(0, prev_max_map.get(q1, 0))
+                price_max = budget_range[1] * usd_rate / b / cp * 1.2  # +20% перекрытие вверх
                 exclude_map = {
                     'Еда и напитки': ['еда','напиток','чай','кофе','шоколад','конфет','продукт','бакалея','сухое','сливк','молок','мука','крупа','сахар','соль','масло подсолн','майонез','соус','уксус','специ','приправ','паста кунжут','закваск','йогурт','кефир','творог','сыр','колбас','мясо','рыб','морепрод','овощ','фрукт','ягод','орех','семен','злак','хлеб','печень','конфет','мармелад','пастил','зефир','варень','джем','мед натур'],
                     'Животные': ['животн','собак','кошк','питомц','ветерин'],

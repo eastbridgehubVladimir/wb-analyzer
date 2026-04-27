@@ -2176,6 +2176,18 @@ function renderResult(d) {
       </div>
     </div>
 
+    <!-- ЗОНА 9: Поставщики -->
+    <div id="supplier-block" style="display:none;margin-top:24px;">
+      <div class="ai-card">
+        <div class="ai-header">
+          <div class="ai-dot" style="background:#34d399;"></div>
+          <div class="ai-title">&#127981; Поиск поставщиков и цены закупки</div>
+          <div id="supplier-loading" style="display:none;margin-left:12px;font-size:12px;color:#555;">Ищем...</div>
+        </div>
+        <div id="supplier-content" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
     <!-- ЗОНА 8: Документы и сертификация -->
     <div id="docs-block" style="display:none;margin-top:24px;">
       <div class="ai-card">
@@ -2210,6 +2222,83 @@ function toggleStickyWL(btn) {
   btn.textContent = inWl ? '📌 В работе' : '🔖 В работе';
   btn.style.borderColor = inWl ? '#6c63ff' : '#2a2a3a';
   btn.style.color = inWl ? '#a78bfa' : '#888';
+}
+
+
+async function runSupplierAnalysis() {
+  const d = window.currentNiche;
+  if (!d) return;
+  const block = document.getElementById('supplier-block');
+  const container = document.getElementById('supplier-content');
+  const loading = document.getElementById('supplier-loading');
+  if (block) { block.style.display = 'block'; block.scrollIntoView({behavior:'smooth'}); }
+  if (loading) loading.style.display = 'block';
+  container.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">&#127981; Ищем поставщиков на Alibaba, 1688, Taobao...</div>';
+  try {
+    const resp = await fetch('/supplier-analysis', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({niche_name: d.name, display_name: d.display_name||d.name, avg_price: d.avg_price||0, currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency]})
+    });
+    const result = await resp.json();
+    if (result.error) throw new Error(result.error);
+    if (loading) loading.style.display = 'none';
+    renderSupplierResult(result);
+  } catch(e) {
+    if (loading) loading.style.display = 'none';
+    container.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;">&#10060; ' + e.message + '</div>';
+  }
+}
+
+function renderSupplierResult(data) {
+  const container = document.getElementById('supplier-content');
+  const sym = symbols[currentCurrency];
+  const rate = rates[currentCurrency];
+  var html = '';
+  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #34d399;">';
+  html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:8px;">ДИАПАЗОН ЦЕН ЗАКУПКИ</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">';
+  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:10px;color:#555;margin-bottom:4px;">TAOBAO/1688</div><div style="font-size:16px;font-weight:700;color:#34d399;">$' + (data.price_taobao_usd||'—') + '</div><div style="font-size:10px;color:#555;">самая низкая</div></div>';
+  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ALIBABA</div><div style="font-size:16px;font-weight:700;color:#fbbf24;">$' + (data.price_alibaba_usd||'—') + '</div><div style="font-size:10px;color:#555;">оптовая</div></div>';
+  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:10px;color:#555;margin-bottom:4px;">MOQ</div><div style="font-size:16px;font-weight:700;color:#a78bfa;">' + (data.moq||'—') + ' шт</div><div style="font-size:10px;color:#555;">мин. партия</div></div>';
+  html += '</div>';
+  html += '<div style="font-size:12px;color:#aaa;line-height:1.6;">' + (data.summary||'') + '</div>';
+  html += '</div>';
+  if (data.search_links && data.search_links.length > 0) {
+    html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">';
+    html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ССЫЛКИ ДЛЯ ПОИСКА</div>';
+    data.search_links.forEach(function(link) {
+      html += '<a href="' + link.url + '" target="_blank" style="display:flex;align-items:center;gap:10px;background:#1a1a24;border-radius:8px;padding:10px;text-decoration:none;margin-bottom:8px;">';
+      html += '<div style="font-size:18px;">' + link.icon + '</div>';
+      html += '<div><div style="font-size:12px;color:#fff;font-weight:600;">' + link.platform + '</div><div style="font-size:11px;color:#555;">' + link.description + '</div></div>';
+      html += '<div style="margin-left:auto;font-size:11px;color:#34d399;">&#8594; открыть</div></a>';
+    });
+    html += '</div>';
+  }
+  if (data.real_margin_pct) {
+    var mc = data.real_margin_pct >= 30 ? '#4ade80' : data.real_margin_pct >= 15 ? '#fbbf24' : '#ef4444';
+    html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">';
+    html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">РЕАЛЬНАЯ МАРЖИНАЛЬНОСТЬ (после себестоимости)</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">';
+    html += '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">МАРЖА</div><div style="font-size:20px;font-weight:700;color:' + mc + ';">' + data.real_margin_pct + '%</div></div>';
+    html += '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ROI</div><div style="font-size:20px;font-weight:700;color:' + mc + ';">' + (data.roi_pct||'—') + '%</div></div>';
+    html += '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ПРИБЫЛЬ/ЕД</div><div style="font-size:20px;font-weight:700;color:' + mc + ';">' + Math.round((data.profit_per_unit_rub||0)*rate) + ' ' + sym + '</div></div>';
+    html += '</div></div>';
+  }
+  html += '<button onclick="applySupplierPrice(' + (data.price_taobao_usd||0) + ',' + (data.price_alibaba_usd||0) + ')" style="width:100%;background:#0a1a0f;border:1px solid #34d39944;border-radius:8px;padding:12px;color:#34d399;cursor:pointer;font-size:13px;font-weight:600;">&#10003; Применить цены в расчёты</button>';
+  container.innerHTML = html;
+}
+
+function applySupplierPrice(taobaoUsd, alibabaUsd) {
+  window._supplierPriceTaobao = taobaoUsd;
+  window._supplierPriceAlibaba = alibabaUsd;
+  window._supplierPriceApplied = true;
+  var d = window.currentNiche;
+  if (d) {
+    d.supplier_price_usd = taobaoUsd || alibabaUsd;
+    d.supplier_price_rub = (taobaoUsd || alibabaUsd) * 90;
+  }
+  alert('Цены поставщика применены! Юнит-экономика теперь использует реальную закупочную стоимость.');
 }
 
 function convertDocsCost(rubStr) {
@@ -2930,6 +3019,7 @@ async function submitMonitor(month) {
       <button onclick="runAdAnalysis();setTimeout(function(){var el=document.getElementById('adBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0f0f1a;border:1px solid #6c63ff44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#a78bfa;font-size:11px;white-space:nowrap;">&#127919; Реклама</button>
       <button onclick="runWarehouseAnalysis();setTimeout(function(){var el=document.getElementById('warehouseBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0a1520;border:1px solid #38bdf844;border-radius:7px;padding:6px 12px;cursor:pointer;color:#38bdf8;font-size:11px;white-space:nowrap;">&#128230; Поставки</button>
       <button onclick="runDocsAnalysis()" style="background:#1a120a;border:1px solid #d9770644;border-radius:7px;padding:6px 12px;cursor:pointer;color:#d97706;font-size:11px;white-space:nowrap;">&#128203; Документы</button>
+      <button onclick="runSupplierAnalysis()" style="background:#0a1a0f;border:1px solid #34d39944;border-radius:7px;padding:6px 12px;cursor:pointer;color:#34d399;font-size:11px;white-space:nowrap;">&#127981; Поставщики</button>
       <div style="flex:1;"></div>
       <button id="sticky-wl-btn" onclick="toggleStickyWL(this)" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:7px;padding:6px 14px;cursor:pointer;color:#888;font-size:11px;white-space:nowrap;">&#128278; В работе</button>
     </div>
@@ -4353,6 +4443,51 @@ class Handler(BaseHTTPRequestHandler):
                     'recommendation': recommendation
                 }, ensure_ascii=False).encode('utf-8'))
 
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+
+        elif self.path == '/supplier-analysis':
+            try:
+                import anthropic
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                niche_name = body.get('niche_name', '')
+                display_name = body.get('display_name', niche_name)
+                avg_price = float(body.get('avg_price', 0))
+                avg_price_usd = round(avg_price / 90, 1)
+                top_items = body.get('top_items', [])
+                top_str = ''
+                for i, item in enumerate(top_items[:3]):
+                    nm = str(item.get('name', ''))
+                    pr = str(item.get('price', 0))
+                    sl = str(item.get('sales', 0))
+                    top_str += str(i+1) + '. ' + nm + ' | ' + pr + ' руб | ' + sl + ' прод/мес' + chr(10)
+                p = []
+                p.append('Ты эксперт по закупкам в Китае. Найди закупочные цены для конкретных товаров.')
+                p.append('НИША: ' + display_name)
+                p.append('Средняя цена WB: ' + str(avg_price) + ' руб ($' + str(avg_price_usd) + ')')
+                if top_str:
+                    p.append('ТОП ТОВАРЫ НА WB (найди их аналоги в Китае):')
+                    p.append(top_str)
+                p.append('Задача: найти эти товары или аналоги на Taobao/1688/Alibaba и указать реальные цены.')
+                p.append('Учти WB комиссию ~25%, логистику ~120 руб/шт для расчёта маржи.')
+                p.append('')
+                p.append('Верни ТОЛЬКО JSON без markdown:')
+                json_tmpl = '{"price_taobao_usd": 0, "price_alibaba_usd": 0, "moq": 0, "summary": "текст", "search_links": [{"platform": "Alibaba", "url": "https://www.alibaba.com/trade/search?SearchText=QUERY", "icon": "строка", "description": "строка"}, {"platform": "1688", "url": "https://s.1688.com/selloffer/offer_search.htm?keywords=QUERY", "icon": "строка", "description": "строка"}, {"platform": "Taobao", "url": "https://s.taobao.com/search?q=QUERY", "icon": "строка", "description": "строка"}], "real_margin_pct": 0, "roi_pct": 0, "profit_per_unit_rub": 0}'
+                p.append(json_tmpl)
+                prompt = chr(10).join(p)
+                client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+                msg = client.messages.create(model='claude-sonnet-4-5', max_tokens=2000,
+                    messages=[{'role': 'user', 'content': prompt}])
+                raw = msg.content[0].text.strip().replace('```json', '').replace('```', '').strip()
+                result = json.loads(raw)
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')

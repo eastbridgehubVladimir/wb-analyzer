@@ -1151,6 +1151,16 @@ function renderPortfolioResult(data, sym, rate) {
   html += '</div>';
 
   // Кнопка сохранить портфель
+  // Блок расчёта контейнера
+  window._portfolioNiches = niches;
+  html += '<div style="margin-top:24px;background:linear-gradient(135deg,#0a1a0a,#0f0f1a);border-radius:12px;padding:20px;border:1px solid #34d39933;">';
+  html += '<div style="font-size:10px;color:#34d399;letter-spacing:1px;margin-bottom:8px;">ЭТАП 2 — ЛОГИСТИКА</div>';
+  html += '<div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:6px;">&#128230; Расчёт контейнера и поставок</div>';
+  html += '<div style="font-size:12px;color:#555;margin-bottom:16px;">Рассчитаем оптимальный тип доставки, стоимость первой поставки и график заказов</div>';
+  html += '<button onclick="calcContainerData()" style="width:100%;background:#34d399;border:none;border-radius:8px;padding:12px;color:#000;font-size:14px;font-weight:700;cursor:pointer;">&#128230; Рассчитать контейнер и поставки</button>';
+  html += '<div id="container-result" style="margin-top:16px;"></div>';
+  html += '</div>';
+
   html += '<div style="margin-top:20px;display:flex;gap:12px;">' +
   '<button onclick="resetPortfolioForm()" style="flex:1;background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:12px;color:#888;cursor:pointer;font-size:13px;">&#128260; Изменить параметры</button>' +
   '<button onclick="runPortfolioAnalysis()" style="flex:1;background:#6c63ff22;border:1px solid #6c63ff44;border-radius:8px;padding:12px;color:#a78bfa;cursor:pointer;font-size:13px;">&#128260; Показать другие варианты</button>' +
@@ -2381,6 +2391,115 @@ function convertDocsCost(rubStr) {
     }
   });
   return result + ' Br';
+}
+
+function calcContainerData() {
+  var niches = window._portfolioNiches || [];
+  if (!niches.length) { alert('Сначала подберите портфель'); return; }
+  calcContainer(niches);
+}
+
+function calcContainer(niches) {
+  var usdRate = 90;
+  var container = document.getElementById('container-result');
+  container.innerHTML = '<div style="color:#555;padding:16px;text-align:center;">&#128230; Рассчитываем...</div>';
+  var totalWeightKg = 0, totalVolM3 = 0, totalPurchaseRub = 0;
+  var nicheDetails = [];
+  niches.forEach(function(n) {
+    var batch = 100;
+    var entry = n.entry_cost_rub || 50000;
+    var unitCostRub = entry / batch * 0.6;
+    var unitPriceRub = unitCostRub / 0.35;
+    var weightKg = unitPriceRub < 500 ? 0.1 : unitPriceRub < 1500 ? 0.3 : unitPriceRub < 5000 ? 0.8 : unitPriceRub < 15000 ? 2.0 : 5.0;
+    var volM3 = batch * weightKg * 2.5 / 1000;
+    var purchaseRub = entry * 0.6;
+    totalWeightKg += batch * weightKg;
+    totalVolM3 += volM3;
+    totalPurchaseRub += purchaseRub;
+    nicheDetails.push({name: n.name, batch: batch, weightKg: Math.round(batch*weightKg), volM3: volM3.toFixed(2), purchaseRub: Math.round(purchaseRub), turnover: n.turnover_days||30});
+  });
+  var deliveryType, deliveryCostUsd, deliveryDays, deliveryDesc;
+  if (totalVolM3 < 3) {
+    deliveryType = 'Карго (авиа)'; deliveryCostUsd = totalWeightKg * 5; deliveryDays = 20;
+    deliveryDesc = 'Быстро но дорого. Подходит для малого объёма.';
+  } else if (totalVolM3 < 8) {
+    deliveryType = 'LCL (сборный контейнер)'; deliveryCostUsd = totalVolM3 * 180; deliveryDays = 45;
+    deliveryDesc = 'Платите только за свой объём. Оптимально для старта.';
+  } else if (totalVolM3 < 20) {
+    deliveryType = 'Контейнер 20ft'; deliveryCostUsd = 3500; deliveryDays = 60;
+    deliveryDesc = 'Выгодно если объём > 8 м³. Фиксированная цена.';
+  } else {
+    deliveryType = 'Контейнер 40ft'; deliveryCostUsd = 5000; deliveryDays = 60;
+    deliveryDesc = 'Максимальный объём. Выгоден при полной загрузке.';
+  }
+  var deliveryCostRub = deliveryCostUsd * usdRate;
+  var customsRub = totalPurchaseRub * 0.10;
+  var vatRub = (totalPurchaseRub + customsRub) * 0.20;
+  var totalFirstShipment = totalPurchaseRub + deliveryCostRub + customsRub + vatRub;
+  var today = new Date();
+  var productionDays = 20;
+  var arrivalDate = new Date(today);
+  arrivalDate.setDate(arrivalDate.getDate() + productionDays + deliveryDays + 14);
+  var salesStartDate = new Date(arrivalDate);
+  salesStartDate.setDate(salesStartDate.getDate() + 7);
+  var fmtDate = function(d) { return d.toLocaleDateString('ru-RU', {day:'numeric', month:'long'}); };
+  var sym = symbols[currentCurrency];
+  var rate = rates[currentCurrency];
+  var fmtRub = function(rub) {
+    var v = Math.round(rub * rate);
+    if (v >= 1000000) return (v/1000000).toFixed(1) + ' млн ' + sym;
+    if (v >= 1000) return Math.round(v/1000) + ' тыс ' + sym;
+    return v + ' ' + sym;
+  };
+  var html = '';
+  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">';
+  html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ОБЪЁМ ПОРТФЕЛЯ</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">';
+  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ВЕС</div><div style="font-size:15px;font-weight:700;color:#38bdf8;">' + Math.round(totalWeightKg) + ' кг</div></div>';
+  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ОБЪЁМ</div><div style="font-size:15px;font-weight:700;color:#38bdf8;">' + totalVolM3.toFixed(1) + ' м³</div></div>';
+  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЗАКУПКА</div><div style="font-size:15px;font-weight:700;color:#a78bfa;">' + fmtRub(totalPurchaseRub) + '</div></div>';
+  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ПЕРВАЯ ПОСТАВКА</div><div style="font-size:15px;font-weight:700;color:#4ade80;">' + fmtRub(totalFirstShipment) + '</div></div>';
+  html += '</div></div>';
+  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #34d399;">';
+  html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:8px;">РЕКОМЕНДОВАННАЯ ДОСТАВКА</div>';
+  html += '<div style="font-size:16px;font-weight:700;color:#34d399;margin-bottom:4px;">&#128230; ' + deliveryType + '</div>';
+  html += '<div style="font-size:12px;color:#aaa;margin-bottom:12px;">' + deliveryDesc + '</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">';
+  html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">СТОИМОСТЬ</div><div style="font-size:14px;font-weight:700;color:#fff;">' + fmtRub(deliveryCostRub) + '</div></div>';
+  html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">СРОК</div><div style="font-size:14px;font-weight:700;color:#fff;">' + deliveryDays + ' дней</div></div>';
+  html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ТАМОЖНЯ+НДС</div><div style="font-size:14px;font-weight:700;color:#fff;">' + fmtRub(customsRub+vatRub) + '</div></div>';
+  html += '</div></div>';
+  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">';
+  html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:12px;">ГРАФИК ПЕРВОЙ ПОСТАВКИ</div>';
+  var steps = [
+    {date: fmtDate(today), label: 'Размещение заказа', desc: 'Договор с поставщиком, предоплата 30%', color: '#6c63ff'},
+    {date: fmtDate(new Date(today.getTime()+productionDays*86400000)), label: 'Производство завершено', desc: 'Оплата остатка, отгрузка', color: '#38bdf8'},
+    {date: fmtDate(new Date(today.getTime()+(productionDays+deliveryDays)*86400000)), label: 'Прибытие в РБ', desc: 'Таможенное оформление', color: '#fbbf24'},
+    {date: fmtDate(arrivalDate), label: 'Приёмка WB', desc: 'Отправка на склад WB', color: '#f59e0b'},
+    {date: fmtDate(salesStartDate), label: '&#128640; Начало продаж', desc: 'Товар доступен покупателям', color: '#4ade80'},
+  ];
+  steps.forEach(function(s) {
+    html += '<div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-start;">';
+    html += '<div style="min-width:90px;font-size:11px;color:'+s.color+';font-weight:600;text-align:right;padding-top:2px;">'+s.date+'</div>';
+    html += '<div style="width:2px;background:'+s.color+';margin:4px 0;align-self:stretch;min-height:30px;"></div>';
+    html += '<div><div style="font-size:12px;color:#fff;font-weight:600;">'+s.label+'</div><div style="font-size:11px;color:#555;">'+s.desc+'</div></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  var avgTurnover = niches.reduce(function(s,n){return s+(n.turnover_days||30);},0)/niches.length;
+  var nextOrderDate = new Date(salesStartDate);
+  nextOrderDate.setDate(nextOrderDate.getDate() + Math.round(avgTurnover) - deliveryDays - 14);
+  if (nextOrderDate <= today) nextOrderDate = new Date(today.getTime() + 7*86400000);
+  var daysUntilNext = Math.round((nextOrderDate-today)/86400000);
+  var urgencyColor = daysUntilNext < 14 ? '#ef4444' : daysUntilNext < 30 ? '#fbbf24' : '#4ade80';
+  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;">';
+  html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">СЛЕДУЮЩИЙ ЗАКАЗ — БЕЗ ТОВАРНОГО РАЗРЫВА</div>';
+  html += '<div style="display:flex;align-items:center;gap:16px;background:#1a1a24;border-radius:8px;padding:14px;">';
+  html += '<div style="font-size:32px;">&#128197;</div>';
+  html += '<div><div style="font-size:14px;font-weight:700;color:'+urgencyColor+';">Заказать: ' + fmtDate(nextOrderDate) + '</div>';
+  html += '<div style="font-size:11px;color:#555;margin-top:2px;">Через '+daysUntilNext+' дней · Оборот '+Math.round(avgTurnover)+' дн · Доставка '+deliveryDays+' дней</div></div>';
+  html += '</div></div>';
+  container.innerHTML = html;
 }
 
 function openNicheFromPortfolio(btn) {

@@ -2285,20 +2285,83 @@ function renderSupplierResult(data) {
     html += '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ПРИБЫЛЬ/ЕД</div><div style="font-size:20px;font-weight:700;color:' + mc + ';">' + Math.round((data.profit_per_unit_rub||0)*rate) + ' ' + sym + '</div></div>';
     html += '</div></div>';
   }
-  html += '<button onclick="applySupplierPrice(' + (data.price_taobao_usd||0) + ',' + (data.price_alibaba_usd||0) + ')" style="width:100%;background:#0a1a0f;border:1px solid #34d39944;border-radius:8px;padding:12px;color:#34d399;cursor:pointer;font-size:13px;font-weight:600;">&#10003; Применить цены в расчёты</button>';
+  // Блок ручного ввода и применения цен
+  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-top:12px;">';
+  html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ВВЕСТИ РЕАЛЬНУЮ ЦЕНУ ЗАКУПКИ</div>';
+  html += '<div style="font-size:11px;color:#555;margin-bottom:12px;">Укажите фактическую цену после переговоров с поставщиком — все расчёты пересчитаются автоматически</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">';
+  html += '<div><div style="font-size:10px;color:#555;margin-bottom:4px;">ЦЕНА ЗАКУПКИ ($/шт)</div><input id="real-price-usd" type="number" step="0.1" placeholder="например 3.5" value="' + (data.price_taobao_usd||'') + '" style="width:100%;background:#1a1a24;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;"></div>';
+  html += '<div><div style="font-size:10px;color:#555;margin-bottom:4px;">КОЛ-ВО В ПАРТИИ (шт)</div><input id="real-batch-qty" type="number" placeholder="например 100" value="100" style="width:100%;background:#1a1a24;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;"></div>';
+  html += '<button onclick="applyRealPrice()" style="background:#34d399;border:none;border-radius:6px;padding:9px 16px;color:#000;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;">Применить</button>';
+  html += '</div>';
+  html += '<div id="real-price-result" style="margin-top:12px;"></div>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">';
+  html += '<button onclick="applySupplierPrice(' + (data.price_taobao_usd||0) + ',' + (data.price_alibaba_usd||0) + ')" style="background:#0a1a0f;border:1px solid #34d39944;border-radius:8px;padding:10px;color:#34d399;cursor:pointer;font-size:12px;">&#10003; Применить цены агента</button>';
+  html += '<button onclick="hideSupplierBlock()" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px;color:#555;cursor:pointer;font-size:12px;">Скрыть</button>';
+  html += '</div>';
   container.innerHTML = html;
 }
 
+function hideSupplierBlock() {
+  var el = document.getElementById('supplier-block');
+  if (el) el.style.display = 'none';
+}
+
 function applySupplierPrice(taobaoUsd, alibabaUsd) {
-  window._supplierPriceTaobao = taobaoUsd;
-  window._supplierPriceAlibaba = alibabaUsd;
+  var priceUsd = taobaoUsd || alibabaUsd;
+  window._supplierPriceUsd = priceUsd;
+  window._supplierPriceRub = priceUsd * 90;
   window._supplierPriceApplied = true;
   var d = window.currentNiche;
-  if (d) {
-    d.supplier_price_usd = taobaoUsd || alibabaUsd;
-    d.supplier_price_rub = (taobaoUsd || alibabaUsd) * 90;
-  }
-  alert('Цены поставщика применены! Юнит-экономика теперь использует реальную закупочную стоимость.');
+  if (d) { d.supplier_price_usd = priceUsd; d.supplier_price_rub = priceUsd * 90; }
+  showAppliedPriceResult(priceUsd, 100);
+}
+
+function applyRealPrice() {
+  var priceUsd = parseFloat(document.getElementById('real-price-usd').value) || 0;
+  var batchQty = parseInt(document.getElementById('real-batch-qty').value) || 100;
+  if (!priceUsd) { alert('Введите цену закупки'); return; }
+  window._supplierPriceUsd = priceUsd;
+  window._supplierPriceRub = priceUsd * 90;
+  window._supplierBatchQty = batchQty;
+  window._supplierPriceApplied = true;
+  var d = window.currentNiche;
+  if (d) { d.supplier_price_usd = priceUsd; d.supplier_price_rub = priceUsd * 90; }
+  showAppliedPriceResult(priceUsd, batchQty);
+}
+
+function showAppliedPriceResult(priceUsd, batchQty) {
+  var d = window.currentNiche;
+  if (!d) return;
+  var sym = symbols[currentCurrency];
+  var rate = rates[currentCurrency];
+  var usdRate = 90;
+  var priceRub = priceUsd * usdRate;
+  var avgPrice = d.avg_price || 0;
+
+  var commission = (d.commission > 1 ? d.commission / 100 : d.commission) || 0.25;
+  var wbComm = avgPrice * commission;
+  var wbLog = avgPrice < 1000 ? 75 : avgPrice < 5000 ? 120 : 200;
+  var profitPerUnit = avgPrice - priceRub - wbComm - wbLog;
+  var marginPct = avgPrice > 0 ? Math.round(profitPerUnit / avgPrice * 100) : 0;
+  var roi = priceRub > 0 ? Math.round(profitPerUnit / priceRub * 100) : 0;
+  var batchCost = priceRub * batchQty;
+  var batchProfit = profitPerUnit * batchQty * (d.buyout_pct || 0.8);
+  var marginColor = marginPct >= 30 ? '#4ade80' : marginPct >= 15 ? '#fbbf24' : '#ef4444';
+  var container = document.getElementById('real-price-result');
+  if (!container) return;
+  var html = '<div style="background:#1a1a24;border-radius:8px;padding:12px;border-left:3px solid ' + marginColor + ';">';
+  html += '<div style="font-size:10px;color:#555;margin-bottom:8px;letter-spacing:1px;">РАСЧЁТ С РЕАЛЬНОЙ ЦЕНОЙ ЗАКУПКИ</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">';
+  html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;">ЗАКУПКА/ШТ</div><div style="font-size:14px;font-weight:700;color:#fff;">$' + priceUsd.toFixed(1) + '</div><div style="font-size:10px;color:#555;">' + Math.round(priceRub) + ' ₽</div></div>';
+  html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;">МАРЖА</div><div style="font-size:14px;font-weight:700;color:' + marginColor + ';">' + marginPct + '%</div></div>';
+  html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;">ROI</div><div style="font-size:14px;font-weight:700;color:' + marginColor + ';">' + roi + '%</div></div>';
+  html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;">ПРИБЫЛЬ/ПАРТИЯ</div><div style="font-size:14px;font-weight:700;color:' + marginColor + ';">' + Math.round(batchProfit * rate / 1000) + 'K ' + sym + '</div></div>';
+  html += '</div>';
+  html += '<div style="margin-top:8px;font-size:11px;color:#555;">Партия ' + batchQty + ' шт · Закупка ' + Math.round(batchCost * rate) + ' ' + sym + ' · Прибыль/ед ' + Math.round(profitPerUnit * rate) + ' ' + sym + '</div>';
+  html += '</div>';
+  container.innerHTML = html;
 }
 
 function convertDocsCost(rubStr) {

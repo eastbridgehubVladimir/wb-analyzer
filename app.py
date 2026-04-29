@@ -1621,6 +1621,7 @@ async function loadCharts(name) {
       html += '<th style="text-align:right;padding:6px 8px;">Продажи</th>';
       html += '<th style="text-align:right;padding:6px 8px;">Рейтинг</th>';
       html += '<th style="text-align:center;padding:6px 8px;">Артикул WB</th>';
+      html += '<th style="text-align:center;padding:6px 8px;">Поставщик</th>';
       html += '</tr>';
       data.top_items.forEach((item, i) => {
         html += `<tr style="border-bottom:1px solid #1a1a2e;cursor:pointer;" onmouseover="this.style.background='#1a1a2e'" onmouseout="this.style.background=''">`; 
@@ -1632,9 +1633,11 @@ async function loadCharts(name) {
         html += `<td style="padding:8px;color:#4ade80;text-align:right;">${item.sales.toLocaleString('ru')}</td>`;
         html += `<td style="padding:8px;color:#fbbf24;text-align:right;">${item.rating > 0 ? '★ ' + item.rating : '—'}</td>`;
         html += `<td style="padding:8px;text-align:center;">${item.url ? '<a href="' + item.url + '" target="_blank" style="color:#6c63ff;text-decoration:none;font-size:11px;">' + item.id + '</a>' : '—'}</td>`;
+        html += `<td style="padding:8px;text-align:center;"><button onclick="findSupplierByPhoto('${item.id}','${item.name.replace(/'/g,'').replace(/"/g,'')}',${item.price})" style="background:#34d39922;border:1px solid #34d39944;border-radius:5px;color:#34d399;padding:3px 8px;cursor:pointer;font-size:10px;white-space:nowrap;">🔍 Найти</button></td>`;
         html += '</tr>';
       });
       html += '</table></div>';
+      html += '</div><div id="supplier-photo-result" style="margin-top:16px;"></div>';
       document.getElementById('topItemsContent').innerHTML = html;
     }
 
@@ -2572,6 +2575,130 @@ function convertDocsCost(rubStr) {
     }
   });
   return result + ' Br';
+}
+
+async function findSupplierByPhoto(itemId, itemName, itemPrice) {
+  var container = document.getElementById('supplier-photo-result');
+  if (!container) {
+    // Если блок не найден — создаём под таблицей
+    var tc = document.getElementById('topItemsContent');
+    if (tc) {
+      var d = document.createElement('div');
+      d.id = 'supplier-photo-result';
+      d.style.marginTop = '16px';
+      tc.appendChild(d);
+      container = d;
+    }
+  }
+  if (!container) return;
+
+  container.innerHTML = '<div style="background:#0f0f13;border-radius:10px;padding:20px;text-align:center;">' +
+    '<div style="font-size:24px;margin-bottom:8px;">&#128247;</div>' +
+    '<div style="font-size:13px;color:#aaa;">Анализируем товар и ищем аналоги у поставщиков...</div>' +
+    '<div style="font-size:11px;color:#555;margin-top:4px;">Alibaba · 1688 · Made-in-China · AliExpress</div>' +
+    '</div>';
+  container.scrollIntoView({behavior:'smooth'});
+
+  try {
+    var resp = await fetch('/photo-supplier-search', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        item_id: itemId,
+        item_name: itemName,
+        item_price: itemPrice,
+        niche_name: window.currentNiche ? window.currentNiche.name : '',
+        currency: currentCurrency,
+        rate: rates[currentCurrency],
+        symbol: symbols[currentCurrency]
+      })
+    });
+    var data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    renderPhotoSupplierResult(data, itemName, itemPrice);
+  } catch(e) {
+    container.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;">❌ ' + e.message + '</div>';
+  }
+}
+
+function renderPhotoSupplierResult(data, itemName, itemPrice) {
+  var container = document.getElementById('supplier-photo-result');
+  var sym = symbols[currentCurrency];
+  var rate = rates[currentCurrency];
+  var usdRate = 90;
+
+  var html = '<div style="background:#0f0f13;border-radius:10px;padding:16px;border-left:3px solid #34d399;">';
+  html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:8px;">АНАЛИЗ ТОВАРА И ПОИСК АНАЛОГОВ</div>';
+  html += '<div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">' + itemName + '</div>';
+  html += '<div style="font-size:11px;color:#555;margin-bottom:12px;">Цена на WB: ' + Math.round(itemPrice) + ' ₽ · Артикул: ' + (data.item_id||'—') + '</div>';
+
+  // Характеристики товара
+  if (data.characteristics) {
+    html += '<div style="background:#1a1a24;border-radius:8px;padding:12px;margin-bottom:12px;">';
+    html += '<div style="font-size:10px;color:#555;margin-bottom:6px;">ХАРАКТЕРИСТИКИ ТОВАРА</div>';
+    html += '<div style="font-size:12px;color:#aaa;line-height:1.6;">' + data.characteristics + '</div>';
+    html += '</div>';
+  }
+
+  // Цены закупки
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">';
+  var prices = [
+    {label:'1688/Taobao', price: data.price_1688_usd, color:'#34d399'},
+    {label:'Alibaba', price: data.price_alibaba_usd, color:'#fbbf24'},
+    {label:'Made-in-China', price: data.price_mic_usd, color:'#38bdf8'},
+  ];
+  prices.forEach(function(p) {
+    if (p.price) {
+      var priceRub = p.price * usdRate;
+      var margin = Math.round((itemPrice - priceRub) / itemPrice * 100);
+      var marginColor = margin >= 40 ? '#4ade80' : margin >= 20 ? '#fbbf24' : '#ef4444';
+      html += '<div style="background:#1a1a24;border-radius:8px;padding:10px;text-align:center;">';
+      html += '<div style="font-size:9px;color:#555;margin-bottom:4px;">' + p.label + '</div>';
+      html += '<div style="font-size:15px;font-weight:700;color:' + p.color + ';">$' + p.price + '</div>';
+      html += '<div style="font-size:10px;color:#555;">' + Math.round(priceRub) + ' ₽</div>';
+      html += '<div style="font-size:10px;color:' + marginColor + ';margin-top:2px;">маржа ' + margin + '%</div>';
+      html += '</div>';
+    }
+  });
+  html += '</div>';
+
+  // Ссылки для поиска
+  if (data.search_links && data.search_links.length > 0) {
+    html += '<div style="margin-bottom:12px;">';
+    html += '<div style="font-size:10px;color:#555;margin-bottom:8px;">ССЫЛКИ ДЛЯ ПОИСКА АНАЛОГА</div>';
+    data.search_links.forEach(function(link) {
+      html += '<a href="' + link.url + '" target="_blank" style="display:flex;align-items:center;gap:8px;background:#1a1a24;border-radius:6px;padding:8px;text-decoration:none;margin-bottom:6px;">';
+      html += '<span style="font-size:16px;">' + link.icon + '</span>';
+      html += '<div style="flex:1;"><div style="font-size:11px;color:#fff;font-weight:600;">' + link.platform + '</div>';
+      html += '<div style="font-size:10px;color:#555;">' + link.query_hint + '</div></div>';
+      html += '<span style="font-size:10px;color:#34d399;">→ открыть</span></a>';
+    });
+    html += '</div>';
+  }
+
+  // Рекомендация
+  if (data.recommendation) {
+    html += '<div style="background:#1a1a24;border-radius:8px;padding:12px;margin-bottom:12px;">';
+    html += '<div style="font-size:10px;color:#555;margin-bottom:4px;">РЕКОМЕНДАЦИЯ</div>';
+    html += '<div style="font-size:12px;color:#aaa;line-height:1.5;">' + data.recommendation + '</div>';
+    html += '</div>';
+  }
+
+  // Кнопка применить
+  html += '<button onclick="applyPhotoSupplierPrice(' + (data.price_1688_usd||0) + ',' + (data.moq||100) + ')" style="width:100%;background:#0a1a0f;border:1px solid #34d39944;border-radius:8px;padding:10px;color:#34d399;cursor:pointer;font-size:12px;font-weight:600;">✓ Применить цену закупки</button>';
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+function applyPhotoSupplierPrice(priceUsd, moq) {
+  window._supplierPriceUsd = priceUsd;
+  window._supplierPriceRub = priceUsd * 90;
+  window._supplierMoq = moq;
+  window._supplierPriceApplied = true;
+  var d = window.currentNiche;
+  if (d) { d.supplier_price_usd = priceUsd; d.supplier_price_rub = priceUsd * 90; }
+  alert('Цена $' + priceUsd + '/шт применена! MOQ: ' + moq + ' шт');
 }
 
 function calcContainerData() {
@@ -4806,6 +4933,49 @@ class Handler(BaseHTTPRequestHandler):
                     'recommendation': recommendation
                 }, ensure_ascii=False).encode('utf-8'))
 
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+
+        elif self.path == '/photo-supplier-search':
+            try:
+                import anthropic
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                item_id = body.get('item_id', '')
+                item_name = body.get('item_name', '')
+                item_price = float(body.get('item_price', 0))
+                niche_name = body.get('niche_name', '')
+                item_price_usd = round(item_price / 90, 1)
+                wb_url = f'https://www.wildberries.ru/catalog/{item_id}/detail.aspx'
+                p = []
+                p.append('Ты эксперт по закупкам товаров в Китае.')
+                p.append(f'Товар с WB: {item_name}')
+                p.append(f'Цена на WB: {item_price} руб (${item_price_usd})')
+                p.append(f'Ниша: {niche_name}')
+                p.append(f'Артикул WB: {item_id}')
+                p.append('')
+                p.append('Задача:')
+                p.append('1. Опиши подробные характеристики этого товара (материал, размеры, функции, особенности)')
+                p.append('2. Найди закупочные цены аналога на китайских площадках')
+                p.append('3. Сформируй точные поисковые запросы на английском и китайском для каждой площадки')
+                p.append('4. Дай рекомендацию по выбору поставщика')
+                p.append('')
+                p.append('Верни ТОЛЬКО JSON:')
+                p.append('{"item_id": "строка", "characteristics": "подробное описание характеристик товара", "price_1688_usd": число, "price_alibaba_usd": число, "price_mic_usd": число, "moq": число, "search_links": [{"platform": "1688", "url": "https://s.1688.com/selloffer/offer_search.htm?keywords=ЗАПРОС", "icon": "строка", "query_hint": "поисковый запрос"}, {"platform": "Alibaba", "url": "https://www.alibaba.com/trade/search?SearchText=ЗАПРОС", "icon": "строка", "query_hint": "поисковый запрос"}, {"platform": "Made-in-China", "url": "https://www.made-in-china.com/multi-search/ЗАПРОС/F1/0.html", "icon": "строка", "query_hint": "поисковый запрос"}, {"platform": "AliExpress", "url": "https://www.aliexpress.com/wholesale?SearchText=ЗАПРОС", "icon": "строка", "query_hint": "для проверки розничной цены"}], "recommendation": "3-4 предложения о стратегии закупки"}')
+                prompt = chr(10).join(p)
+                client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+                msg = client.messages.create(model='claude-sonnet-4-5', max_tokens=2000,
+                    messages=[{'role': 'user', 'content': prompt}])
+                raw = msg.content[0].text.strip().replace('```json','').replace('```','').strip()
+                result = json.loads(raw)
+                result['item_id'] = item_id
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')

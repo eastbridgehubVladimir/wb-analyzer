@@ -542,7 +542,21 @@ function toggleWatchlist(full,name,revenue){
   var list=getWatchlist();
   var idx=list.findIndex(function(n){return n.full===full;});
   if(idx>=0){list.splice(idx,1);}
-  else{list.push({full:full,name:name,revenue:revenue});}
+  else{
+    var d = window.currentNiche || {};
+    var supplierMoq = window._supplierMoq || 0;
+    list.push({
+      full:full, name:name, revenue:revenue,
+      score: d.score || 0,
+      avg_price: d.avg_price || 0,
+      buyout_pct: d.buyout_pct || 0,
+      turnover: d.turnover || 0,
+      profit_pct: d.profit_pct || 0,
+      moq: supplierMoq,
+      qty: supplierMoq || 100,
+      added: new Date().toISOString()
+    });
+  }
   saveWatchlist(list);
   document.querySelectorAll('[data-wl]').forEach(function(b){
     if(b.getAttribute('data-wl')===full)
@@ -573,33 +587,189 @@ function showWatchlist(){
   var div=document.getElementById('watchlist');
   if(!div)return;
   div.style.display='block';
-  var list=getWatchlist();
-  if(list.length===0){
-    div.innerHTML='<div style="color:#555;padding:40px;text-align:center;">Нет ниш в работе.<br><small>Добавьте ниши из Топ ниш.</small></div>';
+  renderWatchlist();
+}
+
+function renderWatchlist() {
+  var div = document.getElementById('watchlist');
+  var list = getWatchlist();
+  if (list.length === 0) {
+    div.innerHTML = '<div style="color:#555;padding:40px;text-align:center;font-size:14px;">&#128204; Нет ниш в работе.<br><small style="font-size:12px;">Добавляйте ниши из Подбора или при анализе ниши</small></div>';
     return;
   }
-  var html='<div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:20px;">📌 Ниши в работе</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">';
-  for(var i=0;i<list.length;i++){
-    var n=list[i];
-    var sn=n.name.includes(' / ')?n.name.split(' / ').slice(1).join(' / '):n.name;
-    html+='<div style="background:#1a1a24;border:1px solid #6c63ff44;border-radius:12px;padding:16px;">';
-    html+='<div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:8px;">'+sn+'</div>';
-    html+='<div style="font-size:13px;color:#555;margin-bottom:12px;">'+fmt(n.revenue/2)+'/год</div>';
-    html+='<div style="display:flex;gap:8px;">';
-    html+='<button id="wl-open-'+i+'" style="flex:1;background:#6c63ff22;border:1px solid #6c63ff44;border-radius:6px;color:#a78bfa;padding:6px;cursor:pointer;font-size:12px;">Открыть</button>';
-    html+='<button id="wl-del-'+i+'" style="background:#ef444422;border:1px solid #ef444444;border-radius:6px;color:#ef4444;padding:6px 10px;cursor:pointer;font-size:12px;">✕</button>';
-    html+='</div></div>';
+
+  var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">';
+  html += '<div style="font-size:20px;font-weight:700;color:#fff;">&#128204; В работе <span style="font-size:14px;color:#555;font-weight:400;">(' + list.length + ' ниш)</span></div>';
+  html += '<button onclick="calcContainerFromWatchlist()" style="background:#34d399;border:none;border-radius:8px;padding:8px 16px;color:#000;font-size:12px;font-weight:700;cursor:pointer;">&#128230; Рассчитать контейнер</button>';
+  html += '</div>';
+
+  // Индикатор контейнера
+  html += '<div id="wl-container-indicator" style="display:none;background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:16px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+  html += '<div style="font-size:11px;color:#555;">НАПОЛНЕНИЕ КОНТЕЙНЕРА</div>';
+  html += '<div id="wl-container-type" style="font-size:11px;color:#34d399;"></div>';
+  html += '</div>';
+  html += '<div style="background:#1a1a24;border-radius:6px;height:12px;margin-bottom:6px;">';
+  html += '<div id="wl-container-bar" style="height:100%;border-radius:6px;background:linear-gradient(90deg,#34d399,#4ade80);transition:width 0.3s;" width="0%"></div>';
+  html += '</div>';
+  html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:#555;">';
+  html += '<span id="wl-vol-used">0 м³ занято</span><span id="wl-vol-free">свободно: —</span>';
+  html += '</div></div>';
+
+  // Карточки ниш с чекбоксами
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;" id="wl-grid">';
+  for (var i = 0; i < list.length; i++) {
+    var n = list[i];
+    var sn = n.name.includes(' / ') ? n.name.split(' / ').slice(1).join(' / ') : n.name;
+    var score = n.score || 0;
+    var scoreColor = score >= 65 ? '#4ade80' : score >= 40 ? '#fbbf24' : '#ef4444';
+    html += '<div id="wl-card-'+i+'" style="background:#1a1a24;border:2px solid #2a2a3a;border-radius:12px;padding:14px;position:relative;cursor:pointer;" onclick="toggleWlCheck('+i+')">';
+    html += '<div style="position:absolute;top:10px;right:10px;">';
+    html += '<div id="wl-check-'+i+'" style="width:18px;height:18px;border:2px solid #2a2a3a;border-radius:4px;background:#0f0f13;display:flex;align-items:center;justify-content:center;"></div>';
+    html += '</div>';
+    html += '<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:6px;padding-right:24px;">'+sn+'</div>';
+    if (score > 0) html += '<div style="font-size:10px;color:'+scoreColor+';margin-bottom:6px;">'+score+'/100</div>';
+    html += '<div style="font-size:11px;color:#555;margin-bottom:6px;">'+fmt(n.revenue/2)+'/год</div>';
+    // Метрики ниши
+    if (n.avg_price) {
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px;">';
+      html += '<div style="background:#0f0f13;border-radius:4px;padding:4px;text-align:center;"><div style="font-size:8px;color:#444;">ЦЕНА</div><div style="font-size:11px;color:#fff;">'+Math.round(n.avg_price)+'₽</div></div>';
+      html += '<div style="background:#0f0f13;border-radius:4px;padding:4px;text-align:center;"><div style="font-size:8px;color:#444;">ВЫКУП</div><div style="font-size:11px;color:#4ade80;">'+Math.round((n.buyout_pct||0)*100)+'%</div></div>';
+      html += '<div style="background:#0f0f13;border-radius:4px;padding:4px;text-align:center;"><div style="font-size:8px;color:#444;">ОБОРОТ</div><div style="font-size:11px;color:#38bdf8;">'+Math.round(n.turnover||0)+'дн</div></div>';
+      html += '</div>';
+    }
+    // Количество в партии
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;background:#0f0f13;border-radius:6px;padding:6px 8px;">';
+    html += '<div style="font-size:10px;color:#555;flex:1;">Партия:</div>';
+    if (n.moq) html += '<div style="font-size:9px;color:#34d399;">MOQ '+n.moq+' шт</div>';
+    html += '<input type="number" id="wl-qty-'+i+'" value="'+(n.qty||n.moq||100)+'" min="1" style="width:60px;background:#1a1a24;border:1px solid #2a2a3a;border-radius:4px;padding:3px 6px;color:#fff;font-size:11px;text-align:center;" onclick="event.stopPropagation()" onchange="updateWlQty('+i+',this.value)">';
+    html += '<div style="font-size:10px;color:#555;">шт</div>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:6px;">';
+    html += '<button onclick="event.stopPropagation();openFromWL(this)" data-full="'+n.full+'" style="flex:1;background:#6c63ff22;border:1px solid #6c63ff44;border-radius:5px;color:#a78bfa;padding:5px;cursor:pointer;font-size:11px;">Открыть</button>';
+    html += '<button onclick="event.stopPropagation();moveToPortfolio('+i+')" style="background:#34d39922;border:1px solid #34d39944;border-radius:5px;color:#34d399;padding:5px 8px;cursor:pointer;font-size:11px;" title="В портфель">&#10003;</button>';
+    html += '<button onclick="event.stopPropagation();removeWL(this)" data-full="'+n.full+'" style="background:#ef444422;border:1px solid #ef444444;border-radius:5px;color:#ef4444;padding:5px 8px;cursor:pointer;font-size:11px;">&#10005;</button>';
+    html += '</div></div>';
   }
-  html+='</div>';
-  div.innerHTML=html;
-  for(var j=0;j<list.length;j++){
-    (function(idx){
-      var openBtn=document.getElementById('wl-open-'+idx);
-      var delBtn=document.getElementById('wl-del-'+idx);
-      if(openBtn)openBtn.addEventListener('click',function(){openFromWatchlist(list[idx].full);});
-      if(delBtn)delBtn.addEventListener('click',function(){removeFromWatchlist(list[idx].full);});
-    })(j);
+  html += '</div>';
+  html += '<div id="wl-container-result" style="margin-top:20px;"></div>';
+
+  div.innerHTML = html;
+  window._wlChecked = [];
+  window._wlList = list;
+}
+
+function toggleWlCheck(idx) {
+  var card = document.getElementById('wl-card-'+idx);
+  var check = document.getElementById('wl-check-'+idx);
+  var pos = window._wlChecked.indexOf(idx);
+  if (pos >= 0) {
+    window._wlChecked.splice(pos, 1);
+    card.style.borderColor = '#2a2a3a';
+    check.style.background = '#0f0f13';
+    check.style.borderColor = '#2a2a3a';
+    check.innerHTML = '';
+  } else {
+    window._wlChecked.push(idx);
+    card.style.borderColor = '#34d399';
+    check.style.background = '#34d399';
+    check.style.borderColor = '#34d399';
+    check.innerHTML = '<span style="color:#000;font-size:12px;font-weight:700;">&#10003;</span>';
   }
+  updateContainerIndicator();
+}
+
+function updateContainerIndicator() {
+  var checked = window._wlChecked || [];
+  var list = window._wlList || [];
+  var indicator = document.getElementById('wl-container-indicator');
+  if (checked.length === 0) { if(indicator) indicator.style.display = 'none'; return; }
+  if(indicator) indicator.style.display = 'block';
+
+  var totalVol = 0;
+  checked.forEach(function(idx) {
+    var n = list[idx];
+    var qty = parseInt(document.getElementById('wl-qty-'+idx) ? document.getElementById('wl-qty-'+idx).value : n.qty||100) || 100;
+    var unitPrice = n.avg_price || 1000;
+    var wkg = unitPrice < 500 ? 0.1 : unitPrice < 1500 ? 0.3 : unitPrice < 5000 ? 0.8 : unitPrice < 15000 ? 2.0 : 5.0;
+    totalVol += qty * wkg * 2.5 / 1000;
+  });
+
+  var container20ft = 28, container40ft = 60;
+  var targetVol = totalVol <= container20ft ? container20ft : container40ft;
+  var containerName = totalVol <= container20ft ? 'Контейнер 20ft (28 м³)' : totalVol <= container40ft ? 'Контейнер 40ft (60 м³)' : 'Нужно 2 контейнера!';
+  var pct = Math.min(100, Math.round(totalVol / targetVol * 100));
+  var freeVol = Math.max(0, targetVol - totalVol).toFixed(1);
+  var barColor = pct < 60 ? '#34d399' : pct < 85 ? '#fbbf24' : '#ef4444';
+
+  var bar = document.getElementById('wl-container-bar');
+  var typeEl = document.getElementById('wl-container-type');
+  var volUsed = document.getElementById('wl-vol-used');
+  var volFree = document.getElementById('wl-vol-free');
+  if(bar) { bar.style.width = pct+'%'; bar.style.background = 'linear-gradient(90deg,'+barColor+','+barColor+'88)'; }
+  if(typeEl) typeEl.textContent = containerName + ' · ' + pct + '% заполнен';
+  if(volUsed) volUsed.textContent = totalVol.toFixed(1) + ' м³ занято';
+  if(volFree) volFree.textContent = 'свободно: ' + freeVol + ' м³';
+}
+
+function calcContainerFromWatchlist() {
+  var checked = window._wlChecked || [];
+  var list = window._wlList || [];
+  if (checked.length === 0) {
+    alert('Отметьте ниши для расчёта контейнера (нажмите на карточку)');
+    return;
+  }
+  var selectedNiches = checked.map(function(idx){ return list[idx]; });
+  window._portfolioNiches = selectedNiches;
+  var result = document.getElementById('wl-container-result');
+  if(result) result.innerHTML = '<div style="color:#555;padding:16px;text-align:center;">&#128230; Рассчитываем...</div>';
+  calcContainer(selectedNiches);
+  // Перенаправляем результат в wl-container-result
+  setTimeout(function(){
+    var cr = document.getElementById('container-result');
+    var wlr = document.getElementById('wl-container-result');
+    if(cr && wlr) { wlr.innerHTML = cr.innerHTML; cr.innerHTML = ''; }
+  }, 100);
+}
+
+function updateWlQty(idx, qty) {
+  var list = getWatchlist();
+  if (list[idx]) {
+    list[idx].qty = parseInt(qty) || 100;
+    saveWatchlist(list);
+    window._wlList = list;
+    updateContainerIndicator();
+  }
+}
+
+function openFromWL(btn) {
+  var full = btn.getAttribute('data-full');
+  if (full) openFromWatchlist(full);
+}
+
+function removeWL(btn) {
+  var full = btn.getAttribute('data-full');
+  if (full) removeFromWatchlistAndRefresh(full);
+}
+
+function removeFromWatchlistAndRefresh(full) {
+  removeFromWatchlist(full);
+  renderWatchlist();
+}
+
+function moveToPortfolio(idx) {
+  var list = window._wlList || [];
+  var n = list[idx];
+  if (!n) return;
+  var portfolio = JSON.parse(localStorage.getItem('portfolio') || '[]');
+  var exists = portfolio.find(function(p){ return p.full === n.full; });
+  if (!exists) {
+    portfolio.push({full: n.full, name: n.name, revenue: n.revenue, score: n.score, added: new Date().toISOString(), status: 'planning'});
+    localStorage.setItem('portfolio', JSON.stringify(portfolio));
+  }
+  removeFromWatchlist(n.full);
+  renderWatchlist();
+  alert(n.name.split(' / ').pop() + ' перемещён в Портфель!');
 }
 
 let suggestTimer = null;
@@ -2261,6 +2431,17 @@ async function runSupplierAnalysis() {
 }
 
 function renderSupplierResult(data) {
+  // Сохраняем MOQ для текущей ниши
+  if (data.moq) {
+    window._supplierMoq = data.moq;
+    // Обновляем MOQ в watchlist если ниша уже добавлена
+    var d = window.currentNiche;
+    if (d) {
+      var list = getWatchlist();
+      var item = list.find(function(n){ return n.full === d.full || n.full === d.name; });
+      if (item) { item.moq = data.moq; if (!item.qty || item.qty === 100) item.qty = data.moq; saveWatchlist(list); }
+    }
+  }
   const container = document.getElementById('supplier-content');
   const sym = symbols[currentCurrency];
   const rate = rates[currentCurrency];

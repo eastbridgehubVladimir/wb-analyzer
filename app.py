@@ -428,6 +428,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="sidebar-item" onclick="showCalc()">🧮 Калькулятор</div>
   <div class="sidebar-item" id="watchlist-menu" onclick="showWatchlist()">📌 В работе <span id="watchlist-count" style="background:#6c63ff33;color:#a78bfa;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;"></span></div>
   <div class="sidebar-item" onclick="showPortfolioStub()">📦 Портфель</div>
+  <div class="sidebar-item" id="company-menu" onclick="showCompany()">⚙️ Компания</div>
 </div>
 <div class="content-area">
 <div class="main">
@@ -442,6 +443,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
   <div id="top-niches" style="display:none;margin-top:24px;"></div>
   <div id="portfolio" style="display:none;margin-top:24px;"></div>
+  <div id="company" style="display:none;margin-top:24px;"></div>
   <div id="watchlist" style="display:none;margin-top:24px;"></div><div id="catalog" style="display:none;margin-top:24px;">
     <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
       <input id="cat-search" placeholder="Фильтр по названию..." style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px 14px;color:#fff;font-size:13px;outline:none;flex:1;min-width:220px;" oninput="filterCatalog()"/>
@@ -1024,7 +1026,7 @@ function calcUnit() {
   `;
 }
 function hideAll() {
-  ['catalog','calculator','result','top-niches','watchlist','history','portfolio'].forEach(id => {
+  ['catalog','calculator','result','top-niches','watchlist','history','portfolio','company'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
@@ -2974,6 +2976,13 @@ function showPortfolioStub() {
   setActiveMenu(event.target);
   document.getElementById('catalog').style.display = 'block';
   renderPortfolioSection();
+}
+
+function showCompany() {
+  hideAll();
+  setActiveMenu(document.getElementById('company-menu'));
+  document.getElementById('company').style.display = 'block';
+  document.getElementById('company').innerHTML = '<div style="color:#a78bfa;font-size:22px;font-weight:700;margin-bottom:16px;">⚙️ Компания</div><div style="color:#888;">Раздел в разработке...</div>';
 }
 
 function getPortfolioItems() {

@@ -426,8 +426,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="sidebar-item" onclick="showTopNiches()">⭐ Топ ниши</div>
   <div class="sidebar-item" onclick="showPortfolio()">🎯 Подбор</div>
   <div class="sidebar-item" onclick="showCalc()">🧮 Калькулятор</div>
-  <div class="sidebar-item" onclick="showPortfolioStub()">📦 Портфель</div>
   <div class="sidebar-item" id="watchlist-menu" onclick="showWatchlist()">📌 В работе <span id="watchlist-count" style="background:#6c63ff33;color:#a78bfa;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;"></span></div>
+  <div class="sidebar-item" onclick="showPortfolioStub()">📦 Портфель</div>
 </div>
 <div class="content-area">
 <div class="main">
@@ -2824,12 +2824,119 @@ function resetPortfolioForm() {
 function showPortfolioStub() {
   hideAll();
   setActiveMenu(event.target);
-  var div = document.createElement('div');
-  div.style.cssText = 'padding:60px 40px;text-align:center;';
-  div.innerHTML = '<div style="font-size:48px;margin-bottom:16px;">📦</div><div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:8px;">Товарный портфель</div><div style="font-size:14px;color:#555;">Здесь будет отображаться ваш реальный товарный портфель — товары которые вы закупаете и продаёте на WB.</div><div style="margin-top:24px;background:#6c63ff22;border:1px solid #6c63ff44;border-radius:8px;padding:12px 20px;display:inline-block;font-size:13px;color:#a78bfa;">🚧 В разработке</div>';
   document.getElementById('catalog').style.display = 'block';
-  document.getElementById('catalog').innerHTML = div.outerHTML;
+  renderPortfolioSection();
 }
+
+function getPortfolioItems() {
+  try { return JSON.parse(localStorage.getItem('portfolio') || '[]'); } catch(e) { return []; }
+}
+
+function savePortfolioItems(items) {
+  localStorage.setItem('portfolio', JSON.stringify(items));
+}
+
+function renderPortfolioSection() {
+  var div = document.getElementById('catalog');
+  var items = getPortfolioItems();
+  var sym = symbols[currentCurrency];
+  var rate = rates[currentCurrency];
+
+  var statusColors = {planning:'#6c63ff', ordered:'#fbbf24', shipping:'#38bdf8', customs:'#f59e0b', wb_stock:'#a78bfa', selling:'#4ade80', paused:'#ef4444'};
+  var statusLabels = {planning:'📋 Планируется', ordered:'📦 Заказан', shipping:'🚢 В пути', customs:'🏛 Таможня', wb_stock:'🏭 На складе WB', selling:'💰 Продаётся', paused:'⏸ Приостановлен'};
+
+  var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">';
+  html += '<div><div style="font-size:20px;font-weight:700;color:#fff;">📦 Товарный портфель <span style="font-size:14px;color:#555;font-weight:400;">(' + items.length + ' товаров)</span></div>';
+  html += '<div style="font-size:12px;color:#555;margin-top:4px;">Товары которые вы закупаете и продаёте на WB</div></div>';
+  // кнопка В работе убрана из заголовка
+  html += '</div>';
+
+  if (items.length === 0) {
+    html += '<div style="background:#1a1a24;border-radius:12px;padding:40px;text-align:center;">';
+    html += '<div style="font-size:48px;margin-bottom:12px;">📦</div>';
+    html += '<div style="font-size:16px;color:#fff;margin-bottom:8px;">Портфель пуст</div>';
+    html += '<div style="font-size:13px;color:#555;margin-bottom:20px;">Перемещайте товары из раздела "В работе" или добавляйте вручную</div>';
+    html += '<button onclick="showWatchlist()" style="background:#6c63ff22;border:1px solid #6c63ff44;border-radius:8px;padding:10px 20px;color:#a78bfa;cursor:pointer;font-size:13px;">Перейти в "В работе"</button>';
+    html += '</div>';
+    div.innerHTML = html;
+    return;
+  }
+
+  // Сводка портфеля
+  var totalItems = items.length;
+  var selling = items.filter(function(i){return i.status==='selling';}).length;
+  var inTransit = items.filter(function(i){return i.status==='shipping'||i.status==='ordered';}).length;
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">';
+  html += '<div style="background:#1a1a24;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ВСЕГО ПОЗИЦИЙ</div><div style="font-size:20px;font-weight:700;color:#a78bfa;">' + totalItems + '</div></div>';
+  html += '<div style="background:#1a1a24;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ПРОДАЁТСЯ</div><div style="font-size:20px;font-weight:700;color:#4ade80;">' + selling + '</div></div>';
+  html += '<div style="background:#1a1a24;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">В ПУТИ/ЗАКАЗАНО</div><div style="font-size:20px;font-weight:700;color:#38bdf8;">' + inTransit + '</div></div>';
+  html += '<div style="background:#1a1a24;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ДАТА ОБНОВЛЕНИЯ</div><div style="font-size:12px;font-weight:700;color:#555;">' + new Date().toLocaleDateString('ru-RU') + '</div></div>';
+  html += '</div>';
+
+  // Карточки товаров
+  html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+  items.forEach(function(item, idx) {
+    var sc = statusColors[item.status] || '#555';
+    var sl = statusLabels[item.status] || item.status;
+    var name = (item.full || item.name || '').split(' / ').pop();
+    html += '<div style="background:#1a1a24;border-radius:12px;padding:16px;border-left:3px solid ' + sc + ';">';
+    html += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:12px;align-items:center;">';
+    // Название и статус
+    html += '<div><div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:4px;">' + name + '</div>';
+    html += '<div style="font-size:11px;color:' + sc + ';">' + sl + '</div>';
+    if (item.added) html += '<div style="font-size:10px;color:#444;margin-top:2px;">Добавлен: ' + new Date(item.added).toLocaleDateString('ru-RU') + '</div>';
+    html += '</div>';
+    // Цена закупки
+    html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЦЕНА ЗАКУПКИ</div>';
+    html += '<div style="font-size:13px;font-weight:700;color:#fff;">' + (item.buy_price_usd ? '$' + item.buy_price_usd : '—') + '</div></div>';
+    // Количество
+    html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">КОЛ-ВО</div>';
+    html += '<div style="font-size:13px;font-weight:700;color:#fff;">' + (item.qty || '—') + ' шт</div></div>';
+    // Маржа
+    html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">МАРЖА</div>';
+    var marginColor = (item.margin_pct||0) >= 30 ? '#4ade80' : (item.margin_pct||0) >= 15 ? '#fbbf24' : '#ef4444';
+    html += '<div style="font-size:13px;font-weight:700;color:' + marginColor + ';">' + (item.margin_pct ? item.margin_pct + '%' : '—') + '</div></div>';
+    // Следующий заказ
+    html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">СЛЕД. ЗАКАЗ</div>';
+    html += '<div style="font-size:11px;color:#fbbf24;">' + (item.next_order || '—') + '</div></div>';
+    // Кнопки управления
+    html += '<div style="display:flex;gap:6px;">';
+    html += '<select onchange="updatePortfolioStatus(' + idx + ',this.value)" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:5px;color:#fff;padding:4px;font-size:10px;cursor:pointer;">';
+    Object.keys(statusLabels).forEach(function(s) {
+      html += '<option value="' + s + '"' + (item.status===s?' selected':'') + '>' + statusLabels[s] + '</option>';
+    });
+    html += '</select>';
+    html += '<button onclick="removePortfolioItem(' + idx + ')" style="background:#ef444422;border:1px solid #ef444444;border-radius:5px;color:#ef4444;padding:4px 8px;cursor:pointer;font-size:11px;">✕</button>';
+    html += '</div>';
+    html += '</div></div>';
+  });
+  html += '</div>';
+
+  div.innerHTML = html;
+}
+
+function updatePortfolioStatus(idx, status) {
+  var items = getPortfolioItems();
+  if (items[idx]) { items[idx].status = status; savePortfolioItems(items); renderPortfolioSection(); }
+}
+
+function removePortfolioItem(idx) {
+  if (!confirm('Удалить товар из портфеля?')) return;
+  var items = getPortfolioItems();
+  items.splice(idx, 1);
+  savePortfolioItems(items);
+  renderPortfolioSection();
+}
+
+function addPortfolioItem() {
+  var name = prompt('Название товара или ниши:');
+  if (!name) return;
+  var items = getPortfolioItems();
+  items.push({full: name, name: name, status: 'planning', added: new Date().toISOString(), qty: 100});
+  savePortfolioItems(items);
+  renderPortfolioSection();
+}
+
 
 async function runDocsAnalysis() {
   const d = window.currentNiche;

@@ -2590,7 +2590,6 @@ function convertDocsCost(rubStr) {
 async function findSupplierByPhoto(itemId, itemName, itemPrice) {
   var container = document.getElementById('supplier-photo-result');
   if (!container) {
-    // Если блок не найден — создаём под таблицей
     var tc = document.getElementById('topItemsContent');
     if (tc) {
       var d = document.createElement('div');
@@ -2601,33 +2600,32 @@ async function findSupplierByPhoto(itemId, itemName, itemPrice) {
     }
   }
   if (!container) return;
-
-  container.innerHTML = '<div style="background:#0f0f13;border-radius:10px;padding:20px;text-align:center;">' +
-    '<div style="font-size:24px;margin-bottom:8px;">&#128247;</div>' +
-    '<div style="font-size:13px;color:#aaa;">Анализируем товар и ищем аналоги у поставщиков...</div>' +
-    '<div style="font-size:11px;color:#555;margin-top:4px;">Alibaba · 1688 · Made-in-China · AliExpress</div>' +
-    '</div>';
+  var photoBase64 = '';
+  var photoMediaType = 'image/jpeg';
+  var photoInput = document.getElementById('custom-photo-input');
+  if (photoInput && photoInput.files && photoInput.files[0]) {
+    var file = photoInput.files[0];
+    photoMediaType = file.type || 'image/jpeg';
+    photoBase64 = await new Promise(function(resolve) {
+      var reader = new FileReader();
+      reader.onload = function(e) { resolve(e.target.result.split(',')[1]); };
+      reader.readAsDataURL(file);
+    });
+  }
+  var hasPhoto = photoBase64.length > 0;
+  container.innerHTML = '<div style="background:#0f0f13;border-radius:10px;padding:20px;text-align:center;"><div style="font-size:24px;margin-bottom:8px;">&#128247;</div><div style="font-size:13px;color:#aaa;">' + (hasPhoto ? '&#9989; Анализируем фото + название...' : 'Анализируем по названию...') + '</div><div style="font-size:11px;color:#555;margin-top:4px;">Alibaba · 1688 · Made-in-China · AliExpress</div></div>';
   container.scrollIntoView({behavior:'smooth'});
-
   try {
     var resp = await fetch('/photo-supplier-search', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        item_id: itemId,
-        item_name: itemName,
-        item_price: itemPrice,
-        niche_name: window.currentNiche ? window.currentNiche.name : '',
-        currency: currentCurrency,
-        rate: rates[currentCurrency],
-        symbol: symbols[currentCurrency]
-      })
+      body: JSON.stringify({item_id: itemId, item_name: itemName, item_price: itemPrice, niche_name: window.currentNiche ? window.currentNiche.name : '', photo_base64: photoBase64, photo_media_type: photoMediaType, currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency]})
     });
     var data = await resp.json();
     if (data.error) throw new Error(data.error);
     renderPhotoSupplierResult(data, itemName, itemPrice);
   } catch(e) {
-    container.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;">❌ ' + e.message + '</div>';
+    container.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;">&#10060; ' + e.message + '</div>';
   }
 }
 
@@ -4106,8 +4104,29 @@ class Handler(BaseHTTPRequestHandler):
                     print(f'MPStats status: {r.status_code}, path: {mpstats_path}')
                     data = r.json()
                     print(f'MPStats total: {data.get("total")}, items: {len(data.get("data", []))}')
-                    items = data.get('data', [])
-                    
+                    items_raw = data.get('data', [])
+
+                    # Фильтруем товары по ключевым словам из названия ниши
+                    # Берём последнее слово пути как ключевое слово ниши
+                    niche_keywords = []
+                    if mpstats_path:
+                        last_segment = mpstats_path.split('/')[-1].lower()
+                        # Разбиваем на слова длиннее 3 символов
+                        niche_keywords = [w for w in last_segment.replace('-',' ').split() if len(w) > 3]
+
+                    if niche_keywords:
+                        items = []
+                        for item in items_raw:
+                            item_name = (item.get('name','') or '').lower()
+                            # Товар подходит если хотя бы одно ключевое слово есть в названии
+                            if any(kw in item_name for kw in niche_keywords):
+                                items.append(item)
+                        # Если фильтр слишком строгий — берём все
+                        if len(items) < 5:
+                            items = items_raw
+                    else:
+                        items = items_raw
+
                     start = date(2024, 4, 1)
                     months_revenue = {}
                     months_sales = {}
@@ -4272,6 +4291,7 @@ class Handler(BaseHTTPRequestHandler):
                             'sales': item.get('sales', 0) or 0,
                             'rating': item.get('rating', 0) or 0,
                             'url': f"https://www.wildberries.ru/catalog/{item.get('id', '')}/detail.aspx" if item.get('id') else '',
+                            'img_url': f"https://basket-{'0'+str(int(item.get('id',0))//100000+1) if int(item.get('id',0))//100000 < 10 else str(int(item.get('id',0))//100000+1)}.wbbasket.ru/vol{int(item.get('id',0))//100000}/part{int(item.get('id',0))//1000}/{item.get('id','')}/images/c516x688/1.webp" if item.get('id') else '',
                         })
 
                     # Агрегация данных складов по топ-30 SKU
@@ -5164,33 +5184,40 @@ class Handler(BaseHTTPRequestHandler):
                 # Формируем промпт
                 json_schema = '{"item_id": "строка", "photo_source": "строка", "characteristics": "детальное описание", "price_1688_usd": число, "price_alibaba_usd": число, "price_mic_usd": число, "moq": число, "search_links": [{"platform": "1688", "url": "https://s.1688.com/selloffer/offer_search.htm?keywords=ЗАПРОС_CN", "icon": "строка", "query_hint": "запрос на китайском"}, {"platform": "Alibaba", "url": "https://www.alibaba.com/trade/search?SearchText=ЗАПРОС_EN", "icon": "строка", "query_hint": "запрос на английском"}, {"platform": "Made-in-China", "url": "https://www.made-in-china.com/multi-search/ЗАПРОС_EN/F1/0.html", "icon": "строка", "query_hint": "запрос на английском"}, {"platform": "AliExpress", "url": "https://www.aliexpress.com/wholesale?SearchText=ЗАПРОС_EN", "icon": "строка", "query_hint": "для проверки розничной цены"}], "recommendation": "3-4 предложения"}'
 
+                # Формируем текстовую часть промпта (всегда)
+                text_parts = []
+                text_parts.append('Ты эксперт по закупкам товаров в Китае.')
                 if image_content:
-                    # Запрос с изображением (Vision)
-                    text_part = 'Ты эксперт по закупкам в Китае. Проанализируй товар на фото.' + chr(10)
-                    text_part += f'Название на WB: {item_name}' + chr(10)
-                    text_part += f'Цена на WB: {item_price} руб (${item_price_usd})' + chr(10)
-                    text_part += f'Ниша: {niche_name}' + chr(10) + chr(10)
-                    text_part += 'Задача:' + chr(10)
-                    text_part += '1. Детально опиши товар на фото: материал, цвет, размеры, функции, особенности конструкции' + chr(10)
-                    text_part += '2. Определи закупочные цены точного аналога на китайских площадках' + chr(10)
-                    text_part += '3. Сформируй точные поисковые запросы на EN и CN для каждой площадки' + chr(10)
-                    text_part += '4. Дай рекомендацию по поставщику' + chr(10) + chr(10)
-                    text_part += 'Верни ТОЛЬКО JSON: ' + json_schema
+                    text_parts.append('Проанализируй товар используя И фото И название для максимальной точности.')
+                text_parts.append(f'Название товара на WB: {item_name}')
+                text_parts.append(f'Цена на WB: {item_price} руб (${item_price_usd})')
+                if niche_name:
+                    text_parts.append(f'Ниша: {niche_name}')
+                if item_id:
+                    text_parts.append(f'Артикул WB: {item_id}')
+                text_parts.append('')
+                text_parts.append('Задача:')
+                if image_content:
+                    text_parts.append('1. Сопоставь фото и название — убедись что понял точно какой товар')
+                    text_parts.append('2. Детально опиши товар: материал, цвет, размеры, функции, особенности')
+                else:
+                    text_parts.append('1. Детально опиши характеристики товара по названию')
+                text_parts.append('3. Найди закупочные цены точного аналога на китайских площадках')
+                text_parts.append('4. Сформируй точные поисковые запросы на EN и CN')
+                text_parts.append('5. Дай рекомендацию по выбору поставщика')
+                text_parts.append('')
+                text_parts.append('Верни ТОЛЬКО JSON: ' + json_schema)
+                text_prompt = chr(10).join(text_parts)
 
+                if image_content:
+                    # Запрос с фото + текст (Vision + название)
                     messages = [{'role': 'user', 'content': [
                         {'type': 'image', 'source': image_content},
-                        {'type': 'text', 'text': text_part}
+                        {'type': 'text', 'text': text_prompt}
                     ]}]
                 else:
-                    # Запрос без фото (текстовый)
-                    p = []
-                    p.append('Ты эксперт по закупкам товаров в Китае.')
-                    p.append(f'Товар с WB: {item_name}')
-                    p.append(f'Цена на WB: {item_price} руб (${item_price_usd})')
-                    p.append(f'Ниша: {niche_name}')
-                    p.append('Задача: опиши характеристики, найди цены аналога, сформируй поисковые запросы.')
-                    p.append('Верни ТОЛЬКО JSON: ' + json_schema)
-                    messages = [{'role': 'user', 'content': chr(10).join(p)}]
+                    # Только текст
+                    messages = [{'role': 'user', 'content': text_prompt}]
 
                 client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
                 msg = client.messages.create(model='claude-sonnet-4-5', max_tokens=2000, messages=messages)

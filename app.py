@@ -1611,7 +1611,27 @@ async function loadCharts(name) {
 
     // Блок топ товаров
     if (document.getElementById('topItemsContent') && data.top_items && data.top_items.length > 0) {
-      let html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
+      let html = '';
+      // Блок загрузки фото ПЕРЕД таблицей
+      html += '<div style="background:#0f0f13;border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid #34d39933;">';
+      html += '<div style="font-size:10px;color:#34d399;font-weight:600;letter-spacing:1px;margin-bottom:10px;">&#128269; ПОИСК ПОСТАВЩИКА</div>';
+      html += '<div style="font-size:10px;color:#555;margin-bottom:4px;">1. ВЫБЕРИТЕ ТОВАР ИЗ ТОП-20</div>';
+      html += '<div style="display:flex;gap:8px;margin-bottom:10px;">';
+      html += '<select id="supplier-item-select" style="flex:1;background:#1a1a24;border:1px solid #2a2a3a;border-radius:6px;padding:7px;color:#fff;font-size:11px;cursor:pointer;">';
+      html += '<option value="">— выберите товар —</option>';
+      data.top_items.forEach(function(item, idx) { html += '<option value="' + item.id + '" data-name="' + item.name.replace(/"/g,'') + '" data-price="' + item.price + '">' + (idx+1) + '. ' + item.name.substring(0,45) + ' (' + item.price + '₽)</option>'; });
+      html += '</select>';
+      html += '<button onclick="searchFromUnifiedBlock()" style="background:#34d399;border:none;border-radius:6px;padding:8px 16px;color:#000;font-size:12px;font-weight:700;cursor:pointer;">&#128269; Найти</button>';
+      html += '</div>';
+      html += '<div style="font-size:10px;color:#555;margin-bottom:6px;">2. ФОТО ТОВАРА (необязательно — повышает точность)</div>';
+      html += '<div style="display:flex;gap:8px;align-items:center;">';
+      html += '<input type="file" id="custom-photo-input" accept="image/*" style="flex:1;background:#1a1a24;border:1px solid #2a2a3a;border-radius:5px;padding:5px;color:#888;font-size:10px;cursor:pointer;" onchange="previewCustomPhoto(this)">';
+      html += '<div id="photo-status" style="font-size:10px;color:#555;">без фото</div>';
+      html += '</div>';
+      html += '<div id="custom-photo-preview" style="margin-top:6px;"></div>';
+      html += '</div>';
+      html += '<div style="font-size:10px;color:#555;margin-bottom:6px;">&#128204; ШАГ 2: Нажмите "&#128269; Найти" у нужного товара в таблице</div>';
+      html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
       html += '<tr style="color:#555;border-bottom:1px solid #2a2a3a;">';
       html += '<th style="text-align:left;padding:6px 8px;">#</th>';
       html += '<th style="text-align:left;padding:6px 8px;">Товар</th>';
@@ -1621,7 +1641,6 @@ async function loadCharts(name) {
       html += '<th style="text-align:right;padding:6px 8px;">Продажи</th>';
       html += '<th style="text-align:right;padding:6px 8px;">Рейтинг</th>';
       html += '<th style="text-align:center;padding:6px 8px;">Артикул WB</th>';
-      html += '<th style="text-align:center;padding:6px 8px;">Поставщик</th>';
       html += '</tr>';
       data.top_items.forEach((item, i) => {
         html += `<tr style="border-bottom:1px solid #1a1a2e;cursor:pointer;" onmouseover="this.style.background='#1a1a2e'" onmouseout="this.style.background=''">`; 
@@ -1633,20 +1652,10 @@ async function loadCharts(name) {
         html += `<td style="padding:8px;color:#4ade80;text-align:right;">${item.sales.toLocaleString('ru')}</td>`;
         html += `<td style="padding:8px;color:#fbbf24;text-align:right;">${item.rating > 0 ? '★ ' + item.rating : '—'}</td>`;
         html += `<td style="padding:8px;text-align:center;">${item.url ? '<a href="' + item.url + '" target="_blank" style="color:#6c63ff;text-decoration:none;font-size:11px;">' + item.id + '</a>' : '—'}</td>`;
-        html += `<td style="padding:8px;text-align:center;"><button onclick="findSupplierByPhoto('${item.id}','${item.name.replace(/'/g,'').replace(/"/g,'')}',${item.price})" style="background:#34d39922;border:1px solid #34d39944;border-radius:5px;color:#34d399;padding:3px 8px;cursor:pointer;font-size:10px;white-space:nowrap;">🔍 Найти</button></td>`;
+
         html += '</tr>';
       });
       html += '</table></div>';
-      // Блок загрузки своего фото
-      html += '<div style="margin-top:12px;background:#0f0f13;border-radius:8px;padding:12px;">';
-      html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:8px;">🖼 ЗАГРУЗИТЬ СВОЁ ФОТО ДЛЯ ПОИСКА</div>';
-      html += '<div style="font-size:11px;color:#444;margin-bottom:10px;">Загрузите фото товара с выставки, от поставщика или из интернета — найдём аналог на китайских площадках</div>';
-      html += '<div style="display:flex;gap:8px;align-items:center;">';
-      html += '<input type="file" id="custom-photo-input" accept="image/*" style="flex:1;background:#1a1a24;border:1px solid #2a2a3a;border-radius:6px;padding:6px;color:#888;font-size:11px;cursor:pointer;" onchange="previewCustomPhoto(this)">';
-      html += '<button onclick="searchByCustomPhoto()" style="background:#34d399;border:none;border-radius:6px;padding:8px 14px;color:#000;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">🔍 Найти</button>';
-      html += '</div>';
-      html += '<div id="custom-photo-preview" style="margin-top:8px;"></div>';
-      html += '</div>';
       html += '<div id="supplier-photo-result" style="margin-top:16px;"></div>';
       document.getElementById('topItemsContent').innerHTML = html;
     }
@@ -2704,7 +2713,69 @@ function renderPhotoSupplierResult(data, itemName, itemPrice) {
   container.innerHTML = html;
 }
 
+async function searchFromUnifiedBlock() {
+  var select = document.getElementById('supplier-item-select');
+  var container = document.getElementById('supplier-photo-result');
+  if (!container) return;
+
+  if (!select || !select.value) {
+    alert('Выберите товар из списка');
+    return;
+  }
+
+  var itemId = select.value;
+  var selectedOption = select.options[select.selectedIndex];
+  var itemName = selectedOption.getAttribute('data-name') || selectedOption.text;
+  var itemPrice = parseFloat(selectedOption.getAttribute('data-price')) || 0;
+
+  // Берём фото если загружено
+  var photoBase64 = '';
+  var photoMediaType = 'image/jpeg';
+  var photoInput = document.getElementById('custom-photo-input');
+  if (photoInput && photoInput.files && photoInput.files[0]) {
+    var file = photoInput.files[0];
+    photoMediaType = file.type || 'image/jpeg';
+    photoBase64 = await new Promise(function(resolve) {
+      var reader = new FileReader();
+      reader.onload = function(e) { resolve(e.target.result.split(',')[1]); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  var hasPhoto = photoBase64.length > 0;
+  container.innerHTML = '<div style="background:#0f0f13;border-radius:10px;padding:20px;text-align:center;">' +
+    '<div style="font-size:24px;margin-bottom:8px;">' + (hasPhoto ? '&#127919;' : '&#128269;') + '</div>' +
+    '<div style="font-size:13px;color:#aaa;">' + (hasPhoto ? 'Ищем по фото + названию — максимальная точность...' : 'Ищем по названию товара...') + '</div>' +
+    '<div style="font-size:11px;color:#555;margin-top:4px;">1688 · Alibaba · Made-in-China · AliExpress</div>' +
+    '</div>';
+  container.scrollIntoView({behavior:'smooth'});
+
+  try {
+    var resp = await fetch('/photo-supplier-search', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        item_id: itemId,
+        item_name: itemName,
+        item_price: itemPrice,
+        niche_name: window.currentNiche ? window.currentNiche.name : '',
+        photo_base64: photoBase64,
+        photo_media_type: photoMediaType,
+        currency: currentCurrency,
+        rate: rates[currentCurrency],
+        symbol: symbols[currentCurrency]
+      })
+    });
+    var data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    renderPhotoSupplierResult(data, itemName, itemPrice);
+  } catch(e) {
+    container.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;">&#10060; ' + e.message + '</div>';
+  }
+}
+
 function previewCustomPhoto(input) {
+  var statusEl = document.getElementById('photo-status');
   var preview = document.getElementById('custom-photo-preview');
   if (!preview) return;
   if (input.files && input.files[0]) {
@@ -5155,6 +5226,8 @@ class Handler(BaseHTTPRequestHandler):
                 item_price = float(body.get('item_price', 0))
                 niche_name = body.get('niche_name', '')
                 photo_base64 = body.get('photo_base64', '')
+                photo_media_type = body.get('photo_media_type', 'image/jpeg') or 'image/jpeg'
+                print(f"photo_base64 len: {len(photo_base64)}, media_type: {photo_media_type}")
                 photo_media_type = body.get('photo_media_type', 'image/jpeg')
                 item_price_usd = round(item_price / 90, 1)
 

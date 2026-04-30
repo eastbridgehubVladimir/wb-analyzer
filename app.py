@@ -891,6 +891,11 @@ function setCurrency(cur) {
     renderResult(window.lastResult);
     setTimeout(() => updateChartsForCurrency(cur), 100);
   }
+  // Обновляем раздел Компания если он открыт
+  const companyDiv = document.getElementById('company');
+  if (companyDiv && companyDiv.style.display !== 'none') {
+    renderCompany();
+  }
 }
 
 function fmtCurrency(rub) {
@@ -2979,7 +2984,25 @@ function showPortfolioStub() {
 }
 
 function getCompanySettings() {
-  try { return JSON.parse(localStorage.getItem('company_settings') || 'null'); } catch(e) { return null; }
+  try {
+    const s = JSON.parse(localStorage.getItem('company_settings') || 'null');
+    if (!s) return null;
+    // Миграция: если other_expenses число — конвертируем в массив
+    if (typeof s.other_expenses === 'number') {
+      s.other_expenses = [
+        { name: '🌐 Домен / хостинг', amount: 0 },
+        { name: '📦 Упаковочные материалы', amount: 0 },
+        { name: '🚚 Логистика (доп. расходы)', amount: 0 },
+        { name: '📱 Реклама / маркетинг', amount: 0 },
+        { name: '🔧 Инструменты и сервисы', amount: 0 },
+        { name: '💼 Командировки / представительские', amount: 0 },
+        { name: '🏦 Банковское обслуживание', amount: 0 },
+        { name: '➕ Прочее', amount: 0 }
+      ];
+      saveCompanySettings(s);
+    }
+    return s;
+  } catch(e) { return null; }
 }
 function saveCompanySettings(s) {
   localStorage.setItem('company_settings', JSON.stringify(s));
@@ -2995,7 +3018,16 @@ function defaultCompanySettings() {
     warehouse_m2: 100,
     warehouse_rate: 8,
     tax_mode: 'usn6',
-    other_expenses: 500,
+    other_expenses: [
+      { name: '🌐 Домен / хостинг', amount: 0 },
+      { name: '📦 Упаковочные материалы', amount: 0 },
+      { name: '🚚 Логистика (доп. расходы)', amount: 0 },
+      { name: '📱 Реклама / маркетинг', amount: 0 },
+      { name: '🔧 Инструменты и сервисы', amount: 0 },
+      { name: '💼 Командировки / представительские', amount: 0 },
+      { name: '🏦 Банковское обслуживание', amount: 0 },
+      { name: '➕ Прочее', amount: 0 }
+    ],
     start_capital: 175000
   };
 }
@@ -3044,7 +3076,8 @@ function renderCompany() {
 
   const totalSalary = s.employees.reduce((a,e) => a + Number(e.salary), 0);
   const warehouseCost = s.warehouse_m2 * s.warehouse_rate;
-  const totalMonthly = totalSalary + warehouseCost + s.other_expenses;
+  const otherTotal = Array.isArray(s.other_expenses) ? s.other_expenses.reduce((a,e) => a + Number(e.amount), 0) : Number(s.other_expenses);
+  const totalMonthly = totalSalary + warehouseCost + otherTotal;
 
   const taxLabels = { usn6: 'УСН 6% (от выручки)', usn15: 'УСН 15% (доход−расход)', osn: 'ОСН (общая система)' };
 
@@ -3110,12 +3143,34 @@ function renderCompany() {
   <!-- ПРОЧИЕ РАСХОДЫ -->
   <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;margin-bottom:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">💸 Прочие расходы / мес</div>
-    <div style="display:flex;align-items:center;gap:12px;">
-      <input type="number" value="${s.other_expenses}" min="0" onchange="companyUpdateOther(this.value)"
-        style="background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;width:120px;">
-      <span style="color:#888;">$</span>
-      <span style="color:#64748b;font-size:13px;">${fmt(s.other_expenses)} ${sym}</span>
-    </div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="color:#64748b;font-size:12px;">
+          <th style="padding:6px 12px;text-align:left;">Статья расходов</th>
+          <th style="padding:6px 12px;text-align:left;">Сумма ($)</th>
+          <th style="padding:6px 12px;text-align:left;">В ${sym}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${(Array.isArray(s.other_expenses) ? s.other_expenses : []).map((item, i) => `
+        <tr>
+          <td style="padding:7px 12px;color:#e2e8f0;">${item.name}</td>
+          <td style="padding:7px 12px;">
+            <input type="number" value="${item.amount}" min="0" onchange="companyUpdateOtherItem(${i},this.value)"
+              style="background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:4px 8px;color:#a78bfa;font-size:13px;width:100px;">
+            <span style="color:#888;margin-left:4px;">$</span>
+          </td>
+          <td style="padding:7px 12px;color:#64748b;">${fmt(item.amount)} ${sym}</td>
+        </tr>`).join('')}
+      </tbody>
+      <tfoot>
+        <tr style="border-top:1px solid #6c63ff33;">
+          <td style="padding:10px 12px;color:#a78bfa;font-weight:600;">Итого прочие</td>
+          <td style="padding:10px 12px;color:#a78bfa;font-weight:600;">${otherTotal.toLocaleString()} $</td>
+          <td style="padding:10px 12px;color:#a78bfa;font-weight:600;">${fmt(otherTotal)} ${sym}</td>
+        </tr>
+      </tfoot>
+    </table>
   </div>
 
   <!-- СТАРТОВЫЙ КАПИТАЛ -->
@@ -3135,7 +3190,7 @@ function renderCompany() {
     <div style="display:flex;gap:32px;flex-wrap:wrap;">
       <div><div style="color:#64748b;font-size:12px;">ФОТ</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${totalSalary.toLocaleString()} $</div></div>
       <div><div style="color:#64748b;font-size:12px;">Склад</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${warehouseCost.toLocaleString()} $</div></div>
-      <div><div style="color:#64748b;font-size:12px;">Прочее</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${Number(s.other_expenses).toLocaleString()} $</div></div>
+      <div><div style="color:#64748b;font-size:12px;">Прочее</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${otherTotal.toLocaleString()} $</div></div>
       <div style="border-left:1px solid #6c63ff33;padding-left:32px;"><div style="color:#a78bfa;font-size:12px;">ИТОГО</div><div style="color:#a78bfa;font-size:24px;font-weight:700;">${totalMonthly.toLocaleString()} $</div><div style="color:#64748b;font-size:12px;">${fmt(totalMonthly)} ${sym}</div></div>
     </div>
   </div>`;
@@ -3166,11 +3221,13 @@ function companyUpdateTax(mode) {
   s.tax_mode = mode;
   saveCompanySettings(s);
 }
-function companyUpdateOther(val) {
+function companyUpdateOtherItem(i, val) {
   const s = getCompanySettings() || defaultCompanySettings();
-  s.other_expenses = Number(val);
-  saveCompanySettings(s);
-  renderCompany();
+  if(Array.isArray(s.other_expenses)) {
+    s.other_expenses[i].amount = Number(val);
+    saveCompanySettings(s);
+    renderCompany();
+  }
 }
 function companyUpdateCapital(val) {
   const s = getCompanySettings() || defaultCompanySettings();

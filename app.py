@@ -3228,6 +3228,7 @@ function renderCompany() {
       </label>
     </div>
 
+    <div id="cashflow-controls" style="background:#1a1730;border-radius:10px;padding:14px;margin-bottom:16px;"></div>
     <div id="cashflow-summary" style="margin-bottom:20px;"></div>
     <div id="cashflow-chart" style="margin-bottom:20px;"></div>
     <div id="cashflow-table" style="overflow-x:auto;"></div>
@@ -3267,163 +3268,337 @@ function renderCashflow() {
     return Math.round(sal * 1.34) + wh + oth;
   })();
 
+  // Фазы (настраиваемые)
+  const phaseEnd0 = s.phase0_end || 2;   // подготовка
+  const phaseEnd1 = s.phase1_end || 4;   // тесты
+  const phaseEnd2 = s.phase2_end || 8;   // первые крупные партии
+  const phaseEnd3 = s.phase3_end || 12;  // масштабирование
+  const returnStart = s.return_start || 13; // начало возврата инвестиций
+
   const sym = symbols ? (symbols[currentCurrency] || '$') : '$';
   const usdRate = rates ? (rates['usd'] || 0.011) : 0.011;
   const curRate = rates ? (rates[currentCurrency] || 1) : 1;
   const fmt = v => (v / usdRate * curRate).toLocaleString('ru-RU', {maximumFractionDigits: 0});
 
-  // Точка безубыточности: оборот при котором прибыль покрывает расходы
-  // profit = revenue * margin => revenue = expenses / margin
-  const breakEvenRevenue = Math.round(monthlyExp / margin);
+  // Резервы
+  const reservePct = 0.10;   // 10% капитала — кассовый разрыв
+  const adsPct = 0.15;       // 15% выручки — реклама
+  const reserve = Math.round(capital * reservePct);
+  const workingCapital = capital - reserve;
 
-  // Заморозка денег: цикл товара + задержка WB = общий период заморозки
+  // Точка безубыточности (оборот при котором прибыль > расходы с учётом рекламы)
+  // netMargin = margin - adsPct => breakEven = monthlyExp / netMargin
+  const netMargin = margin - adsPct;
+  const breakEvenRevenue = netMargin > 0 ? Math.round(monthlyExp / netMargin) : 999999;
   const freezeDays = cycleDays + wbDelay;
   const freezeMonths = freezeDays / 30;
-
-  // Минимальный оборотный капитал = оборот * период заморозки в долях месяца
   const minWorkingCapital = Math.round(breakEvenRevenue * freezeMonths);
 
-  // Алгоритм роста: считаем сколько нужно расти чтобы окупиться за 24 мес
-  // Фаза 1 (мес 1-3): запуск, оборот растёт с 0 до 40% от breakEven
-  // Фаза 2 (мес 4-6): разгон до 100% breakEven
-  // Фаза 3 (мес 7+): рост выше breakEven, генерация прибыли
+  // Распределение капитала по фазам
+  // Тест: 10-15 позиций по ~1000$ = 12500$ средняя тестовая партия
+  const testBudget = s.test_budget || 12500;
+  const batch1 = Math.round(workingCapital * 0.22);   // 1я крупная партия ~22%
+  const batch2 = Math.round(workingCapital * 0.28);   // 2я крупная партия ~28%
+  const batch3 = Math.round(workingCapital * 0.30);   // 3я (контейнер) ~30%
 
   const months = 24;
   const startDate = s.start_date ? new Date(s.start_date) : new Date();
-  let remainingDebt = capital;
-  let rows = [];
+  let remainingCapital = capital; // сколько инвесткапитала ещё не потрачено
+  let remainingDebt = capital;    // долг инвестору — только уменьшается с returnStart
+  let debtStarted = false;
   let breakEvenMonth = null;
   let debtFreeMonth = null;
+  let peakRevenue = 0;
+  let rows = [];
 
   for (let i = 0; i < months; i++) {
+    const m = i + 1;
     const d = new Date(startDate);
     d.setMonth(d.getMonth() + i);
     const monthLabel = d.toLocaleString('ru-RU', {month: 'short', year: '2-digit'});
 
-    // Прогноз оборота по фазам
-    let revenue = 0;
-    if (i < 3) {
-      revenue = Math.round(breakEvenRevenue * 0.15 * (i + 1)); // 15%, 30%, 45%
-    } else if (i < 6) {
-      revenue = Math.round(breakEvenRevenue * (0.6 + (i - 3) * 0.15)); // 60%, 75%, 90%
+    let phase, phaseName, phaseColor;
+    let revenue = 0, capDraw = 0, capitalNote = '';
+
+    if (m <= phaseEnd0) {
+      // ФАЗА 0: Подготовка — тратим на орг расходы
+      phase = 0; phaseName = 'Подготовка'; phaseColor = '#6c63ff';
+      revenue = 0;
+      capDraw = monthlyExp;
+      capitalNote = 'Орг. расходы';
+
+    } else if (m <= phaseEnd1) {
+      // ФАЗА 1: Тестовые закупки
+      // Товар едет 45 дней -> продажи начинаются на следующий месяц после закупки
+      // Выручка = testBudget * (1 + наценка) распродаётся за ~45 дней = 1.5 мес
+      phase = 1; phaseName = 'Тест'; phaseColor = '#f59e0b';
+      const testNum = m - phaseEnd0;
+      const mInPhase = m - phaseEnd0; // 1,2,3...
+      // Первый месяц теста — товар едет, выручки нет
+      // Второй месяц — начало продаж тестовой партии
+      const testRevPerMonth = Math.round((testBudget / margin) * margin / 1.5); // распродажа за 1.5 мес
+      revenue = mInPhase === 1 ? 0 : Math.round(testRevPerMonth * Math.min(mInPhase - 1, 1));
+      capDraw = monthlyExp + (mInPhase === 1 ? testBudget : 0);
+      capitalNote = mInPhase === 1 ? `Тест #${testNum}: закупка (${testBudget.toLocaleString()}$)` : `Тест #${testNum}: продажи`;
+
+    } else if (m <= phaseEnd2) {
+      // ФАЗА 2: Первые крупные партии
+      phase = 2; phaseName = 'Партия 1-2'; phaseColor = '#f97316';
+      const mInPhase = m - phaseEnd1; // 1,2,3...
+      const phaseLen = phaseEnd2 - phaseEnd1;
+      // Партия 1 едет 45 дней (1.5 мес), потом продажи нарастают
+      // Выручка плавно растёт от остатка теста до уровня партии 1
+      const testTailRev = rows[i-1] ? rows[i-1].revenue : 0;
+      const batch1MonthlyRev = Math.round(batch1 * (1/margin) * margin / 3); // партия 1 продаётся 3 мес
+      if (mInPhase === 1) {
+        revenue = testTailRev; // ещё продаём остатки теста
+        capDraw = monthlyExp + batch1;
+        capitalNote = `Партия 1: закупка (${batch1.toLocaleString()}$)`;
+      } else if (mInPhase === 2) {
+        revenue = Math.round(testTailRev * 0.5 + batch1MonthlyRev * 0.3); // партия едет
+        capDraw = monthlyExp;
+        capitalNote = 'Партия 1: в пути';
+      } else {
+        // Партия 1 пришла, продаём + тест #2
+        const progress = (mInPhase - 2) / Math.max(phaseLen - 2, 1);
+        revenue = Math.round(batch1MonthlyRev * (0.6 + progress * 0.8));
+        const isSecondTest = mInPhase === 3;
+        capDraw = monthlyExp + (isSecondTest ? testBudget : 0);
+        capitalNote = isSecondTest ? `Тест #2: закупка (${testBudget.toLocaleString()}$)` : '';
+      }
+
+    } else if (m <= phaseEnd3) {
+      // ФАЗА 3: Масштабирование
+      phase = 3; phaseName = 'Масштаб'; phaseColor = '#10b981';
+      const mInPhase = m - phaseEnd2;
+      const phaseLen = phaseEnd3 - phaseEnd2;
+      const prevRev = rows[i-1] ? rows[i-1].revenue : 0;
+      const batch2MonthlyRev = Math.round(batch2 * (1/margin) * margin / 3);
+      if (mInPhase === 1) {
+        revenue = Math.round(prevRev * 1.05);
+        capDraw = monthlyExp + batch2;
+        capitalNote = `Партия 2: закупка (${batch2.toLocaleString()}$)`;
+      } else if (mInPhase === 2) {
+        revenue = Math.round(prevRev * 1.08); // партия едет, органика растёт
+        capDraw = monthlyExp;
+        capitalNote = 'Партия 2: в пути';
+      } else {
+        const progress = (mInPhase - 2) / Math.max(phaseLen - 2, 1);
+        revenue = Math.round(Math.max(prevRev * 1.08, batch2MonthlyRev * (0.8 + progress)));
+        const isThirdTest = mInPhase === 3;
+        const isThirdBatch = mInPhase === Math.floor(phaseLen * 0.7);
+        capDraw = monthlyExp + (isThirdTest ? testBudget : isThirdBatch ? batch3 : 0);
+        capitalNote = isThirdTest ? `Тест #3 (${testBudget.toLocaleString()}$)` : isThirdBatch ? `Партия 3-контейнер (${batch3.toLocaleString()}$)` : '';
+      }
+
     } else {
-      const growthRate = 1 + (0.10 - (i - 6) * 0.005); // затухающий рост
-      const prevRevenue = rows[i-1] ? rows[i-1].revenue : breakEvenRevenue;
-      revenue = Math.round(Math.max(prevRevenue * Math.max(growthRate, 1.02), breakEvenRevenue));
+      // ФАЗА 4: Пик + возврат
+      phase = 4; phaseName = m >= returnStart ? 'Возврат' : 'Пик'; phaseColor = '#34d399';
+      const prevRev = rows[i-1] ? rows[i-1].revenue : breakEvenRevenue * 2;
+      revenue = Math.round(prevRev * 1.04);
+      capDraw = monthlyExp;
+      capitalNote = '';
     }
 
+    // Реклама: высокая на старте, снижается по мере органики
+    // Новые позиции добавляют рекламный бюджет, старые его снижают
+    // adsPct = базовая ставка (15%), снижается со временем
+    // Формула: эффективная ставка = adsPct * (1 - органика%) где органика растёт с 0 до 60% за 12 мес
+    const organicGrowth = Math.min(0.60, (i / 12) * 0.60); // 0->60% за 12 мес
+    // Новые закупки добавляют рекламный всплеск
+    const newGoodsBoost = capDraw > monthlyExp ? 0.08 : 0; // +8% если новая партия
+    const effectiveAdsPct = Math.max(0.05, adsPct * (1 - organicGrowth) + newGoodsBoost);
+    const adsSpend = Math.round(revenue * effectiveAdsPct);
     const grossProfit = Math.round(revenue * margin);
-    const netProfit = grossProfit - monthlyExp;
-    const frozenCapital = Math.round(revenue * freezeMonths);
+    const netProfit = grossProfit - monthlyExp - adsSpend;
 
-    if (netProfit > 0 && breakEvenMonth === null) breakEvenMonth = i + 1;
+    // Расход инвесткапитала (только убывает)
+    remainingCapital = Math.max(0, remainingCapital - Math.max(0, capDraw - Math.max(0, netProfit)));
 
-    if (netProfit > 0) {
+    if (netProfit > 0 && breakEvenMonth === null) breakEvenMonth = m;
+
+    // Возврат долга — начинается с returnStart, только из чистой прибыли, долг не растёт
+    if (m >= returnStart && netProfit > 0) {
+      debtStarted = true;
       remainingDebt = Math.max(0, remainingDebt - netProfit);
-    } else {
-      remainingDebt += Math.abs(netProfit);
     }
-    if (remainingDebt === 0 && debtFreeMonth === null) debtFreeMonth = i + 1;
+    // До returnStart долг фиксирован = capital
 
-    rows.push({ month: i+1, label: monthLabel, revenue, grossProfit, netProfit, frozenCapital, remainingDebt });
+    if (remainingDebt === 0 && debtFreeMonth === null) debtFreeMonth = m;
+    peakRevenue = Math.max(peakRevenue, revenue);
+
+    // Предупреждения
+    let warning = '';
+    if (remainingCapital < monthlyExp * 2 && phase < 4) warning = '⚠️ Мало капитала';
+    if (revenue > 0 && revenue < breakEvenRevenue * 0.5 && phase >= 2) warning = '⚠️ Низкий оборот';
+    if (m >= returnStart && !debtStarted && netProfit <= 0) warning = '⚠️ Возврат невозможен — убыток';
+
+    rows.push({ m, label: monthLabel, phase, phaseName, phaseColor, revenue, grossProfit,
+      adsSpend, netProfit, capDraw, capitalNote, remainingCapital, remainingDebt, warning });
   }
 
-  // SUMMARY
+  // ===== CONTROLS =====
+  const controlsEl = document.getElementById('cashflow-controls');
+  if (controlsEl) {
+    const phaseSliders = [
+      { key: 'phase0_end', label: '🏗️ Конец подготовки', val: phaseEnd0, min: 1, max: 4 },
+      { key: 'phase1_end', label: '🧪 Конец тестов', val: phaseEnd1, min: 2, max: 7 },
+      { key: 'phase2_end', label: '📦 Конец партий 1-2', val: phaseEnd2, min: 4, max: 12 },
+      { key: 'phase3_end', label: '🚀 Конец масштаба', val: phaseEnd3, min: 8, max: 18 },
+      { key: 'return_start', label: '💰 Начало возврата', val: returnStart, min: 6, max: 20 },
+    ];
+    controlsEl.innerHTML = `
+      <div style="color:#e2e8f0;font-size:13px;font-weight:600;margin-bottom:12px;">⚙️ Настройка фаз (месяц)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+        ${phaseSliders.map(sl => `
+        <div style="background:#1e1b3a;border-radius:8px;padding:10px;">
+          <div style="color:#94a3b8;font-size:11px;margin-bottom:6px;">${sl.label}</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="range" min="${sl.min}" max="${sl.max}" value="${sl.val}"
+              oninput="this.nextElementSibling.textContent=this.value;companyUpdatePhase('${sl.key}',this.value)"
+              style="flex:1;accent-color:#6c63ff;">
+            <span style="color:#a78bfa;font-weight:700;min-width:20px;">${sl.val}</span>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div id="phase-warnings" style="margin-top:10px;"></div>`;
+
+    // Проверяем логику фаз
+    const warnings = [];
+    if (phaseEnd1 <= phaseEnd0) warnings.push('⚠️ Тесты должны заканчиваться после подготовки');
+    if (phaseEnd2 <= phaseEnd1) warnings.push('⚠️ Партии должны идти после тестов');
+    if (returnStart <= phaseEnd2) warnings.push('⚠️ Возврат слишком ранний — не хватит оборота');
+    if (returnStart > phaseEnd3) warnings.push('💡 Возврат начнётся в фазе пика — оптимально');
+    const warnEl = document.getElementById('phase-warnings');
+    if (warnEl) warnEl.innerHTML = warnings.map(w =>
+      `<div style="color:${w.startsWith('⚠️')?'#fbbf24':'#34d399'};font-size:12px;margin-top:4px;">${w}</div>`).join('');
+  }
+
+  // ===== SUMMARY =====
   const summaryEl = document.getElementById('cashflow-summary');
-  if (!summaryEl) return;
-  summaryEl.innerHTML = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;">
-      <div style="background:#1e1b3a;border-radius:10px;padding:14px;text-align:center;">
-        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Мин. оборот / мес</div>
-        <div style="color:#fbbf24;font-size:16px;font-weight:700;">${breakEvenRevenue.toLocaleString()} $</div>
-        <div style="color:#64748b;font-size:11px;">${fmt(breakEvenRevenue)} ${sym}</div>
+  if (summaryEl) summaryEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;">
+      <div style="background:#1e1b3a;border-radius:10px;padding:12px;text-align:center;">
+        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Мин. оборот/мес</div>
+        <div style="color:#fbbf24;font-size:15px;font-weight:700;">${breakEvenRevenue.toLocaleString()} $</div>
+        <div style="color:#64748b;font-size:10px;">${fmt(breakEvenRevenue)} ${sym}</div>
       </div>
-      <div style="background:#1e1b3a;border-radius:10px;padding:14px;text-align:center;">
-        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Оборотный капитал</div>
-        <div style="color:#f97316;font-size:16px;font-weight:700;">${minWorkingCapital.toLocaleString()} $</div>
-        <div style="color:#64748b;font-size:11px;">${fmt(minWorkingCapital)} ${sym}</div>
+      <div style="background:#1e1b3a;border-radius:10px;padding:12px;text-align:center;">
+        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Резерв (10%)</div>
+        <div style="color:#f97316;font-size:15px;font-weight:700;">${reserve.toLocaleString()} $</div>
+        <div style="color:#64748b;font-size:10px;">${fmt(reserve)} ${sym}</div>
       </div>
-      <div style="background:#1e1b3a;border-radius:10px;padding:14px;text-align:center;">
-        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Заморозка денег</div>
-        <div style="color:#a78bfa;font-size:16px;font-weight:700;">${freezeDays} дней</div>
-        <div style="color:#64748b;font-size:11px;">цикл + задержка WB</div>
+      <div style="background:#1e1b3a;border-radius:10px;padding:12px;text-align:center;">
+        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Заморозка</div>
+        <div style="color:#a78bfa;font-size:15px;font-weight:700;">${freezeDays} дней</div>
+        <div style="color:#64748b;font-size:10px;">цикл + WB</div>
       </div>
-      <div style="background:#1e1b3a;border-radius:10px;padding:14px;text-align:center;">
+      <div style="background:#1e1b3a;border-radius:10px;padding:12px;text-align:center;">
+        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Пиковый оборот</div>
+        <div style="color:#34d399;font-size:15px;font-weight:700;">${peakRevenue.toLocaleString()} $</div>
+        <div style="color:#64748b;font-size:10px;">${fmt(peakRevenue)} ${sym}</div>
+      </div>
+      <div style="background:#1e1b3a;border-radius:10px;padding:12px;text-align:center;">
         <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Выход в плюс</div>
-        <div style="color:#34d399;font-size:16px;font-weight:700;">${breakEvenMonth ? 'Месяц ' + breakEvenMonth : 'За 24 мес'}</div>
-        <div style="color:#64748b;font-size:11px;">${breakEvenMonth ? rows[breakEvenMonth-1].label : 'не достигнут'}</div>
+        <div style="color:#34d399;font-size:15px;font-weight:700;">${breakEvenMonth ? 'Мес ' + breakEvenMonth : '>24'}</div>
+        <div style="color:#64748b;font-size:10px;">${breakEvenMonth ? rows[breakEvenMonth-1].label : 'не достигнут'}</div>
       </div>
-      <div style="background:#1e1b3a;border-radius:10px;padding:14px;text-align:center;">
+      <div style="background:#1e1b3a;border-radius:10px;padding:12px;text-align:center;">
         <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Полная окупаемость</div>
-        <div style="color:#34d399;font-size:16px;font-weight:700;">${debtFreeMonth ? 'Месяц ' + debtFreeMonth : '>24 мес'}</div>
-        <div style="color:#64748b;font-size:11px;">${debtFreeMonth ? rows[debtFreeMonth-1].label : 'увеличьте капитал'}</div>
+        <div style="color:${debtFreeMonth?'#34d399':'#ef4444'};font-size:15px;font-weight:700;">${debtFreeMonth ? 'Мес ' + debtFreeMonth : '>24 мес'}</div>
+        <div style="color:#64748b;font-size:10px;">${debtFreeMonth ? rows[debtFreeMonth-1].label : 'увеличьте маржу'}</div>
       </div>
     </div>`;
 
-  // SVG CHART
+  // ===== SVG CHART =====
   const chartEl = document.getElementById('cashflow-chart');
-  const W = 700, H = 220, PL = 60, PR = 20, PT = 20, PB = 40;
-  const CW = W - PL - PR, CH = H - PT - PB;
-  const maxDebt = Math.max(...rows.map(r => r.remainingDebt), capital);
-  const maxRev = Math.max(...rows.map(r => r.revenue));
-  const xScale = i => PL + (i / (months-1)) * CW;
-  const yScaleDebt = v => PT + CH - (v / maxDebt) * CH;
-  const yScaleRev = v => PT + CH - (v / maxRev) * CH;
+  if (chartEl) {
+    const W=720,H=240,PL=65,PR=20,PT=20,PB=40,CW=W-PL-PR,CH=H-PT-PB;
+    const maxDebt = Math.max(...rows.map(r=>r.remainingDebt), capital);
+    const maxRev = Math.max(...rows.map(r=>r.revenue), breakEvenRevenue);
+    const xS = i => PL + (i/(months-1))*CW;
+    const yD = v => PT + CH - (v/maxDebt)*CH;
+    const yR = v => PT + CH - (v/maxRev)*CH;
+    const debtPath = rows.map((r,i)=>`${i===0?'M':'L'}${xS(i).toFixed(1)},${yD(r.remainingDebt).toFixed(1)}`).join(' ');
+    const revPath = rows.map((r,i)=>`${i===0?'M':'L'}${xS(i).toFixed(1)},${yR(r.revenue).toFixed(1)}`).join(' ');
+    const beRevY = yR(breakEvenRevenue);
+    const xLabels = rows.filter((_,i)=>i%3===0).map(r=>
+      `<text x="${xS(r.m-1).toFixed(1)}" y="${H-8}" fill="#64748b" font-size="10" text-anchor="middle">${r.label}</text>`).join('');
+    const phaseLines = [
+      {m: phaseEnd0, c: '#6c63ff', l: 'П0'},
+      {m: phaseEnd1, c: '#f59e0b', l: 'П1'},
+      {m: phaseEnd2, c: '#f97316', l: 'П2'},
+      {m: phaseEnd3, c: '#10b981', l: 'П3'},
+      {m: returnStart-1, c: '#34d399', l: '💰'},
+    ].map(p=>`<line x1="${xS(p.m-1)}" y1="${PT}" x2="${xS(p.m-1)}" y2="${PT+CH}" stroke="${p.c}" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+      <text x="${xS(p.m-1)+3}" y="${PT+10}" fill="${p.c}" font-size="9">${p.l}</text>`).join('');
+    chartEl.innerHTML = `
+      <div style="color:#94a3b8;font-size:11px;margin-bottom:6px;">
+        🔴 Долг инвесторам &nbsp; 🟢 Оборот &nbsp; <span style="color:#fbbf24;">— Точка безубыточности</span>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;background:#0f0d1f;border-radius:8px;">
+        <line x1="${PL}" y1="${beRevY.toFixed(1)}" x2="${PL+CW}" y2="${beRevY.toFixed(1)}" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+        ${phaseLines}
+        <path d="${debtPath}" fill="none" stroke="#ef4444" stroke-width="2.5"/>
+        <path d="${revPath}" fill="none" stroke="#34d399" stroke-width="2.5"/>
+        ${xLabels}
+        <text x="${PL-5}" y="${PT+5}" fill="#64748b" font-size="9" text-anchor="end">${Math.round(maxDebt/1000)}k$</text>
+        <text x="${PL-5}" y="${PT+CH}" fill="#64748b" font-size="9" text-anchor="end">0</text>
+      </svg>`;
+  }
 
-  const debtPath = rows.map((r,i) => `${i===0?'M':'L'}${xScale(i).toFixed(1)},${yScaleDebt(r.remainingDebt).toFixed(1)}`).join(' ');
-  const revPath = rows.map((r,i) => `${i===0?'M':'L'}${xScale(i).toFixed(1)},${yScaleRev(r.revenue).toFixed(1)}`).join(' ');
-
-  const xLabels = rows.filter((_,i) => i%3===0).map(r =>
-    `<text x="${xScale(r.month-1).toFixed(1)}" y="${H-8}" fill="#64748b" font-size="10" text-anchor="middle">${r.label}</text>`).join('');
-
-  const breakEvenLine = breakEvenMonth ?
-    `<line x1="${xScale(breakEvenMonth-1)}" y1="${PT}" x2="${xScale(breakEvenMonth-1)}" y2="${PT+CH}" stroke="#34d399" stroke-width="1" stroke-dasharray="4,3"/>
-     <text x="${xScale(breakEvenMonth-1)+4}" y="${PT+14}" fill="#34d399" font-size="10">безубыток</text>` : '';
-
-  const debtFreeLine = debtFreeMonth ?
-    `<line x1="${xScale(debtFreeMonth-1)}" y1="${PT}" x2="${xScale(debtFreeMonth-1)}" y2="${PT+CH}" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,3"/>
-     <text x="${xScale(debtFreeMonth-1)+4}" y="${PT+26}" fill="#a78bfa" font-size="10">окупаемость</text>` : '';
-
-  chartEl.innerHTML = `
-    <div style="color:#94a3b8;font-size:12px;margin-bottom:8px;">График: 🔴 долг инвесторам &nbsp; 🟢 оборот</div>
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;background:#0f0d1f;border-radius:8px;">
-      <path d="${debtPath}" fill="none" stroke="#ef4444" stroke-width="2"/>
-      <path d="${revPath}" fill="none" stroke="#34d399" stroke-width="2"/>
-      ${breakEvenLine}${debtFreeLine}${xLabels}
-      <text x="${PL-5}" y="${PT+5}" fill="#64748b" font-size="9" text-anchor="end">${Math.round(maxDebt/1000)}k$</text>
-      <text x="${PL-5}" y="${PT+CH}" fill="#64748b" font-size="9" text-anchor="end">0</text>
-    </svg>`;
-
-  // TABLE
+  // ===== TABLE =====
   const tableEl = document.getElementById('cashflow-table');
-  const tableRows = rows.map(r => {
-    const profitColor = r.netProfit >= 0 ? '#34d399' : '#ef4444';
-    const debtColor = r.remainingDebt === 0 ? '#34d399' : '#f97316';
-    return `<tr style="border-bottom:1px solid #1e1b3a;">
-      <td style="padding:7px 10px;color:#94a3b8;font-size:12px;">${r.label}</td>
-      <td style="padding:7px 10px;color:#e2e8f0;font-size:12px;">${r.revenue.toLocaleString()} $<br><span style="color:#64748b;font-size:10px;">${fmt(r.revenue)} ${sym}</span></td>
-      <td style="padding:7px 10px;color:#a78bfa;font-size:12px;">${r.grossProfit.toLocaleString()} $</td>
-      <td style="padding:7px 10px;color:#64748b;font-size:12px;">${monthlyExp.toLocaleString()} $</td>
-      <td style="padding:7px 10px;color:${profitColor};font-size:12px;font-weight:600;">${r.netProfit >= 0 ? '+' : ''}${r.netProfit.toLocaleString()} $</td>
-      <td style="padding:7px 10px;color:${debtColor};font-size:12px;">${r.remainingDebt.toLocaleString()} $<br><span style="color:#64748b;font-size:10px;">${fmt(r.remainingDebt)} ${sym}</span></td>
-    </tr>`;
-  }).join('');
-
-  tableEl.innerHTML = `
-    <table style="width:100%;border-collapse:collapse;font-size:13px;">
-      <thead>
-        <tr style="color:#64748b;font-size:11px;border-bottom:1px solid #6c63ff33;">
-          <th style="padding:7px 10px;text-align:left;">Месяц</th>
-          <th style="padding:7px 10px;text-align:left;">Оборот</th>
-          <th style="padding:7px 10px;text-align:left;">Валовая прибыль</th>
-          <th style="padding:7px 10px;text-align:left;">Расходы</th>
-          <th style="padding:7px 10px;text-align:left;">Чистая прибыль</th>
-          <th style="padding:7px 10px;text-align:left;">Долг инвесторам</th>
-        </tr>
-      </thead>
-      <tbody>${tableRows}</tbody>
-    </table>`;
+  if (tableEl) {
+    const tableRows = rows.map(r => {
+      const profColor = r.netProfit >= 0 ? '#34d399' : '#ef4444';
+      const debtColor = r.remainingDebt === 0 ? '#34d399' : r.remainingDebt < capital*0.5 ? '#fbbf24' : '#f97316';
+      const rowBg = r.warning ? 'background:#2a1a1a;' : '';
+      return `<tr style="border-bottom:1px solid #1e1b3a;${rowBg}">
+        <td style="padding:6px 8px;">
+          <span style="color:${r.phaseColor};font-size:10px;font-weight:600;">${r.phaseName}</span><br>
+          <span style="color:#94a3b8;font-size:11px;">${r.label}</span>
+          ${r.warning ? `<br><span style="color:#fbbf24;font-size:10px;">${r.warning}</span>` : ''}
+        </td>
+        <td style="padding:6px 8px;color:#e2e8f0;font-size:11px;">${r.revenue.toLocaleString()} $<br><span style="color:#64748b;font-size:10px;">${fmt(r.revenue)} ${sym}</span></td>
+        <td style="padding:6px 8px;color:#a78bfa;font-size:11px;">${r.grossProfit.toLocaleString()} $</td>
+        <td style="padding:6px 8px;color:#f97316;font-size:11px;">${r.adsSpend.toLocaleString()} $</td>
+        <td style="padding:6px 8px;color:#64748b;font-size:11px;">${monthlyExp.toLocaleString()} $</td>
+        <td style="padding:6px 8px;color:${profColor};font-size:11px;font-weight:600;">${r.netProfit>=0?'+':''}${r.netProfit.toLocaleString()} $</td>
+        <td style="padding:6px 8px;font-size:11px;">
+          ${r.capitalNote ? `<span style="color:#6c63ff;font-size:10px;">${r.capitalNote}</span><br>` : ''}
+          <span style="color:#64748b;">${r.remainingCapital.toLocaleString()} $ ост.</span>
+        </td>
+        <td style="padding:6px 8px;color:${debtColor};font-size:11px;font-weight:600;">${r.remainingDebt.toLocaleString()} $<br><span style="color:#64748b;font-size:10px;">${fmt(r.remainingDebt)} ${sym}</span></td>
+      </tr>`;
+    }).join('');
+    tableEl.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="color:#64748b;font-size:10px;border-bottom:1px solid #6c63ff33;">
+            <th style="padding:6px 8px;text-align:left;">Фаза / Месяц</th>
+            <th style="padding:6px 8px;text-align:left;">Оборот</th>
+            <th style="padding:6px 8px;text-align:left;">Вал. прибыль</th>
+            <th style="padding:6px 8px;text-align:left;">Реклама</th>
+            <th style="padding:6px 8px;text-align:left;">Расходы</th>
+            <th style="padding:6px 8px;text-align:left;">Чист. прибыль</th>
+            <th style="padding:6px 8px;text-align:left;">Капитал</th>
+            <th style="padding:6px 8px;text-align:left;">Долг инвестору</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>`;
+  }
 }
+
+function companyUpdatePhase(key, val) {
+  const s = getCompanySettings() || defaultCompanySettings();
+  s[key] = Number(val);
+  saveCompanySettings(s);
+  renderCashflow();
+}
+
+
 
 function companyUpdateEmpName(i, val) {
   const s = getCompanySettings() || defaultCompanySettings();

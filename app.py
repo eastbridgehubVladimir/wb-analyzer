@@ -3194,9 +3194,235 @@ function renderCompany() {
       <div><div style="color:#64748b;font-size:12px;">Прочее</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${otherTotal.toLocaleString()} $</div></div>
       <div style="border-left:1px solid #6c63ff33;padding-left:32px;"><div style="color:#a78bfa;font-size:12px;">ИТОГО</div><div style="color:#a78bfa;font-size:24px;font-weight:700;">${totalMonthly.toLocaleString()} $</div><div style="color:#64748b;font-size:12px;">${fmt(totalMonthly)} ${sym}</div></div>
     </div>
+  </div>
+
+  <!-- ПУТЬ К ОКУПАЕМОСТИ -->
+  <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;margin-bottom:20px;">
+    <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:18px;">📈 Путь к окупаемости</div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px;">
+      <label style="color:#94a3b8;font-size:13px;">💰 Стартовый капитал ($)
+        <input type="number" id="inv-capital" value="${s.start_capital||175000}" min="0" step="1000"
+          onchange="companyUpdateCapital(this.value);renderCashflow()"
+          style="display:block;margin-top:6px;width:100%;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;">
+      </label>
+      <label style="color:#94a3b8;font-size:13px;">📅 Дата старта
+        <input type="date" id="inv-start" value="${s.start_date||new Date().toISOString().slice(0,10)}"
+          onchange="companyUpdateStartDate(this.value);renderCashflow()"
+          style="display:block;margin-top:6px;width:100%;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;">
+      </label>
+      <label style="color:#94a3b8;font-size:13px;">📦 Маржинальность (%)
+        <input type="number" id="inv-margin" value="${s.margin_pct||22}" min="1" max="80"
+          onchange="companyUpdateMargin(this.value);renderCashflow()"
+          style="display:block;margin-top:6px;width:100%;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;">
+      </label>
+      <label style="color:#94a3b8;font-size:13px;">🚢 Цикл товара (дней)
+        <input type="number" id="inv-cycle" value="${s.goods_cycle||45}" min="7" max="120"
+          onchange="companyUpdateCycle(this.value);renderCashflow()"
+          style="display:block;margin-top:6px;width:100%;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;">
+      </label>
+      <label style="color:#94a3b8;font-size:13px;">⏳ Задержка выплат WB (дней)
+        <input type="number" id="inv-wb" value="${s.wb_delay||14}" min="0" max="30"
+          onchange="companyUpdateWbDelay(this.value);renderCashflow()"
+          style="display:block;margin-top:6px;width:100%;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;">
+      </label>
+    </div>
+
+    <div id="cashflow-summary" style="margin-bottom:20px;"></div>
+    <div id="cashflow-chart" style="margin-bottom:20px;"></div>
+    <div id="cashflow-table" style="overflow-x:auto;"></div>
   </div>`;
 
   document.getElementById('company').innerHTML = html;
+  renderCashflow();
+}
+
+function companyUpdateStartDate(val) {
+  const s = getCompanySettings() || defaultCompanySettings();
+  s.start_date = val; saveCompanySettings(s);
+}
+function companyUpdateMargin(val) {
+  const s = getCompanySettings() || defaultCompanySettings();
+  s.margin_pct = Number(val); saveCompanySettings(s);
+}
+function companyUpdateCycle(val) {
+  const s = getCompanySettings() || defaultCompanySettings();
+  s.goods_cycle = Number(val); saveCompanySettings(s);
+}
+function companyUpdateWbDelay(val) {
+  const s = getCompanySettings() || defaultCompanySettings();
+  s.wb_delay = Number(val); saveCompanySettings(s);
+}
+
+function renderCashflow() {
+  const s = getCompanySettings() || defaultCompanySettings();
+  const capital = s.start_capital || 175000;
+  const margin = (s.margin_pct || 22) / 100;
+  const cycleDays = s.goods_cycle || 45;
+  const wbDelay = s.wb_delay || 14;
+  const monthlyExp = (() => {
+    const sal = s.employees.reduce((a,e) => a + Number(e.salary), 0);
+    const wh = (s.warehouse_m2||100) * (s.warehouse_rate||8);
+    const oth = Array.isArray(s.other_expenses) ? s.other_expenses.reduce((a,e) => a + Number(e.amount), 0) : Number(s.other_expenses||0);
+    return Math.round(sal * 1.34) + wh + oth;
+  })();
+
+  const sym = symbols ? (symbols[currentCurrency] || '$') : '$';
+  const usdRate = rates ? (rates['usd'] || 0.011) : 0.011;
+  const curRate = rates ? (rates[currentCurrency] || 1) : 1;
+  const fmt = v => (v / usdRate * curRate).toLocaleString('ru-RU', {maximumFractionDigits: 0});
+
+  // Точка безубыточности: оборот при котором прибыль покрывает расходы
+  // profit = revenue * margin => revenue = expenses / margin
+  const breakEvenRevenue = Math.round(monthlyExp / margin);
+
+  // Заморозка денег: цикл товара + задержка WB = общий период заморозки
+  const freezeDays = cycleDays + wbDelay;
+  const freezeMonths = freezeDays / 30;
+
+  // Минимальный оборотный капитал = оборот * период заморозки в долях месяца
+  const minWorkingCapital = Math.round(breakEvenRevenue * freezeMonths);
+
+  // Алгоритм роста: считаем сколько нужно расти чтобы окупиться за 24 мес
+  // Фаза 1 (мес 1-3): запуск, оборот растёт с 0 до 40% от breakEven
+  // Фаза 2 (мес 4-6): разгон до 100% breakEven
+  // Фаза 3 (мес 7+): рост выше breakEven, генерация прибыли
+
+  const months = 24;
+  const startDate = s.start_date ? new Date(s.start_date) : new Date();
+  let remainingDebt = capital;
+  let rows = [];
+  let breakEvenMonth = null;
+  let debtFreeMonth = null;
+
+  for (let i = 0; i < months; i++) {
+    const d = new Date(startDate);
+    d.setMonth(d.getMonth() + i);
+    const monthLabel = d.toLocaleString('ru-RU', {month: 'short', year: '2-digit'});
+
+    // Прогноз оборота по фазам
+    let revenue = 0;
+    if (i < 3) {
+      revenue = Math.round(breakEvenRevenue * 0.15 * (i + 1)); // 15%, 30%, 45%
+    } else if (i < 6) {
+      revenue = Math.round(breakEvenRevenue * (0.6 + (i - 3) * 0.15)); // 60%, 75%, 90%
+    } else {
+      const growthRate = 1 + (0.10 - (i - 6) * 0.005); // затухающий рост
+      const prevRevenue = rows[i-1] ? rows[i-1].revenue : breakEvenRevenue;
+      revenue = Math.round(Math.max(prevRevenue * Math.max(growthRate, 1.02), breakEvenRevenue));
+    }
+
+    const grossProfit = Math.round(revenue * margin);
+    const netProfit = grossProfit - monthlyExp;
+    const frozenCapital = Math.round(revenue * freezeMonths);
+
+    if (netProfit > 0 && breakEvenMonth === null) breakEvenMonth = i + 1;
+
+    if (netProfit > 0) {
+      remainingDebt = Math.max(0, remainingDebt - netProfit);
+    } else {
+      remainingDebt += Math.abs(netProfit);
+    }
+    if (remainingDebt === 0 && debtFreeMonth === null) debtFreeMonth = i + 1;
+
+    rows.push({ month: i+1, label: monthLabel, revenue, grossProfit, netProfit, frozenCapital, remainingDebt });
+  }
+
+  // SUMMARY
+  const summaryEl = document.getElementById('cashflow-summary');
+  if (!summaryEl) return;
+  summaryEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;">
+      <div style="background:#1e1b3a;border-radius:10px;padding:14px;text-align:center;">
+        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Мин. оборот / мес</div>
+        <div style="color:#fbbf24;font-size:16px;font-weight:700;">${breakEvenRevenue.toLocaleString()} $</div>
+        <div style="color:#64748b;font-size:11px;">${fmt(breakEvenRevenue)} ${sym}</div>
+      </div>
+      <div style="background:#1e1b3a;border-radius:10px;padding:14px;text-align:center;">
+        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Оборотный капитал</div>
+        <div style="color:#f97316;font-size:16px;font-weight:700;">${minWorkingCapital.toLocaleString()} $</div>
+        <div style="color:#64748b;font-size:11px;">${fmt(minWorkingCapital)} ${sym}</div>
+      </div>
+      <div style="background:#1e1b3a;border-radius:10px;padding:14px;text-align:center;">
+        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Заморозка денег</div>
+        <div style="color:#a78bfa;font-size:16px;font-weight:700;">${freezeDays} дней</div>
+        <div style="color:#64748b;font-size:11px;">цикл + задержка WB</div>
+      </div>
+      <div style="background:#1e1b3a;border-radius:10px;padding:14px;text-align:center;">
+        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Выход в плюс</div>
+        <div style="color:#34d399;font-size:16px;font-weight:700;">${breakEvenMonth ? 'Месяц ' + breakEvenMonth : 'За 24 мес'}</div>
+        <div style="color:#64748b;font-size:11px;">${breakEvenMonth ? rows[breakEvenMonth-1].label : 'не достигнут'}</div>
+      </div>
+      <div style="background:#1e1b3a;border-radius:10px;padding:14px;text-align:center;">
+        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Полная окупаемость</div>
+        <div style="color:#34d399;font-size:16px;font-weight:700;">${debtFreeMonth ? 'Месяц ' + debtFreeMonth : '>24 мес'}</div>
+        <div style="color:#64748b;font-size:11px;">${debtFreeMonth ? rows[debtFreeMonth-1].label : 'увеличьте капитал'}</div>
+      </div>
+    </div>`;
+
+  // SVG CHART
+  const chartEl = document.getElementById('cashflow-chart');
+  const W = 700, H = 220, PL = 60, PR = 20, PT = 20, PB = 40;
+  const CW = W - PL - PR, CH = H - PT - PB;
+  const maxDebt = Math.max(...rows.map(r => r.remainingDebt), capital);
+  const maxRev = Math.max(...rows.map(r => r.revenue));
+  const xScale = i => PL + (i / (months-1)) * CW;
+  const yScaleDebt = v => PT + CH - (v / maxDebt) * CH;
+  const yScaleRev = v => PT + CH - (v / maxRev) * CH;
+
+  const debtPath = rows.map((r,i) => `${i===0?'M':'L'}${xScale(i).toFixed(1)},${yScaleDebt(r.remainingDebt).toFixed(1)}`).join(' ');
+  const revPath = rows.map((r,i) => `${i===0?'M':'L'}${xScale(i).toFixed(1)},${yScaleRev(r.revenue).toFixed(1)}`).join(' ');
+
+  const xLabels = rows.filter((_,i) => i%3===0).map(r =>
+    `<text x="${xScale(r.month-1).toFixed(1)}" y="${H-8}" fill="#64748b" font-size="10" text-anchor="middle">${r.label}</text>`).join('');
+
+  const breakEvenLine = breakEvenMonth ?
+    `<line x1="${xScale(breakEvenMonth-1)}" y1="${PT}" x2="${xScale(breakEvenMonth-1)}" y2="${PT+CH}" stroke="#34d399" stroke-width="1" stroke-dasharray="4,3"/>
+     <text x="${xScale(breakEvenMonth-1)+4}" y="${PT+14}" fill="#34d399" font-size="10">безубыток</text>` : '';
+
+  const debtFreeLine = debtFreeMonth ?
+    `<line x1="${xScale(debtFreeMonth-1)}" y1="${PT}" x2="${xScale(debtFreeMonth-1)}" y2="${PT+CH}" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,3"/>
+     <text x="${xScale(debtFreeMonth-1)+4}" y="${PT+26}" fill="#a78bfa" font-size="10">окупаемость</text>` : '';
+
+  chartEl.innerHTML = `
+    <div style="color:#94a3b8;font-size:12px;margin-bottom:8px;">График: 🔴 долг инвесторам &nbsp; 🟢 оборот</div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;background:#0f0d1f;border-radius:8px;">
+      <path d="${debtPath}" fill="none" stroke="#ef4444" stroke-width="2"/>
+      <path d="${revPath}" fill="none" stroke="#34d399" stroke-width="2"/>
+      ${breakEvenLine}${debtFreeLine}${xLabels}
+      <text x="${PL-5}" y="${PT+5}" fill="#64748b" font-size="9" text-anchor="end">${Math.round(maxDebt/1000)}k$</text>
+      <text x="${PL-5}" y="${PT+CH}" fill="#64748b" font-size="9" text-anchor="end">0</text>
+    </svg>`;
+
+  // TABLE
+  const tableEl = document.getElementById('cashflow-table');
+  const tableRows = rows.map(r => {
+    const profitColor = r.netProfit >= 0 ? '#34d399' : '#ef4444';
+    const debtColor = r.remainingDebt === 0 ? '#34d399' : '#f97316';
+    return `<tr style="border-bottom:1px solid #1e1b3a;">
+      <td style="padding:7px 10px;color:#94a3b8;font-size:12px;">${r.label}</td>
+      <td style="padding:7px 10px;color:#e2e8f0;font-size:12px;">${r.revenue.toLocaleString()} $<br><span style="color:#64748b;font-size:10px;">${fmt(r.revenue)} ${sym}</span></td>
+      <td style="padding:7px 10px;color:#a78bfa;font-size:12px;">${r.grossProfit.toLocaleString()} $</td>
+      <td style="padding:7px 10px;color:#64748b;font-size:12px;">${monthlyExp.toLocaleString()} $</td>
+      <td style="padding:7px 10px;color:${profitColor};font-size:12px;font-weight:600;">${r.netProfit >= 0 ? '+' : ''}${r.netProfit.toLocaleString()} $</td>
+      <td style="padding:7px 10px;color:${debtColor};font-size:12px;">${r.remainingDebt.toLocaleString()} $<br><span style="color:#64748b;font-size:10px;">${fmt(r.remainingDebt)} ${sym}</span></td>
+    </tr>`;
+  }).join('');
+
+  tableEl.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead>
+        <tr style="color:#64748b;font-size:11px;border-bottom:1px solid #6c63ff33;">
+          <th style="padding:7px 10px;text-align:left;">Месяц</th>
+          <th style="padding:7px 10px;text-align:left;">Оборот</th>
+          <th style="padding:7px 10px;text-align:left;">Валовая прибыль</th>
+          <th style="padding:7px 10px;text-align:left;">Расходы</th>
+          <th style="padding:7px 10px;text-align:left;">Чистая прибыль</th>
+          <th style="padding:7px 10px;text-align:left;">Долг инвесторам</th>
+        </tr>
+      </thead>
+      <tbody>${tableRows}</tbody>
+    </table>`;
 }
 
 function companyUpdateEmpName(i, val) {

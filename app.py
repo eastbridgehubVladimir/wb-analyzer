@@ -2978,11 +2978,219 @@ function showPortfolioStub() {
   renderPortfolioSection();
 }
 
+function getCompanySettings() {
+  try { return JSON.parse(localStorage.getItem('company_settings') || 'null'); } catch(e) { return null; }
+}
+function saveCompanySettings(s) {
+  localStorage.setItem('company_settings', JSON.stringify(s));
+}
+function defaultCompanySettings() {
+  return {
+    employees: [
+      { name: 'Директор / Менеджер (совмещение)', salary: 1500, fixed: true },
+      { name: 'Бухгалтер (аутсорс)', salary: 300, fixed: true },
+      { name: '', salary: 0, fixed: false, placeholder: 'например: контент-менеджер' },
+      { name: '', salary: 0, fixed: false, placeholder: 'например: кладовщик' }
+    ],
+    warehouse_m2: 100,
+    warehouse_rate: 8,
+    tax_mode: 'usn6',
+    other_expenses: 500,
+    start_capital: 175000
+  };
+}
+
 function showCompany() {
   hideAll();
   setActiveMenu(document.getElementById('company-menu'));
   document.getElementById('company').style.display = 'block';
-  document.getElementById('company').innerHTML = '<div style="color:#a78bfa;font-size:22px;font-weight:700;margin-bottom:16px;">⚙️ Компания</div><div style="color:#888;">Раздел в разработке...</div>';
+  renderCompany();
+}
+
+function renderCompany() {
+  const s = getCompanySettings() || defaultCompanySettings();
+  const sym = symbols ? (symbols[currentCurrency] || '$') : '$';
+  const usdRate = rates ? (rates['usd'] || 0.011) : 0.011;
+  const curRate = rates ? (rates[currentCurrency] || 1) : 1;
+  const fmt = v => (v / usdRate * curRate).toLocaleString('ru-RU', {maximumFractionDigits: 0});
+
+  let empRows = '';
+  s.employees.forEach((emp, i) => {
+    const nameField = emp.fixed
+      ? `<span style="color:#e2e8f0;">${emp.name}</span>`
+      : `<input type="text" value="${emp.name}" placeholder="${emp.placeholder||''}" onchange="companyUpdateEmpName(${i},this.value)"
+           style="background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:13px;width:220px;">`;
+    // Налоги РБ: ФСЗН 34% (работодатель) + подоходный 13% (работник)
+    const fsznAmt = Math.round(emp.salary * 0.34);
+    const pitAmt  = Math.round(emp.salary * 0.13);
+    const totalCost = Number(emp.salary) + fsznAmt; // полная стоимость для работодателя
+    const deleteBtn = emp.fixed ? `` : `<button onclick="companyRemoveEmployee(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:0 4px;" title="Удалить">✕</button>`;
+    empRows += `
+    <tr>
+      <td style="padding:8px 12px;">${nameField}${deleteBtn}</td>
+      <td style="padding:8px 12px;">
+        <input type="number" value="${emp.salary}" min="0" onchange="companyUpdateEmpSalary(${i},this.value)"
+          style="background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:4px 8px;color:#a78bfa;font-size:13px;width:100px;">
+        <span style="color:#888;margin-left:4px;">$</span>
+      </td>
+      <td style="padding:8px 12px;color:#a78bfa;font-weight:500;">${fmt(emp.salary)} ${sym}</td>
+      <td style="padding:8px 12px;color:#64748b;font-size:12px;">
+        <span style="color:#fbbf24;">+${fmt(fsznAmt)} ${sym} ФСЗН</span><br>
+        <span style="color:#94a3b8;">−${fmt(pitAmt)} ${sym} ПН</span>
+      </td>
+      <td style="padding:8px 12px;color:#e2e8f0;font-weight:600;">${fmt(totalCost)} ${sym}<br><span style="color:#64748b;font-size:11px;">${totalCost} $</span></td>
+    </tr>`;
+  });
+
+  const totalSalary = s.employees.reduce((a,e) => a + Number(e.salary), 0);
+  const warehouseCost = s.warehouse_m2 * s.warehouse_rate;
+  const totalMonthly = totalSalary + warehouseCost + s.other_expenses;
+
+  const taxLabels = { usn6: 'УСН 6% (от выручки)', usn15: 'УСН 15% (доход−расход)', osn: 'ОСН (общая система)' };
+
+  const html = `
+  <div style="color:#a78bfa;font-size:22px;font-weight:700;margin-bottom:24px;">⚙️ Компания</div>
+
+  <!-- СОТРУДНИКИ -->
+  <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;margin-bottom:20px;">
+    <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">👥 Сотрудники</div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="color:#64748b;font-size:12px;">
+          <th style="padding:6px 12px;text-align:left;">Должность</th>
+          <th style="padding:6px 12px;text-align:left;">Оклад ($)</th>
+          <th style="padding:6px 12px;text-align:left;">Оклад (${sym})</th>
+          <th style="padding:6px 12px;text-align:left;">Налоги РБ</th>
+          <th style="padding:6px 12px;text-align:left;">Итого затрат</th>
+        </tr>
+      </thead>
+      <tbody>${empRows}</tbody>
+      <tfoot>
+        <tr style="border-top:1px solid #6c63ff33;">
+          <td style="padding:10px 12px;color:#a78bfa;font-weight:600;">Итого ФОТ</td>
+          <td style="padding:10px 12px;color:#a78bfa;font-weight:600;">${totalSalary.toLocaleString()} $</td>
+          <td style="padding:10px 12px;color:#a78bfa;font-weight:600;">${fmt(totalSalary)} ${sym}</td>
+          <td style="padding:10px 12px;color:#fbbf24;font-size:12px;">ФСЗН 34% = ${fmt(Math.round(totalSalary*0.34))} ${sym}</td>
+          <td style="padding:10px 12px;color:#a78bfa;font-weight:700;">${fmt(Math.round(totalSalary*1.34))} ${sym}<br><span style="color:#64748b;font-size:11px;">${Math.round(totalSalary*1.34).toLocaleString()} $</span></td>
+        </tr>
+      </tfoot>
+    </table>
+    <button onclick="companyAddEmployee()" style="margin-top:12px;background:#6c63ff22;border:1px solid #6c63ff55;border-radius:8px;padding:7px 16px;color:#a78bfa;font-size:13px;cursor:pointer;">+ Добавить сотрудника</button>
+  </div>
+
+  <!-- СКЛАД -->
+  <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;margin-bottom:20px;">
+    <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">🏭 Аренда склада (РБ)</div>
+    <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+      <label style="color:#94a3b8;font-size:13px;">Площадь (м²):
+        <input type="number" value="${s.warehouse_m2}" min="0" onchange="companyUpdateWarehouse('m2',this.value)"
+          style="margin-left:8px;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:4px 8px;color:#a78bfa;font-size:13px;width:80px;">
+      </label>
+      <label style="color:#94a3b8;font-size:13px;">Ставка ($/м²/мес):
+        <input type="number" value="${s.warehouse_rate}" min="0" step="0.5" onchange="companyUpdateWarehouse('rate',this.value)"
+          style="margin-left:8px;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:4px 8px;color:#a78bfa;font-size:13px;width:80px;">
+      </label>
+      <div style="color:#e2e8f0;font-size:14px;">= <span style="color:#a78bfa;font-weight:600;">${warehouseCost.toLocaleString()} $</span> / мес <span style="color:#64748b;">(${fmt(warehouseCost)} ${sym})</span></div>
+    </div>
+  </div>
+
+  <!-- НАЛОГИ -->
+  <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;margin-bottom:20px;">
+    <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">📋 Налоговый режим (РБ)</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      ${Object.entries(taxLabels).map(([k,v]) => `
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:${s.tax_mode===k?'#6c63ff22':'#1e1b3a'};border:1px solid ${s.tax_mode===k?'#6c63ff':'#6c63ff33'};border-radius:8px;padding:8px 14px;">
+        <input type="radio" name="tax_mode" value="${k}" ${s.tax_mode===k?'checked':''} onchange="companyUpdateTax('${k}')"
+          style="accent-color:#6c63ff;">
+        <span style="color:#e2e8f0;font-size:13px;">${v}</span>
+      </label>`).join('')}
+    </div>
+  </div>
+
+  <!-- ПРОЧИЕ РАСХОДЫ -->
+  <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;margin-bottom:20px;">
+    <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">💸 Прочие расходы / мес</div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <input type="number" value="${s.other_expenses}" min="0" onchange="companyUpdateOther(this.value)"
+        style="background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;width:120px;">
+      <span style="color:#888;">$</span>
+      <span style="color:#64748b;font-size:13px;">${fmt(s.other_expenses)} ${sym}</span>
+    </div>
+  </div>
+
+  <!-- СТАРТОВЫЙ КАПИТАЛ -->
+  <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;margin-bottom:20px;">
+    <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">💰 Стартовый капитал</div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <input type="number" value="${s.start_capital}" min="0" step="1000" onchange="companyUpdateCapital(this.value)"
+        style="background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;width:140px;">
+      <span style="color:#888;">$</span>
+      <span style="color:#64748b;font-size:13px;">${fmt(s.start_capital)} ${sym}</span>
+    </div>
+  </div>
+
+  <!-- ИТОГО -->
+  <div style="background:linear-gradient(135deg,#1e1b3a,#13102a);border:1px solid #6c63ff55;border-radius:12px;padding:20px;margin-bottom:20px;">
+    <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">📊 Итого расходов в месяц</div>
+    <div style="display:flex;gap:32px;flex-wrap:wrap;">
+      <div><div style="color:#64748b;font-size:12px;">ФОТ</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${totalSalary.toLocaleString()} $</div></div>
+      <div><div style="color:#64748b;font-size:12px;">Склад</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${warehouseCost.toLocaleString()} $</div></div>
+      <div><div style="color:#64748b;font-size:12px;">Прочее</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${Number(s.other_expenses).toLocaleString()} $</div></div>
+      <div style="border-left:1px solid #6c63ff33;padding-left:32px;"><div style="color:#a78bfa;font-size:12px;">ИТОГО</div><div style="color:#a78bfa;font-size:24px;font-weight:700;">${totalMonthly.toLocaleString()} $</div><div style="color:#64748b;font-size:12px;">${fmt(totalMonthly)} ${sym}</div></div>
+    </div>
+  </div>`;
+
+  document.getElementById('company').innerHTML = html;
+}
+
+function companyUpdateEmpName(i, val) {
+  const s = getCompanySettings() || defaultCompanySettings();
+  s.employees[i].name = val;
+  saveCompanySettings(s);
+}
+function companyUpdateEmpSalary(i, val) {
+  const s = getCompanySettings() || defaultCompanySettings();
+  s.employees[i].salary = Number(val);
+  saveCompanySettings(s);
+  renderCompany();
+}
+function companyUpdateWarehouse(field, val) {
+  const s = getCompanySettings() || defaultCompanySettings();
+  if(field==='m2') s.warehouse_m2 = Number(val);
+  else s.warehouse_rate = Number(val);
+  saveCompanySettings(s);
+  renderCompany();
+}
+function companyUpdateTax(mode) {
+  const s = getCompanySettings() || defaultCompanySettings();
+  s.tax_mode = mode;
+  saveCompanySettings(s);
+}
+function companyUpdateOther(val) {
+  const s = getCompanySettings() || defaultCompanySettings();
+  s.other_expenses = Number(val);
+  saveCompanySettings(s);
+  renderCompany();
+}
+function companyUpdateCapital(val) {
+  const s = getCompanySettings() || defaultCompanySettings();
+  s.start_capital = Number(val);
+  saveCompanySettings(s);
+  renderCompany();
+}
+function companyAddEmployee() {
+  const s = getCompanySettings() || defaultCompanySettings();
+  s.employees.push({ name: '', salary: 0, fixed: false, placeholder: 'Должность сотрудника' });
+  saveCompanySettings(s);
+  renderCompany();
+}
+function companyRemoveEmployee(i) {
+  const s = getCompanySettings() || defaultCompanySettings();
+  if(s.employees[i] && !s.employees[i].fixed) {
+    s.employees.splice(i, 1);
+    saveCompanySettings(s);
+    renderCompany();
+  }
 }
 
 function getPortfolioItems() {

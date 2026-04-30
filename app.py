@@ -3077,7 +3077,8 @@ function renderCompany() {
   const totalSalary = s.employees.reduce((a,e) => a + Number(e.salary), 0);
   const warehouseCost = s.warehouse_m2 * s.warehouse_rate;
   const otherTotal = Array.isArray(s.other_expenses) ? s.other_expenses.reduce((a,e) => a + Number(e.amount), 0) : Number(s.other_expenses);
-  const totalMonthly = totalSalary + warehouseCost + otherTotal;
+  const totalSalaryWithTax = Math.round(totalSalary * 1.34); // с ФСЗН 34%
+  const totalMonthly = totalSalaryWithTax + warehouseCost + otherTotal;
 
   const taxLabels = { usn6: 'УСН 6% (от выручки)', usn15: 'УСН 15% (доход−расход)', osn: 'ОСН (общая система)' };
 
@@ -3188,7 +3189,7 @@ function renderCompany() {
   <div style="background:linear-gradient(135deg,#1e1b3a,#13102a);border:1px solid #6c63ff55;border-radius:12px;padding:20px;margin-bottom:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">📊 Итого расходов в месяц</div>
     <div style="display:flex;gap:32px;flex-wrap:wrap;">
-      <div><div style="color:#64748b;font-size:12px;">ФОТ</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${totalSalary.toLocaleString()} $</div></div>
+      <div><div style="color:#64748b;font-size:12px;">ФОТ (с ФСЗН)</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${totalSalaryWithTax.toLocaleString()} $</div></div>
       <div><div style="color:#64748b;font-size:12px;">Склад</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${warehouseCost.toLocaleString()} $</div></div>
       <div><div style="color:#64748b;font-size:12px;">Прочее</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${otherTotal.toLocaleString()} $</div></div>
       <div style="border-left:1px solid #6c63ff33;padding-left:32px;"><div style="color:#a78bfa;font-size:12px;">ИТОГО</div><div style="color:#a78bfa;font-size:24px;font-weight:700;">${totalMonthly.toLocaleString()} $</div><div style="color:#64748b;font-size:12px;">${fmt(totalMonthly)} ${sym}</div></div>

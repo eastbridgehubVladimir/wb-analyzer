@@ -2397,6 +2397,18 @@ function renderResult(d) {
       </div>
     </div>
 
+    <!-- ЗОНА 10: Контент -->
+    <div id="content-block" style="display:none;margin-top:24px;">
+      <div class="ai-card">
+        <div class="ai-header">
+          <div class="ai-dot" style="background:#ec4899;"></div>
+          <div class="ai-title">📝 Агент контента</div>
+          <div id="content-loading" style="display:none;margin-left:12px;font-size:12px;color:#555;">Генерируем контент...</div>
+        </div>
+        <div id="content-result" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
     <!-- ЗОНА 8: Документы и сертификация -->
     <div id="docs-block" style="display:none;margin-top:24px;">
       <div class="ai-card">
@@ -3737,6 +3749,38 @@ function addPortfolioItem() {
 }
 
 
+async function runContentAgent() {
+  const d = window.currentNiche;
+  if (!d) return;
+  const block = document.getElementById('content-block');
+  const container = document.getElementById('content-result');
+  const loading = document.getElementById('content-loading');
+  if (block) { block.style.display = 'block'; block.scrollIntoView({behavior:'smooth'}); }
+  if (loading) loading.style.display = 'block';
+  container.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">📝 Claude генерирует контент для карточки товара...</div>';
+  try {
+    const params = new URLSearchParams({
+      niche_name: d.name,
+      display_name: d.display_name || d.name,
+      avg_price: d.avg_price || 0,
+      currency: currentCurrency,
+      rate: rates[currentCurrency],
+      symbol: symbols[currentCurrency]
+    });
+    const r = await fetch('/content-agent?' + params);
+    const data = await r.json();
+    if (loading) loading.style.display = 'none';
+    if (data.error) {
+      container.innerHTML = '<div style="color:#ef4444;padding:12px;">' + data.error + '</div>';
+      return;
+    }
+    container.innerHTML = data.html || '<div style="color:#555;">Нет данных</div>';
+  } catch(e) {
+    if (loading) loading.style.display = 'none';
+    container.innerHTML = '<div style="color:#ef4444;padding:12px;">Ошибка: ' + e.message + '</div>';
+  }
+}
+
 async function runDocsAnalysis() {
   const d = window.currentNiche;
   if (!d) return;
@@ -4415,6 +4459,7 @@ async function submitMonitor(month) {
       <button onclick="runAdAnalysis();setTimeout(function(){var el=document.getElementById('adBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0f0f1a;border:1px solid #6c63ff44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#a78bfa;font-size:11px;white-space:nowrap;">&#127919; Реклама</button>
       <button onclick="runWarehouseAnalysis();setTimeout(function(){var el=document.getElementById('warehouseBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0a1520;border:1px solid #38bdf844;border-radius:7px;padding:6px 12px;cursor:pointer;color:#38bdf8;font-size:11px;white-space:nowrap;">&#128230; Поставки</button>
       <button onclick="runDocsAnalysis()" style="background:#1a120a;border:1px solid #d9770644;border-radius:7px;padding:6px 12px;cursor:pointer;color:#d97706;font-size:11px;white-space:nowrap;">&#128203; Документы</button>
+      <button onclick="runContentAgent()" style="background:#1a0a14;border:1px solid #ec489944;border-radius:7px;padding:6px 12px;cursor:pointer;color:#ec4899;font-size:11px;white-space:nowrap;">&#128221; Контент</button>
       <button onclick="runSupplierAnalysis()" style="background:#0a1a0f;border:1px solid #34d39944;border-radius:7px;padding:6px 12px;cursor:pointer;color:#34d399;font-size:11px;white-space:nowrap;">&#127981; Поставщики</button>
       <div style="flex:1;"></div>
       <button id="sticky-wl-btn" onclick="toggleStickyWL(this)" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:7px;padding:6px 14px;cursor:pointer;color:#888;font-size:11px;white-space:nowrap;">&#128278; В работе</button>
@@ -5258,6 +5303,69 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+        elif self.path.startswith('/content-agent'):
+            try:
+                import anthropic
+                from urllib.parse import urlparse, parse_qs
+                qs = parse_qs(urlparse(self.path).query)
+                niche_name = qs.get('niche_name', [''])[0]
+                display_name = qs.get('display_name', [niche_name])[0]
+                avg_price = float(qs.get('avg_price', [0])[0])
+                symbol = qs.get('symbol', ['₽'])[0]
+
+                client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY',''))
+                prompt = (
+                    f"Ты эксперт по контенту для Wildberries. Создай контент для карточки товара в нише \"{display_name}\"."
+                    f"\nСредняя цена: {avg_price:.0f} {symbol}\n\n"
+                    "Создай блоки:\n"
+                    "1. SEO ЗАГОЛОВОК (до 100 символов)\n"
+                    "2. ОПИСАНИЕ ТОВАРА (500-600 символов)\n"
+                    "3. БУЛЛЕТЫ — 5-6 преимуществ с эмодзи\n"
+                    "4. КЛЮЧЕВЫЕ ХАРАКТЕРИСТИКИ — 5-7 важных полей карточки\n"
+                    "5. РЕКОМЕНДАЦИИ ПО ФОТО — главное фото, инфографика, доп. фото (минимум 6-8)\n"
+                    "6. СОВЕТ ПО ВИДЕО — нужно ли и что показывать\n\n"
+                    "Отвечай структурированно, используй эмодзи. Пиши на русском."
+                )
+
+                msg = client.messages.create(
+                    model='claude-sonnet-4-5',
+                    max_tokens=2000,
+                    messages=[{'role':'user','content':prompt}]
+                )
+                text = msg.content[0].text if msg.content else ''
+
+                html = '<div style="font-size:13px;line-height:1.7;color:#e2e8f0;">'
+                for line in text.split('\n'):
+                    line = line.strip()
+                    if not line:
+                        html += '<br>'
+                    elif line[0].isdigit() and len(line) > 2 and line[1] == '.':
+                        html += '<div style="color:#ec4899;font-weight:700;font-size:14px;margin:16px 0 8px;">' + line + '</div>'
+                    elif line.startswith('-') or line.startswith('•'):
+                        html += '<div style="padding:3px 0 3px 12px;border-left:2px solid #ec489944;margin:3px 0;">' + line + '</div>'
+                    else:
+                        html += '<div style="margin:3px 0;">' + line + '</div>'
+                html += '</div>'
+                html += '<div style="margin-top:16px;"><button onclick="navigator.clipboard.writeText(document.getElementById(\"content-raw\").innerText);this.textContent=\"✅ Скопировано!\"" style="background:#ec489922;border:1px solid #ec489944;border-radius:8px;padding:8px 16px;color:#ec4899;font-size:12px;cursor:pointer;">📋 Копировать</button></div>'
+                html += '<div id="content-raw" style="display:none;">' + text.replace('<','&lt;').replace('>','&gt;') + '</div>'
+
+                result = {'html': html}
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                import traceback
+                print('CONTENT AGENT ERROR:', traceback.format_exc())
+                try:
+                    self.send_response(500)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+                except:
+                    pass
+
 
     def do_POST(self):
         if self.path == '/portfolio-ai':

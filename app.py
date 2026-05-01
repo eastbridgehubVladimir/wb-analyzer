@@ -3257,10 +3257,25 @@ function companyUpdateWbDelay(val) {
 
 function renderCashflow() {
   const s = getCompanySettings() || defaultCompanySettings();
-  const capital = s.start_capital || 175000;
+  const capital = s.start_capital || 0;
   const margin = (s.margin_pct || 22) / 100;
   const cycleDays = s.goods_cycle || 45;
   const wbDelay = s.wb_delay || 14;
+
+  // Если капитал или дата не введены — показываем заглушку
+  if (!capital || !s.start_date) {
+    const els = ['cashflow-controls','cashflow-summary','cashflow-chart','cashflow-table'];
+    els.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = ''; });
+    const ctrl = document.getElementById('cashflow-controls');
+    if (ctrl) ctrl.innerHTML = `
+      <div style="text-align:center;padding:32px;color:#64748b;">
+        <div style="font-size:32px;margin-bottom:12px;">📊</div>
+        <div style="font-size:15px;color:#a78bfa;font-weight:600;margin-bottom:8px;">Введите данные для расчёта</div>
+        <div style="font-size:13px;">Заполните поля <span style="color:#e2e8f0;">Стартовый капитал</span> и <span style="color:#e2e8f0;">Дата старта</span> выше</div>
+        <div style="font-size:12px;margin-top:8px;color:#475569;">После этого все параметры, график и таблица появятся автоматически</div>
+      </div>`;
+    return;
+  }
 
   const monthlyExp = (() => {
     const sal = s.employees.reduce((a,e) => a + Number(e.salary), 0);

@@ -1668,10 +1668,6 @@ async function loadCharts(name) {
     }
 
     // Блок рекламы
-    if (data.warehouse_stats) {
-      window._warehouseStats = data.warehouse_stats;
-      renderWarehouseMetrics(data);
-    }
     if (data.package_data) {
       window._nichePackageData = data.package_data;
     }
@@ -6199,7 +6195,9 @@ class Handler(BaseHTTPRequestHandler):
                 commission = body.get('commission', 0)
                 w = body.get('warehouse_stats', {})
 
-                prompt = f"""Ты эксперт по логистике и поставкам на Wildberries. Проанализируй данные топ-30 SKU ниши и дай конкретные рекомендации по стратегии поставок для новичка.
+                prompt = f"""Ты эксперт по логистике и поставкам на Wildberries. Проанализируй данные топ-30 SKU ниши и дай конкретные рекомендации по стратегии поставок.
+
+ВАЖНЫЙ КОНТЕКСТ: Торговая компания зарегистрирована в Республике Беларусь (Минск). Склад также в РБ. Поэтому приоритет складам WB близким к РБ: Смоленск (ближайший к РБ!), Коледино (Москва), Подольск, Электросталь, Шушары (СПб). Смоленск — стратегически важен как ближайший к Беларуси склад. Указывай точное количество товара для каждого склада.
 
 НИША: {niche_name}
 ДАННЫЕ НИШИ:

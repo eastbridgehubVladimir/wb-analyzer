@@ -3745,6 +3745,150 @@ function addPortfolioItem() {
 }
 
 
+async function runMasterAgent() {
+  const d = window.currentNiche;
+  if (!d) return;
+
+  // Показываем блок мастер-анализа
+  let masterBlock = document.getElementById('master-analysis-block');
+  if (!masterBlock) {
+    const resultEl = document.getElementById('result');
+    const div = document.createElement('div');
+    div.id = 'master-analysis-block';
+    div.style.cssText = 'margin-top:24px;';
+    resultEl.appendChild(div);
+    masterBlock = div;
+  }
+  masterBlock.style.display = 'block';
+  masterBlock.scrollIntoView({behavior:'smooth'});
+
+  const steps = [
+    {id:'s1', icon:'🔍', label:'Глубокий анализ ниши'},
+    {id:'s2', icon:'🎯', label:'Анализ рекламы'},
+    {id:'s3', icon:'📦', label:'Стратегия поставок'},
+    {id:'s4', icon:'📋', label:'Документы'},
+    {id:'s5', icon:'📝', label:'Контент'},
+    {id:'s6', icon:'🧠', label:'Финальный вывод'},
+  ];
+
+  masterBlock.innerHTML = `
+    <div class="ai-card">
+      <div class="ai-header">
+        <div class="ai-dot" style="background:#6c63ff;"></div>
+        <div class="ai-title">🧠 Полный анализ ниши</div>
+      </div>
+      <div id="master-progress" style="margin:16px 0;">
+        ${steps.map(s => `<div id="step-${s.id}" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;margin-bottom:6px;background:#0f0f13;">
+          <span style="font-size:16px;">${s.icon}</span>
+          <span style="font-size:13px;color:#555;" id="step-${s.id}-label">${s.label}</span>
+          <span style="margin-left:auto;font-size:11px;color:#333;" id="step-${s.id}-status">⏳ ожидание</span>
+        </div>`).join('')}
+      </div>
+      <div id="master-result" style="margin-top:16px;"></div>
+    </div>`;
+
+  const setStep = (id, status, color='#555') => {
+    const el = document.getElementById(`step-${id}-status`);
+    const label = document.getElementById(`step-${id}-label`);
+    if (el) el.textContent = status;
+    if (label) label.style.color = color;
+    const row = document.getElementById(`step-${id}`);
+    if (row) row.style.background = color === '#22c55e' ? '#0f1a0f' : color === '#ef4444' ? '#1a0f0f' : '#13131a';
+  };
+
+  const results = {};
+
+  // ШАГ 1: Глубокий анализ
+  setStep('s1', '⚙️ анализируем...', '#a78bfa');
+  try {
+    const params = new URLSearchParams({
+      name: d.name, revenue: d.revenue||0, avg_price: d.avg_price||0,
+      commission: d.commission||0, buyout_pct: d.buyout_pct||0,
+      profit_pct: d.profit_pct||0, turnover: d.turnover||0,
+      sellers: d.sellers||0, sellers_with_sales: d.sellers_with_sales||0,
+      currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency]
+    });
+    const r = await fetch('/deep-analysis?' + params);
+    const data = await r.json();
+    results.deep = data.raw || data;
+    setStep('s1', '✅ готово', '#22c55e');
+  } catch(e) { setStep('s1', '❌ ошибка', '#ef4444'); }
+
+  // ШАГ 2: Реклама
+  setStep('s2', '⚙️ анализируем...', '#a78bfa');
+  try {
+    const w = window._chartData || {};
+    const payload = {niche_name: d.name, avg_cpm: w.avg_cpm||0, ad_pct: w.ad_pct||0,
+      cpm_status: w.cpm_status||'', ad_verdict: w.ad_verdict||'',
+      avg_price: d.avg_price||0, revenue: d.revenue||0,
+      currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency]};
+    const r = await fetch('/ad-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const data = await r.json();
+    results.ads = data.raw || data;
+    setStep('s2', '✅ готово', '#22c55e');
+  } catch(e) { setStep('s2', '❌ ошибка', '#ef4444'); }
+
+  // ШАГ 3: Поставки
+  setStep('s3', '⚙️ анализируем...', '#a78bfa');
+  try {
+    const w = window._warehouseStats || {};
+    const payload = {niche_name: d.name, avg_price: d.avg_price||0,
+      revenue: d.revenue||0, turnover: d.turnover||0,
+      buyout_pct: d.buyout_pct||0, profit_pct: d.profit_pct||0,
+      commission: d.commission||0, warehouse_stats: w,
+      currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency]};
+    const r = await fetch('/warehouse-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const data = await r.json();
+    results.warehouse = data.raw || data;
+    setStep('s3', '✅ готово', '#22c55e');
+  } catch(e) { setStep('s3', '❌ ошибка', '#ef4444'); }
+
+  // ШАГ 4: Документы
+  setStep('s4', '⚙️ анализируем...', '#a78bfa');
+  try {
+    const payload = {niche_name: d.name, display_name: d.display_name||d.name,
+      avg_price: d.avg_price||0, currency: currentCurrency,
+      rate: rates[currentCurrency], symbol: symbols[currentCurrency]};
+    const r = await fetch('/docs-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const data = await r.json();
+    results.docs = data.raw || data;
+    setStep('s4', '✅ готово', '#22c55e');
+  } catch(e) { setStep('s4', '❌ ошибка', '#ef4444'); }
+
+  // ШАГ 5: Контент
+  setStep('s5', '⚙️ анализируем...', '#a78bfa');
+  try {
+    const params = new URLSearchParams({niche_name: d.name,
+      display_name: d.display_name||d.name, avg_price: d.avg_price||0,
+      currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency]});
+    const r = await fetch('/content-agent?' + params);
+    const data = await r.json();
+    results.content = data.raw || data;
+    setStep('s5', '✅ готово', '#22c55e');
+  } catch(e) { setStep('s5', '❌ ошибка', '#ef4444'); }
+
+  // ШАГ 6: Финальный сводный вывод
+  setStep('s6', '⚙️ формируем вывод...', '#a78bfa');
+  try {
+    const payload = {
+      niche_name: d.name, display_name: d.display_name||d.name,
+      avg_price: d.avg_price||0, revenue: d.revenue||0,
+      profit_pct: d.profit_pct||0, buyout_pct: d.buyout_pct||0,
+      turnover: d.turnover||0, sellers: d.sellers||0,
+      sellers_with_sales: d.sellers_with_sales||0,
+      currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency],
+      results: results
+    };
+    const r = await fetch('/master-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const data = await r.json();
+    setStep('s6', '✅ готово', '#22c55e');
+    document.getElementById('master-result').innerHTML = data.html || '';
+  } catch(e) {
+    setStep('s6', '❌ ошибка', '#ef4444');
+    document.getElementById('master-result').innerHTML = '<div style="color:#ef4444;padding:12px;">Ошибка финального анализа: ' + e.message + '</div>';
+  }
+}
+
 async function runContentAgent() {
   const d = window.currentNiche;
   if (!d) return;
@@ -4450,13 +4594,21 @@ async function submitMonitor(month) {
   <div id="sticky-agents" style="display:none;position:fixed;bottom:0;left:220px;right:0;background:#0d0d14;border-top:1px solid #1a1a2e;padding:8px 24px;z-index:1000;box-shadow:0 -4px 20px rgba(0,0,0,0.5);">
     <div style="display:flex;align-items:center;gap:8px;">
       <span style="font-size:10px;color:#333;margin-right:4px;white-space:nowrap;">AI:</span>
-      <button onclick="deepAnalysis(window.currentNiche);setTimeout(function(){var el=document.getElementById('deep-analysis-block');if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth'});}},500)" style="background:#0f1a0f;border:1px solid #22c55e44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#22c55e;font-size:11px;white-space:nowrap;">&#128269; Глубокий анализ</button>
-      <button onclick="showUnitEconomy();setTimeout(function(){var el=document.getElementById('unit-economy-block');if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth'});}},300)" style="background:#1a150a;border:1px solid #f59e0b44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#f59e0b;font-size:11px;white-space:nowrap;">&#129518; Юнит-экономика</button>
-      <button onclick="runAdAnalysis();setTimeout(function(){var el=document.getElementById('adBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0f0f1a;border:1px solid #6c63ff44;border-radius:7px;padding:6px 12px;cursor:pointer;color:#a78bfa;font-size:11px;white-space:nowrap;">&#127919; Реклама</button>
-      <button onclick="runWarehouseAnalysis();setTimeout(function(){var el=document.getElementById('warehouseBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0a1520;border:1px solid #38bdf844;border-radius:7px;padding:6px 12px;cursor:pointer;color:#38bdf8;font-size:11px;white-space:nowrap;">&#128230; Поставки</button>
-      <button onclick="runDocsAnalysis()" style="background:#1a120a;border:1px solid #d9770644;border-radius:7px;padding:6px 12px;cursor:pointer;color:#d97706;font-size:11px;white-space:nowrap;">&#128203; Документы</button>
-      <button onclick="runContentAgent()" style="background:#1a0a14;border:1px solid #ec489944;border-radius:7px;padding:6px 12px;cursor:pointer;color:#ec4899;font-size:11px;white-space:nowrap;">&#128221; Контент</button>
-      <button onclick="runSupplierAnalysis()" style="background:#0a1a0f;border:1px solid #34d39944;border-radius:7px;padding:6px 12px;cursor:pointer;color:#34d399;font-size:11px;white-space:nowrap;">&#127981; Поставщики</button>
+      <!-- ПОЛНЫЙ АНАЛИЗ -->
+      <button onclick="runMasterAgent()" style="background:linear-gradient(135deg,#1a2a1a,#1a1a2a);border:1px solid #6c63ff66;border-radius:8px;padding:7px 16px;cursor:pointer;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:6px;">
+        🧠 <span>Полный анализ</span>
+      </button>
+      <!-- РАЗДЕЛИТЕЛЬ -->
+      <div style="width:1px;background:#2a2a3a;height:24px;margin:0 4px;"></div>
+      <span style="font-size:10px;color:#444;white-space:nowrap;">Агенты:</span>
+      <!-- ОТДЕЛЬНЫЕ АГЕНТЫ — иконки с tooltip -->
+      <div title="Глубокий анализ ниши" onclick="deepAnalysis(window.currentNiche);setTimeout(function(){var el=document.getElementById('deep-analysis-block');if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth'});}},500)" style="background:#0f1a0f;border:1px solid #22c55e44;border-radius:7px;padding:6px 10px;cursor:pointer;color:#22c55e;font-size:14px;">🔍</div>
+      <div title="Юнит-экономика" onclick="showUnitEconomy();setTimeout(function(){var el=document.getElementById('unit-economy-block');if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth'});}},300)" style="background:#1a150a;border:1px solid #f59e0b44;border-radius:7px;padding:6px 10px;cursor:pointer;color:#f59e0b;font-size:14px;">🧮</div>
+      <div title="Анализ рекламы" onclick="runAdAnalysis();setTimeout(function(){var el=document.getElementById('adBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0f0f1a;border:1px solid #6c63ff44;border-radius:7px;padding:6px 10px;cursor:pointer;color:#a78bfa;font-size:14px;">🎯</div>
+      <div title="Стратегия поставок" onclick="runWarehouseAnalysis();setTimeout(function(){var el=document.getElementById('warehouseBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0a1520;border:1px solid #38bdf844;border-radius:7px;padding:6px 10px;cursor:pointer;color:#38bdf8;font-size:14px;">📦</div>
+      <div title="Документы и сертификаты" onclick="runDocsAnalysis()" style="background:#1a120a;border:1px solid #d9770644;border-radius:7px;padding:6px 10px;cursor:pointer;color:#d97706;font-size:14px;">📋</div>
+      <div title="Контент для карточки" onclick="runContentAgent()" style="background:#1a0a14;border:1px solid #ec489944;border-radius:7px;padding:6px 10px;cursor:pointer;color:#ec4899;font-size:14px;">📝</div>
+      <div title="Поиск поставщиков" onclick="runSupplierAnalysis()" style="background:#0a1a0f;border:1px solid #34d39944;border-radius:7px;padding:6px 10px;cursor:pointer;color:#34d399;font-size:14px;">🏭</div>
       <div style="flex:1;"></div>
       <button id="sticky-wl-btn" onclick="toggleStickyWL(this)" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:7px;padding:6px 14px;cursor:pointer;color:#888;font-size:11px;white-space:nowrap;">&#128278; В работе</button>
     </div>
@@ -6209,6 +6361,116 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
 
             except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+
+        elif self.path == '/master-analysis':
+            try:
+                import anthropic
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                niche_name = body.get('niche_name', '')
+                display_name = body.get('display_name', niche_name)
+                avg_price = body.get('avg_price', 0)
+                revenue = body.get('revenue', 0)
+                profit_pct = body.get('profit_pct', 0)
+                buyout_pct = body.get('buyout_pct', 0)
+                turnover = body.get('turnover', 0)
+                sellers = body.get('sellers', 0)
+                sellers_with_sales = body.get('sellers_with_sales', 0)
+                sym = body.get('symbol', '₽')
+                rate = body.get('rate', 1)
+                results = body.get('results', {})
+
+                client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY',''))
+                prompt = f"""Ты старший аналитик по торговле на Wildberries. На основе данных от всех аналитических модулей составь итоговый стратегический отчёт по нише.
+
+НИША: {display_name}
+КЛЮЧЕВЫЕ МЕТРИКИ:
+- Выручка ниши: {revenue:,.0f} ₽/мес
+- Средняя цена: {avg_price:,.0f} ₽
+- Маржинальность: {profit_pct*100:.0f}%
+- Выкуп: {buyout_pct*100:.0f}%
+- Оборачиваемость: {turnover} дней
+- Продавцов: {sellers} (активных: {sellers_with_sales})
+
+ДАННЫЕ ОТ АГЕНТОВ: {json.dumps(results, ensure_ascii=False)[:2000]}
+
+Составь итоговый отчёт в формате JSON:
+{{
+  "final_verdict": "ВХОДИТЬ" или "ТЕСТИРОВАТЬ" или "НЕ ВХОДИТЬ",
+  "verdict_color": "#22c55e" или "#eab308" или "#ef4444",
+  "confidence": "высокая/средняя/низкая",
+  "summary": "2-3 предложения — главный вывод по нише",
+  "action_plan": [
+    {{"step": 1, "action": "конкретное действие", "deadline": "срок", "budget": "бюджет"}},
+    {{"step": 2, "action": "конкретное действие", "deadline": "срок", "budget": "бюджет"}},
+    {{"step": 3, "action": "конкретное действие", "deadline": "срок", "budget": "бюджет"}},
+    {{"step": 4, "action": "конкретное действие", "deadline": "срок", "budget": "бюджет"}},
+    {{"step": 5, "action": "конкретное действие", "deadline": "срок", "budget": "бюджет"}}
+  ],
+  "key_risks": ["риск 1", "риск 2", "риск 3"],
+  "key_opportunities": ["возможность 1", "возможность 2", "возможность 3"],
+  "total_budget_min": число в {sym},
+  "total_budget_opt": число в {sym},
+  "payback_months": число
+}}
+Только JSON без markdown."""
+
+                msg = client.messages.create(
+                    model='claude-sonnet-4-5',
+                    max_tokens=2000,
+                    messages=[{'role':'user','content':prompt}]
+                )
+                ai = json.loads(msg.content[0].text.strip().replace('```json','').replace('```','').strip())
+
+                html = f'''
+                <div style="border-top:1px solid #6c63ff33;padding-top:20px;margin-top:8px;">
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+                    <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;border:1px solid {ai["verdict_color"]}33;">
+                      <div style="font-size:10px;color:#555;margin-bottom:6px;">ИТОГОВЫЙ ВЕРДИКТ</div>
+                      <div style="font-size:24px;font-weight:700;color:{ai["verdict_color"]};">{ai["final_verdict"]}</div>
+                      <div style="font-size:10px;color:#555;margin-top:4px;">уверенность: {ai.get("confidence","—")}</div>
+                    </div>
+                    <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
+                      <div style="font-size:10px;color:#555;margin-bottom:6px;">МИНИМАЛЬНЫЙ БЮДЖЕТ</div>
+                      <div style="font-size:20px;font-weight:700;color:#fff;">{ai.get("total_budget_min",0):,.0f} {sym}</div>
+                    </div>
+                    <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
+                      <div style="font-size:10px;color:#555;margin-bottom:6px;">ОПТИМАЛЬНЫЙ БЮДЖЕТ</div>
+                      <div style="font-size:20px;font-weight:700;color:#a78bfa;">{ai.get("total_budget_opt",0):,.0f} {sym}</div>
+                      <div style="font-size:10px;color:#555;margin-top:4px;">окупаемость ~{ai.get("payback_months","?")} мес</div>
+                    </div>
+                  </div>
+                  <div style="background:#13102a;border-radius:10px;padding:16px;margin-bottom:12px;">
+                    <div style="font-size:13px;font-weight:600;color:#a78bfa;margin-bottom:8px;">📊 Главный вывод</div>
+                    <div style="font-size:13px;color:#e2e8f0;line-height:1.7;">{ai.get("summary","")}</div>
+                  </div>
+                  <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">
+                    <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:12px;">🗓 План действий</div>
+                    {"".join([f'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;padding:10px;background:#13131a;border-radius:8px;"><div style="background:#6c63ff;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">{s["step"]}</div><div style="flex:1;"><div style="font-size:13px;color:#e2e8f0;margin-bottom:3px;">{s["action"]}</div><div style="font-size:11px;color:#64748b;">{s.get("deadline","")} · {s.get("budget","")}</div></div></div>' for s in ai.get("action_plan",[])])}
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div style="background:#1a0f0f;border:1px solid #ef444433;border-radius:10px;padding:16px;">
+                      <div style="font-size:13px;font-weight:600;color:#ef4444;margin-bottom:8px;">⚠️ Ключевые риски</div>
+                      {"".join([f'<div style="font-size:12px;color:#aaa;padding:4px 0;border-bottom:1px solid #2a1a1a;">• {r}</div>' for r in ai.get("key_risks",[])])}
+                    </div>
+                    <div style="background:#0f1a0f;border:1px solid #22c55e33;border-radius:10px;padding:16px;">
+                      <div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:8px;">✨ Возможности</div>
+                      {"".join([f'<div style="font-size:12px;color:#aaa;padding:4px 0;border-bottom:1px solid #1a2a1a;">• {o}</div>' for o in ai.get("key_opportunities",[])])}
+                    </div>
+                  </div>
+                </div>'''
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'html': html}, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                import traceback
+                print('MASTER ERROR:', traceback.format_exc())
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()

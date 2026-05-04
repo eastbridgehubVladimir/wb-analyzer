@@ -3754,6 +3754,19 @@ function renderPortfolioSection() {
   var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">';
   html += '<div><div style="font-size:20px;font-weight:700;color:#fff;">📦 Товарный портфель <span style="font-size:14px;color:#555;font-weight:400;">(' + items.length + ' товаров)</span></div>';
   html += '<div style="font-size:12px;color:#555;margin-top:4px;">Товары которые вы закупаете и продаёте на WB</div></div>';
+  html += '</div>';
+  // Roadmap блок
+  html += '<div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:16px;margin-bottom:20px;">';
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+  html += '<div style="font-size:13px;font-weight:600;color:#a78bfa;">🚀 Полная версия Портфеля — в разработке</div>';
+  html += '<div style="background:#6c63ff22;color:#a78bfa;font-size:10px;border-radius:4px;padding:2px 8px;border:1px solid #6c63ff44;">Coming Soon</div>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">';
+  html += '<div style="background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:11px;color:#a78bfa;margin-bottom:4px;">📊 Финансы</div><div style="font-size:11px;color:#555;">Цена закупки/продажи, маржа план vs факт, ROI по каждому товару</div></div>';
+  html += '<div style="background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:11px;color:#38bdf8;margin-bottom:4px;">🚢 Логистика</div><div style="font-size:11px;color:#555;">Даты заказа/отправки/прибытия, остатки по складам WB</div></div>';
+  html += '<div style="background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:11px;color:#34d399;margin-bottom:4px;">🔗 Интеграции</div><div style="font-size:11px;color:#555;">WB API, складская программа, бухгалтерия, раздел Компания</div></div>';
+  html += '</div></div>';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div></div>';
   // кнопка В работе убрана из заголовка
   html += '</div>';
 

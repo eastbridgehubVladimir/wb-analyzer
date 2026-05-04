@@ -4760,7 +4760,13 @@ class Handler(BaseHTTPRequestHandler):
   "financial_plan": "2-3 предложения о финансовом плане входа",
   "competitive_analysis": "2-3 предложения о конкурентной ситуации и слабых местах топ игроков",
   "free_segments": "какие ценовые или продуктовые сегменты свободны",
-  "recommendation": "конкретная рекомендация что делать 2-3 предложения"
+  "recommendation": "конкретная рекомендация что делать 2-3 предложения",
+  "season_peak_months": "месяцы пика продаж например Октябрь-Декабрь",
+  "season_low_months": "месяцы спада например Июль-Август",
+  "purchase_months": "когда закупать товар с учётом 45 дней доставки из Китая например Август-Сентябрь",
+  "ad_launch_months": "когда запускать рекламу например Сентябрь",
+  "season_risk": "низкий/средний/высокий",
+  "season_tip": "конкретный совет по сезонности 1-2 предложения"
 }}
 Только JSON без markdown."""
 
@@ -4811,9 +4817,36 @@ class Handler(BaseHTTPRequestHandler):
                   <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">🎯 Свободные сегменты</div>
                   <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai["free_segments"]}</div>
                 </div>
-                <div style="background:#22c55e11;border:1px solid #22c55e33;border-radius:10px;padding:16px;">
+                <div style="background:#22c55e11;border:1px solid #22c55e33;border-radius:10px;padding:16px;margin-bottom:12px;">
                   <div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:8px;">✅ Рекомендация</div>
                   <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai["recommendation"]}</div>
+                </div>
+                <div style="background:#1a1500;border:1px solid #f59e0b33;border-radius:10px;padding:16px;">
+                  <div style="font-size:13px;font-weight:600;color:#f59e0b;margin-bottom:12px;">📅 Сезонное планирование</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                    <div style="background:#0f0f13;border-radius:8px;padding:12px;">
+                      <div style="font-size:10px;color:#555;margin-bottom:4px;">ПИК ПРОДАЖ</div>
+                      <div style="font-size:13px;color:#22c55e;font-weight:600;">{ai.get("season_peak_months","—")}</div>
+                    </div>
+                    <div style="background:#0f0f13;border-radius:8px;padding:12px;">
+                      <div style="font-size:10px;color:#555;margin-bottom:4px;">СПАД ПРОДАЖ</div>
+                      <div style="font-size:13px;color:#ef4444;font-weight:600;">{ai.get("season_low_months","—")}</div>
+                    </div>
+                    <div style="background:#0f0f13;border-radius:8px;padding:12px;">
+                      <div style="font-size:10px;color:#555;margin-bottom:4px;">КОГДА ЗАКУПАТЬ</div>
+                      <div style="font-size:13px;color:#f59e0b;font-weight:600;">{ai.get("purchase_months","—")}</div>
+                      <div style="font-size:10px;color:#555;margin-top:2px;">с учётом 45 дн доставки</div>
+                    </div>
+                    <div style="background:#0f0f13;border-radius:8px;padding:12px;">
+                      <div style="font-size:10px;color:#555;margin-bottom:4px;">ЗАПУСК РЕКЛАМЫ</div>
+                      <div style="font-size:13px;color:#a78bfa;font-weight:600;">{ai.get("ad_launch_months","—")}</div>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <div style="font-size:11px;color:#555;">Сезонный риск:</div>
+                    <div style="font-size:12px;font-weight:700;color:{"#22c55e" if ai.get("season_risk","")=="низкий" else "#f59e0b" if ai.get("season_risk","")=="средний" else "#ef4444"};">{ai.get("season_risk","—").upper()}</div>
+                  </div>
+                  <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai.get("season_tip","")}</div>
                 </div>'''
 
                 self.send_response(200)

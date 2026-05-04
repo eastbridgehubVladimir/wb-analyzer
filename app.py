@@ -261,48 +261,48 @@ HTML = """<!DOCTYPE html>
   div[style*="padding:10px 40px"] { padding: 8px 12px !important; flex-wrap: nowrap; gap: 4px; overflow-x: auto; }
   div[style*="padding:10px 40px"] button { padding: 6px 10px !important; font-size: 11px !important; white-space: nowrap; }
 }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f13; color: #e8e8e8; min-height: 100vh; }
-.header { background: #1a1a24; border-bottom: 1px solid #2a2a3a; padding: 20px 40px; display: flex; align-items: center; gap: 16px; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e8e8e8; min-height: 100vh; }
+.header { background: #1e2433; border-bottom: 1px solid #2d3748; padding: 20px 40px; display: flex; align-items: center; gap: 16px; }
 .page-wrap { display: flex; min-height: calc(100vh - 57px); }
-.sidebar { width: 220px; background: #141418; border-right: 1px solid #2a2a3a; padding: 16px; flex-shrink: 0; }
+.sidebar { width: 220px; background: #141418; border-right: 1px solid #2d3748; padding: 16px; flex-shrink: 0; }
 .sidebar-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
 .sidebar-item { display: flex; align-items: center; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 16px; color: #888; margin-bottom: 4px; transition: all 0.15s; }
-.sidebar-item:hover { background: #1a1a24; color: #ddd; }
-.sidebar-item.active { background: #6c63ff22; color: #6c63ff; }
+.sidebar-item:hover { background: #1e2433; color: #ddd; }
+.sidebar-item.active { background: #3b82f622; color: #3b82f6; }
 .content-area { flex: 1; overflow-y: auto; }
 @media (max-width: 768px) { .sidebar { display: none; } }
 .logo { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
-.logo span { color: #6c63ff; }
+.logo span { color: #3b82f6; }
 .tagline { color: #666; font-size: 13px; }
 .main { max-width: 100%; margin: 0; padding: 32px 40px; }
 .hero { text-align: center; margin-bottom: 48px; }
 .hero h1 { font-size: 42px; font-weight: 700; color: #fff; line-height: 1.2; margin-bottom: 16px; }
-.hero h1 span { color: #6c63ff; }
+.hero h1 span { color: #3b82f6; }
 .hero p { color: #888; font-size: 16px; }
-.search-box { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 16px; padding: 24px; margin-bottom: 32px; }
+.search-box { background: #1e2433; border: 1px solid #2d3748; border-radius: 16px; padding: 24px; margin-bottom: 32px; }
 .search-row { display: flex; gap: 12px; }
-.search-input { flex: 1; background: #0f0f13; border: 1px solid #2a2a3a; border-radius: 10px; padding: 14px 18px; color: #fff; font-size: 15px; outline: none; transition: border-color 0.2s; }
-.search-input:focus { border-color: #6c63ff; }
+.search-input { flex: 1; background: #0f1117; border: 1px solid #2d3748; border-radius: 10px; padding: 14px 18px; color: #fff; font-size: 15px; outline: none; transition: border-color 0.2s; }
+.search-input:focus { border-color: #3b82f6; }
 .search-input::placeholder { color: #444; }
-#suggestions div.highlighted { background: #6c63ff33 !important; border-left: 2px solid #6c63ff; }
-.btn { background: #6c63ff; color: #fff; border: none; border-radius: 10px; padding: 14px 28px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+#suggestions div.highlighted { background: #3b82f633 !important; border-left: 2px solid #3b82f6; }
+.btn { background: #3b82f6; color: #fff; border: none; border-radius: 10px; padding: 14px 28px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
 .btn:hover { background: #5a52e0; }
 .btn:disabled { background: #333; cursor: not-allowed; }
 .examples { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
-.chip { background: #0f0f13; border: 1px solid #2a2a3a; border-radius: 20px; padding: 6px 14px; font-size: 12px; color: #888; cursor: pointer; transition: all 0.2s; }
-.chip:hover { border-color: #6c63ff; color: #6c63ff; }
+.chip { background: #0f1117; border: 1px solid #2d3748; border-radius: 20px; padding: 6px 14px; font-size: 12px; color: #888; cursor: pointer; transition: all 0.2s; }
+.chip:hover { border-color: #3b82f6; color: #3b82f6; }
 .result { display: none; }
 .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-.metric-card { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 12px; padding: 20px; }
+.metric-card { background: #1e2433; border: 1px solid #2d3748; border-radius: 12px; padding: 20px; }
 .metric-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }.currency-switch { display: flex; gap: 4px; margin-top: 6px; }
-.currency-btn { background: transparent; border: 1px solid #2a2a3a; border-radius: 4px; color: #555; font-size: 10px; padding: 2px 6px; cursor: pointer; }
-.currency-btn.active { background: #6c63ff22; border-color: #6c63ff; color: #6c63ff; }
+.currency-btn { background: transparent; border: 1px solid #2d3748; border-radius: 4px; color: #555; font-size: 10px; padding: 2px 6px; cursor: pointer; }
+.currency-btn.active { background: #3b82f622; border-color: #3b82f6; color: #3b82f6; }
 .metric-value { font-size: 24px; font-weight: 700; color: #fff; }
 .metric-sub { font-size: 12px; color: #555; margin-top: 4px; }.turn-fast { color: #22c55e; }
 .turn-normal { color: #22c55e; }
 .turn-seasonal { color: #eab308; }
 .turn-slow { color: #ef4444; }
-.verdict-card { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 12px; padding: 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 20px; }
+.verdict-card { background: #1e2433; border: 1px solid #2d3748; border-radius: 12px; padding: 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 20px; }
 .verdict-badge { padding: 8px 20px; border-radius: 8px; font-size: 18px; font-weight: 700; }
 .verdict-BUY { background: #0d2a1a; color: #22c55e; border: 1px solid #166534; }
 .verdict-TEST { background: #1a1a0d; color: #eab308; border: 1px solid #713f12; }
@@ -313,19 +313,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .score-bar { width: 120px; }
 .score-num { font-size: 36px; font-weight: 700; color: #fff; text-align: center; }
 .score-label { font-size: 11px; color: #555; text-align: center; }
-.ai-card { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+.ai-card { background: #1e2433; border: 1px solid #2d3748; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
 .ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
-.ai-dot { width: 8px; height: 8px; background: #6c63ff; border-radius: 50%; }
+.ai-dot { width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; }
 .ai-title { font-size: 14px; font-weight: 600; color: #fff; }
 .insight-item { display: flex; gap: 12px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #1f1f2e; }
 .insight-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-.insight-num { width: 24px; height: 24px; background: #6c63ff22; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #6c63ff; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+.insight-num { width: 24px; height: 24px; background: #3b82f622; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #3b82f6; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
 .insight-text { font-size: 14px; color: #bbb; line-height: 1.6; }
-.hyp-item { background: #0f0f13; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; font-size: 13px; color: #888; line-height: 1.5; }
-.hyp-item:before { content: "→ "; color: #6c63ff; }
-.analysis-box { background: #0f0f13; border-left: 3px solid #6c63ff; border-radius: 0 8px 8px 0; padding: 16px; font-size: 14px; color: #aaa; line-height: 1.7; }
+.hyp-item { background: #0f1117; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; font-size: 13px; color: #888; line-height: 1.5; }
+.hyp-item:before { content: "→ "; color: #3b82f6; }
+.analysis-box { background: #0f1117; border-left: 3px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 16px; font-size: 14px; color: #aaa; line-height: 1.7; }
 .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
-.chart-card { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 12px; padding: 20px; box-sizing: border-box; overflow: hidden; }
+.chart-card { background: #1e2433; border: 1px solid #2d3748; border-radius: 12px; padding: 20px; box-sizing: border-box; overflow: hidden; }
 .chart-title { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; }
 .bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 80px; }
 .bar { flex: 1; border-radius: 3px 3px 0 0; transition: opacity 0.2s; min-width: 8px; }
@@ -337,15 +337,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .metric-row-label { font-size: 13px; color: #666; }
 .metric-row-value { font-size: 13px; color: #ddd; font-weight: 500; }
 .metric-row-bar { height: 4px; background: #1f1f2e; border-radius: 2px; margin-top: 4px; }
-.metric-row-fill { height: 4px; border-radius: 2px; background: #6c63ff; }
+.metric-row-fill { height: 4px; border-radius: 2px; background: #3b82f6; }
 .section-title { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
-.calc-wrap { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 12px; padding: 24px; margin-bottom: 24px; display: none; }
+.calc-wrap { background: #1e2433; border: 1px solid #2d3748; border-radius: 12px; padding: 24px; margin-bottom: 24px; display: none; }
 .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
 .calc-field { display: flex; flex-direction: column; gap: 6px; }
 .calc-label { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 0.5px; }
-.calc-input { background: #0f0f13; border: 1px solid #2a2a3a; border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 15px; outline: none; } .calc-input::placeholder { color: #333; font-size: 13px; }
-.calc-input:focus { border-color: #6c63ff; }
-.calc-result { background: #0f0f13; border-radius: 10px; padding: 20px; }
+.calc-input { background: #0f1117; border: 1px solid #2d3748; border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 15px; outline: none; } .calc-input::placeholder { color: #333; font-size: 13px; }
+.calc-input:focus { border-color: #3b82f6; }
+.calc-result { background: #0f1117; border-radius: 10px; padding: 20px; }
 .calc-result-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1f1f2e; font-size: 14px; }
 .calc-result-row:last-child { border-bottom: none; font-weight: 600; font-size: 16px; }
 .calc-result-row span:first-child { color: #888; }
@@ -353,16 +353,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .calc-positive { color: #22c55e !important; }
 .calc-negative { color: #ef4444 !important; }
 .scheme-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-.scheme-tab { padding: 8px 16px; border-radius: 8px; border: 1px solid #2a2a3a; background: transparent; color: #888; font-size: 13px; cursor: pointer; }
-.scheme-tab.active { background: #6c63ff; border-color: #6c63ff; color: #fff; }.loading { text-align: center; padding: 40px; color: #555; display: none; }
+.scheme-tab { padding: 8px 16px; border-radius: 8px; border: 1px solid #2d3748; background: transparent; color: #888; font-size: 13px; cursor: pointer; }
+.scheme-tab.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }.loading { text-align: center; padding: 40px; color: #555; display: none; }
 .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000000cc; z-index:1000; align-items:center; justify-content:center; }
 .modal-overlay.active { display:flex; }
-.modal-content { background:#1a1a24; border:1px solid #2a2a3a; border-radius:16px; padding:28px; width:90%; max-width:1100px; max-height:90vh; overflow-y:auto; position:relative; }
-.modal-close { position:absolute; top:16px; right:16px; background:#2a2a3a; border:none; color:#888; width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; }
+.modal-content { background:#1e2433; border:1px solid #2d3748; border-radius:16px; padding:28px; width:90%; max-width:1100px; max-height:90vh; overflow-y:auto; position:relative; }
+.modal-close { position:absolute; top:16px; right:16px; background:#2d3748; border:none; color:#888; width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; }
 .modal-close:hover { background:#3a3a4a; color:#fff; }
 .chart-card { cursor:pointer; transition:border-color 0.2s; }
-.chart-card:hover { border-color:#6c63ff55; }
-.spinner { width: 32px; height: 32px; border: 2px solid #2a2a3a; border-top-color: #6c63ff; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+.chart-card:hover { border-color:#3b82f655; }
+.spinner { width: 32px; height: 32px; border: 2px solid #2d3748; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .error { background: #2a0d0d; border: 1px solid #7f1d1d; border-radius: 12px; padding: 20px; color: #ef4444; display: none; }
 .niche-name { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 24px; }
@@ -374,8 +374,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  background: #1a1a2e;
-  border: 1px solid #2a2a3a;
+  background: #1e2433;
+  border: 1px solid #2d3748;
   border-radius: 8px;
   padding: 10px 14px;
   width: 220px;
@@ -393,7 +393,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-top-color: #2a2a3a;
+  border-top-color: #2d3748;
 }
 .metric-card:hover .metric-tooltip { display: block; }
 </style>
@@ -406,16 +406,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <div class="tagline">AI-платформа анализа товарных ниш</div>
   </div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
-    <button id="gcur-rub" onclick="setGlobalCurrency('rub')" style="background:#6c63ff22;border:1px solid #6c63ff;border-radius:6px;color:#6c63ff;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">₽</button>
-    <button id="gcur-usd" onclick="setGlobalCurrency('usd')" style="background:transparent;border:1px solid #2a2a3a;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">$</button>
-    <button id="gcur-eur" onclick="setGlobalCurrency('eur')" style="background:transparent;border:1px solid #2a2a3a;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">€</button>
-    <button id="gcur-byn" onclick="setGlobalCurrency('byn')" style="background:transparent;border:1px solid #2a2a3a;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">Br</button>
+    <button id="gcur-rub" onclick="setGlobalCurrency('rub')" style="background:#3b82f622;border:1px solid #3b82f6;border-radius:6px;color:#3b82f6;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">₽</button>
+    <button id="gcur-usd" onclick="setGlobalCurrency('usd')" style="background:transparent;border:1px solid #2d3748;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">$</button>
+    <button id="gcur-eur" onclick="setGlobalCurrency('eur')" style="background:transparent;border:1px solid #2d3748;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">€</button>
+    <button id="gcur-byn" onclick="setGlobalCurrency('byn')" style="background:transparent;border:1px solid #2d3748;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">Br</button>
   </div>
 </div>
 <div class="page-wrap">
 <div id="chartModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000000cc;z-index:1000;align-items:center;justify-content:center;" onclick="if(event.target.id=='chartModal'){this.style.display='none';if(modalChartInstance){modalChartInstance.destroy();modalChartInstance=null;}}">
-    <div style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:16px;padding:28px;width:90%;max-width:1100px;max-height:90vh;overflow-y:auto;position:relative;">
-      <button onclick="document.getElementById('chartModal').style.display='none';if(modalChartInstance){modalChartInstance.destroy();modalChartInstance=null;}" style="position:absolute;top:16px;right:16px;background:#2a2a3a;border:none;color:#888;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;">✕</button>
+    <div style="background:#1e2433;border:1px solid #2d3748;border-radius:16px;padding:28px;width:90%;max-width:1100px;max-height:90vh;overflow-y:auto;position:relative;">
+      <button onclick="document.getElementById('chartModal').style.display='none';if(modalChartInstance){modalChartInstance.destroy();modalChartInstance=null;}" style="position:absolute;top:16px;right:16px;background:#2d3748;border:none;color:#888;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;">✕</button>
       <div id="modalTitle" style="font-size:14px;color:#555;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:20px;"></div>
       <div style="position:relative;height:500px;width:100%;"><canvas id="modalChart"></canvas></div>
     </div>
@@ -426,7 +426,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="sidebar-item" onclick="showTopNiches()">⭐ Топ ниши</div>
   <div class="sidebar-item" onclick="showPortfolio()">🎯 Подбор</div>
   <div class="sidebar-item" onclick="showCalc()">🧮 Калькулятор</div>
-  <div class="sidebar-item" id="watchlist-menu" onclick="showWatchlist()">📌 В работе <span id="watchlist-count" style="background:#6c63ff33;color:#a78bfa;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;"></span></div>
+  <div class="sidebar-item" id="watchlist-menu" onclick="showWatchlist()">📌 В работе <span id="watchlist-count" style="background:#3b82f633;color:#93c5fd;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;"></span></div>
   <div class="sidebar-item" onclick="showPortfolioStub()">📦 Портфель</div>
   <div class="sidebar-item" id="company-menu" onclick="showCompany()">⚙️ Компания</div>
 </div>
@@ -446,8 +446,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div id="company" style="display:none;margin-top:24px;"></div>
   <div id="watchlist" style="display:none;margin-top:24px;"></div><div id="catalog" style="display:none;margin-top:24px;">
     <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
-      <input id="cat-search" placeholder="Фильтр по названию..." style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px 14px;color:#fff;font-size:13px;outline:none;flex:1;min-width:220px;" oninput="filterCatalog()"/>
-      <select id="cat-sort" onchange="filterCatalog()" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px 14px;color:#888;font-size:13px;outline:none;">
+      <input id="cat-search" placeholder="Фильтр по названию..." style="background:#1e2433;border:1px solid #2d3748;border-radius:8px;padding:10px 14px;color:#fff;font-size:13px;outline:none;flex:1;min-width:220px;" oninput="filterCatalog()"/>
+      <select id="cat-sort" onchange="filterCatalog()" style="background:#1e2433;border:1px solid #2d3748;border-radius:8px;padding:10px 14px;color:#888;font-size:13px;outline:none;">
         <option value="revenue">По выручке</option>
         <option value="orders">По заказам</option>
         <option value="profit">По прибыльности</option>
@@ -604,17 +604,17 @@ function renderWatchlist() {
   html += '<div style="font-size:20px;font-weight:700;color:#fff;">&#128204; В работе <span style="font-size:14px;color:#555;font-weight:400;">(' + list.length + ' ниш)</span></div>';
   html += '<div style="display:flex;gap:8px;">';
   html += '<button onclick="calcContainerFromWatchlist()" title="Рассчитать объём контейнера для выбранных ниш" style="background:#34d399;border:none;border-radius:8px;padding:8px 16px;color:#000;font-size:12px;font-weight:700;cursor:pointer;">&#128230; Контейнер</button>';
-  html += '<button onclick="runWatchlistMonitor()" title="Проверить изменения метрик по всем нишам в работе и получить AI-анализ что изменилось" style="background:#6c63ff22;border:1px solid #6c63ff44;border-radius:8px;padding:8px 16px;color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer;">&#128276; Проверить изменения</button>';
+  html += '<button onclick="runWatchlistMonitor()" title="Проверить изменения метрик по всем нишам в работе и получить AI-анализ что изменилось" style="background:#3b82f622;border:1px solid #3b82f644;border-radius:8px;padding:8px 16px;color:#93c5fd;font-size:12px;font-weight:600;cursor:pointer;">&#128276; Проверить изменения</button>';
   html += '</div>';
   html += '</div>';
 
   // Индикатор контейнера
-  html += '<div id="wl-container-indicator" style="display:none;background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:16px;">';
+  html += '<div id="wl-container-indicator" style="display:none;background:#0f1117;border-radius:10px;padding:16px;margin-bottom:16px;">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
   html += '<div style="font-size:11px;color:#555;">НАПОЛНЕНИЕ КОНТЕЙНЕРА</div>';
   html += '<div id="wl-container-type" style="font-size:11px;color:#34d399;"></div>';
   html += '</div>';
-  html += '<div style="background:#1a1a24;border-radius:6px;height:12px;margin-bottom:6px;">';
+  html += '<div style="background:#1e2433;border-radius:6px;height:12px;margin-bottom:6px;">';
   html += '<div id="wl-container-bar" style="height:100%;border-radius:6px;background:linear-gradient(90deg,#34d399,#4ade80);transition:width 0.3s;" width="0%"></div>';
   html += '</div>';
   html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:#555;">';
@@ -628,9 +628,9 @@ function renderWatchlist() {
     var sn = n.name.includes(' / ') ? n.name.split(' / ').slice(1).join(' / ') : n.name;
     var score = n.score || 0;
     var scoreColor = score >= 65 ? '#4ade80' : score >= 40 ? '#fbbf24' : '#ef4444';
-    html += '<div id="wl-card-'+i+'" style="background:#1a1a24;border:2px solid #2a2a3a;border-radius:12px;padding:14px;position:relative;cursor:pointer;" onclick="toggleWlCheck('+i+')">';
+    html += '<div id="wl-card-'+i+'" style="background:#1e2433;border:2px solid #2d3748;border-radius:12px;padding:14px;position:relative;cursor:pointer;" onclick="toggleWlCheck('+i+')">';
     html += '<div style="position:absolute;top:10px;right:10px;">';
-    html += '<div id="wl-check-'+i+'" style="width:18px;height:18px;border:2px solid #2a2a3a;border-radius:4px;background:#0f0f13;display:flex;align-items:center;justify-content:center;"></div>';
+    html += '<div id="wl-check-'+i+'" style="width:18px;height:18px;border:2px solid #2d3748;border-radius:4px;background:#0f1117;display:flex;align-items:center;justify-content:center;"></div>';
     html += '</div>';
     html += '<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:6px;padding-right:24px;">'+sn+'</div>';
     if (score > 0) html += '<div style="font-size:10px;color:'+scoreColor+';margin-bottom:6px;">'+score+'/100</div>';
@@ -638,20 +638,20 @@ function renderWatchlist() {
     // Метрики ниши
     if (n.avg_price) {
       html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px;">';
-      html += '<div style="background:#0f0f13;border-radius:4px;padding:4px;text-align:center;"><div style="font-size:8px;color:#444;">ЦЕНА</div><div style="font-size:11px;color:#fff;">'+Math.round(n.avg_price)+'₽</div></div>';
-      html += '<div style="background:#0f0f13;border-radius:4px;padding:4px;text-align:center;"><div style="font-size:8px;color:#444;">ВЫКУП</div><div style="font-size:11px;color:#4ade80;">'+Math.round((n.buyout_pct||0)*100)+'%</div></div>';
-      html += '<div style="background:#0f0f13;border-radius:4px;padding:4px;text-align:center;"><div style="font-size:8px;color:#444;">ОБОРОТ</div><div style="font-size:11px;color:#38bdf8;">'+Math.round(n.turnover||0)+'дн</div></div>';
+      html += '<div style="background:#0f1117;border-radius:4px;padding:4px;text-align:center;"><div style="font-size:8px;color:#444;">ЦЕНА</div><div style="font-size:11px;color:#fff;">'+Math.round(n.avg_price)+'₽</div></div>';
+      html += '<div style="background:#0f1117;border-radius:4px;padding:4px;text-align:center;"><div style="font-size:8px;color:#444;">ВЫКУП</div><div style="font-size:11px;color:#4ade80;">'+Math.round((n.buyout_pct||0)*100)+'%</div></div>';
+      html += '<div style="background:#0f1117;border-radius:4px;padding:4px;text-align:center;"><div style="font-size:8px;color:#444;">ОБОРОТ</div><div style="font-size:11px;color:#38bdf8;">'+Math.round(n.turnover||0)+'дн</div></div>';
       html += '</div>';
     }
     // Количество в партии
-    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;background:#0f0f13;border-radius:6px;padding:6px 8px;">';
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;background:#0f1117;border-radius:6px;padding:6px 8px;">';
     html += '<div style="font-size:10px;color:#555;flex:1;">Партия:</div>';
     if (n.moq) html += '<div style="font-size:9px;color:#34d399;">MOQ '+n.moq+' шт</div>';
-    html += '<input type="number" id="wl-qty-'+i+'" value="'+(n.qty||n.moq||100)+'" min="1" style="width:60px;background:#1a1a24;border:1px solid #2a2a3a;border-radius:4px;padding:3px 6px;color:#fff;font-size:11px;text-align:center;" onclick="event.stopPropagation()" onchange="updateWlQty('+i+',this.value)">';
+    html += '<input type="number" id="wl-qty-'+i+'" value="'+(n.qty||n.moq||100)+'" min="1" style="width:60px;background:#1e2433;border:1px solid #2d3748;border-radius:4px;padding:3px 6px;color:#fff;font-size:11px;text-align:center;" onclick="event.stopPropagation()" onchange="updateWlQty('+i+',this.value)">';
     html += '<div style="font-size:10px;color:#555;">шт</div>';
     html += '</div>';
     html += '<div style="display:flex;gap:6px;">';
-    html += '<button onclick="event.stopPropagation();openFromWL(this)" data-full="'+n.full+'" style="flex:1;background:#6c63ff22;border:1px solid #6c63ff44;border-radius:5px;color:#a78bfa;padding:5px;cursor:pointer;font-size:11px;">Открыть</button>';
+    html += '<button onclick="event.stopPropagation();openFromWL(this)" data-full="'+n.full+'" style="flex:1;background:#3b82f622;border:1px solid #3b82f644;border-radius:5px;color:#93c5fd;padding:5px;cursor:pointer;font-size:11px;">Открыть</button>';
     html += '<button onclick="event.stopPropagation();moveToPortfolio('+i+')" style="background:#34d39922;border:1px solid #34d39944;border-radius:5px;color:#34d399;padding:5px 8px;cursor:pointer;font-size:11px;" title="В портфель">&#10003;</button>';
     html += '<button onclick="event.stopPropagation();removeWL(this)" data-full="'+n.full+'" style="background:#ef444422;border:1px solid #ef444444;border-radius:5px;color:#ef4444;padding:5px 8px;cursor:pointer;font-size:11px;">&#10005;</button>';
     html += '</div></div>';
@@ -677,10 +677,10 @@ async function runWatchlistMonitor() {
     document.getElementById('watchlist').appendChild(monBlock);
   }
   monBlock.innerHTML = `
-    <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;">
+    <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-        <div style="width:8px;height:8px;border-radius:50%;background:#a78bfa;animation:pulse 1s infinite;"></div>
-        <div style="font-size:15px;font-weight:600;color:#a78bfa;">🔔 Мониторинг изменений</div>
+        <div style="width:8px;height:8px;border-radius:50%;background:#93c5fd;animation:pulse 1s infinite;"></div>
+        <div style="font-size:15px;font-weight:600;color:#93c5fd;">🔔 Мониторинг изменений</div>
       </div>
       <div style="color:#555;font-size:13px;">Анализируем ${list.length} ниш...</div>
       <div id="wl-monitor-result" style="margin-top:16px;"></div>
@@ -721,9 +721,9 @@ function toggleWlCheck(idx) {
   var pos = window._wlChecked.indexOf(idx);
   if (pos >= 0) {
     window._wlChecked.splice(pos, 1);
-    card.style.borderColor = '#2a2a3a';
-    check.style.background = '#0f0f13';
-    check.style.borderColor = '#2a2a3a';
+    card.style.borderColor = '#2d3748';
+    check.style.background = '#0f1117';
+    check.style.borderColor = '#2d3748';
     check.innerHTML = '';
   } else {
     window._wlChecked.push(idx);
@@ -903,12 +903,12 @@ function setGlobalCurrency(cur) {
     const btn = document.getElementById('gcur-' + c);
     if (!btn) return;
     if (c === cur) {
-      btn.style.background = '#6c63ff22';
-      btn.style.borderColor = '#6c63ff';
-      btn.style.color = '#6c63ff';
+      btn.style.background = '#3b82f622';
+      btn.style.borderColor = '#3b82f6';
+      btn.style.color = '#3b82f6';
     } else {
       btn.style.background = 'transparent';
-      btn.style.borderColor = '#2a2a3a';
+      btn.style.borderColor = '#2d3748';
       btn.style.color = '#555';
     }
   });
@@ -1112,7 +1112,7 @@ async function runTrendsFinder() {
   }
 
   trendsBlock.innerHTML = `
-    <div style="background:#1a1500;border:1px solid #f59e0b33;border-radius:12px;padding:20px;margin-bottom:20px;">
+    <div style="background:#1a2010;border:1px solid #f59e0b33;border-radius:12px;padding:20px;margin-bottom:20px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
         <div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:pulse 1s infinite;"></div>
         <div style="font-size:15px;font-weight:600;color:#f59e0b;">📈 Поиск трендов</div>
@@ -1167,49 +1167,49 @@ function renderPortfolioQuestionnaire(div) {
       </div>
 
       <!-- Вопрос 1: Бюджет на один SKU -->
-      <div style="background:#1a1a24;border-radius:12px;padding:20px;margin-bottom:16px;">
-        <div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">ВОПРОС 1 из 5</div>
+      <div style="background:#1e2433;border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="font-size:13px;color:#93c5fd;font-weight:600;margin-bottom:4px;">ВОПРОС 1 из 5</div>
         <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Бюджет на пробную партию одного SKU</div>
         <div style="font-size:12px;color:#555;margin-bottom:16px;">Включает закупку + доставку карго из Китая</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;" id="q1-options">
-          <div onclick="selectOption('q1','micro')" id="q1-micro" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+          <div onclick="selectOption('q1','micro')" id="q1-micro" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:15px;font-weight:700;color:#4ade80;">до $200</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">200 шт · $0.5-1/шт · цена до 400₽ · расходники</div>
           </div>
-          <div onclick="selectOption('q1','low')" id="q1-low" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+          <div onclick="selectOption('q1','low')" id="q1-low" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:15px;font-weight:700;color:#38bdf8;">$200 — $500</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">150 шт · $1-3.3/шт · цена 300-1200₽</div>
           </div>
-          <div onclick="selectOption('q1','mid')" id="q1-mid" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+          <div onclick="selectOption('q1','mid')" id="q1-mid" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:15px;font-weight:700;color:#fbbf24;">$500 — $1500</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">100 шт · $3-15/шт · цена 800-5000₽</div>
           </div>
-          <div onclick="selectOption('q1','high')" id="q1-high" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+          <div onclick="selectOption('q1','high')" id="q1-high" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:15px;font-weight:700;color:#f59e0b;">$1500 — $3000</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">50 шт · $15-60/шт · цена 3500-18500₽</div>
           </div>
-          <div onclick="selectOption('q1','premium')" id="q1-premium" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
-            <div style="font-size:15px;font-weight:700;color:#a78bfa;">$3000 — $7000</div>
+          <div onclick="selectOption('q1','premium')" id="q1-premium" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
+            <div style="font-size:15px;font-weight:700;color:#93c5fd;">$3000 — $7000</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">20 шт · $60-350/шт · цена 12000-99000₽</div>
           </div>
         </div>
       </div>
 
       <!-- Вопрос 2: Цикличность -->
-      <div style="background:#1a1a24;border-radius:12px;padding:20px;margin-bottom:16px;">
-        <div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">ВОПРОС 2 из 5</div>
+      <div style="background:#1e2433;border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="font-size:13px;color:#93c5fd;font-weight:600;margin-bottom:4px;">ВОПРОС 2 из 5</div>
         <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Желаемая скорость оборота капитала</div>
         <div style="font-size:12px;color:#555;margin-bottom:16px;">Доставка из Китая ~45 дней. Товар должен продаться до следующей поставки.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;" id="q2-options">
-          <div onclick="selectOption('q2','fast')" id="q2-fast" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+          <div onclick="selectOption('q2','fast')" id="q2-fast" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:14px;font-weight:700;color:#4ade80;">8-12 циклов/год</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">Оборот каждые 30-45 дней</div>
           </div>
-          <div onclick="selectOption('q2','medium')" id="q2-medium" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+          <div onclick="selectOption('q2','medium')" id="q2-medium" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:14px;font-weight:700;color:#fbbf24;">4-6 циклов/год</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">Оборот каждые 60-90 дней</div>
           </div>
-          <div onclick="selectOption('q2','slow')" id="q2-slow" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+          <div onclick="selectOption('q2','slow')" id="q2-slow" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:14px;font-weight:700;color:#f59e0b;">2-4 цикла/год</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">Оборот каждые 90-180 дней</div>
           </div>
@@ -1217,16 +1217,16 @@ function renderPortfolioQuestionnaire(div) {
       </div>
 
       <!-- Вопрос 3: Сезонность -->
-      <div style="background:#1a1a24;border-radius:12px;padding:20px;margin-bottom:16px;">
-        <div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">ВОПРОС 3 из 5</div>
+      <div style="background:#1e2433;border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="font-size:13px;color:#93c5fd;font-weight:600;margin-bottom:4px;">ВОПРОС 3 из 5</div>
         <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Сезонные товары</div>
         <div style="font-size:12px;color:#555;margin-bottom:16px;">Сезонные товары дают высокую маржу но требуют точного планирования поставок</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="q3-options">
-          <div onclick="selectOption('q3','no')" id="q3-no" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+          <div onclick="selectOption('q3','no')" id="q3-no" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:14px;font-weight:700;color:#4ade80;">Только круглогодичные</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">Стабильный спрос весь год, меньше рисков</div>
           </div>
-          <div onclick="selectOption('q3','yes')" id="q3-yes" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+          <div onclick="selectOption('q3','yes')" id="q3-yes" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:14px;font-weight:700;color:#fbbf24;">Включая сезонные</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">Готовы планировать заранее, выше маржа</div>
           </div>
@@ -1234,20 +1234,20 @@ function renderPortfolioQuestionnaire(div) {
       </div>
 
       <!-- Вопрос 4: Конкуренция -->
-      <div style="background:#1a1a24;border-radius:12px;padding:20px;margin-bottom:16px;">
-        <div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">ВОПРОС 4 из 5</div>
+      <div style="background:#1e2433;border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="font-size:13px;color:#93c5fd;font-weight:600;margin-bottom:4px;">ВОПРОС 4 из 5</div>
         <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Уровень конкуренции</div>
         <div style="font-size:12px;color:#555;margin-bottom:16px;">Свободные ниши легче войти, конкурентные — выше оборот</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;" id="q4-options">
-          <div onclick="selectOption('q4','low')" id="q4-low" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+          <div onclick="selectOption('q4','low')" id="q4-low" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:13px;font-weight:700;color:#4ade80;">Свободные ниши</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">до 50 активных продавцов</div>
           </div>
-          <div onclick="selectOption('q4','mid')" id="q4-mid" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+          <div onclick="selectOption('q4','mid')" id="q4-mid" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:13px;font-weight:700;color:#fbbf24;">Умеренная</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">50-300 активных продавцов</div>
           </div>
-          <div onclick="selectOption('q4','high')" id="q4-high" class="q-option" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:14px;cursor:pointer;">
+          <div onclick="selectOption('q4','high')" id="q4-high" class="q-option" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:14px;cursor:pointer;">
             <div style="font-size:13px;font-weight:700;color:#f59e0b;">Готовы конкурировать</div>
             <div style="font-size:11px;color:#555;margin-top:4px;">300+ продавцов, высокий спрос</div>
           </div>
@@ -1255,8 +1255,8 @@ function renderPortfolioQuestionnaire(div) {
       </div>
 
       <!-- Вопрос 5: Исключения -->
-      <div style="background:#1a1a24;border-radius:12px;padding:20px;margin-bottom:24px;">
-        <div style="font-size:13px;color:#a78bfa;font-weight:600;margin-bottom:4px;">ВОПРОС 5 из 5</div>
+      <div style="background:#1e2433;border-radius:12px;padding:20px;margin-bottom:24px;">
+        <div style="font-size:13px;color:#93c5fd;font-weight:600;margin-bottom:4px;">ВОПРОС 5 из 5</div>
         <div style="font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Приоритетные направления</div>
         <div style="font-size:12px;color:#555;margin-bottom:16px;">Выберите 2-4 направления в которых хотите работать</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;" id="q5-options">
@@ -1272,7 +1272,7 @@ function renderPortfolioQuestionnaire(div) {
             {cat:'Электроника и гаджеты', icon:'📱', desc:'аксессуары, умный дом, гаджеты'},
             {cat:'Автотовары', icon:'🚗', desc:'аксессуары, уход, запчасти'}
           ].map(item =>
-            '<div onclick="toggleDirection(this,this.dataset.cat)" data-cat="'+item.cat+'" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:8px;padding:12px;cursor:pointer;">' +
+            '<div onclick="toggleDirection(this,this.dataset.cat)" data-cat="'+item.cat+'" style="background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:12px;cursor:pointer;">' +
             '<div style="font-size:20px;margin-bottom:4px;">'+item.icon+'</div>' +
             '<div style="font-size:12px;font-weight:600;color:#888;margin-bottom:2px;">'+item.cat+'</div>' +
             '<div style="font-size:10px;color:#444;">'+item.desc+'</div>' +
@@ -1283,7 +1283,7 @@ function renderPortfolioQuestionnaire(div) {
       </div>
 
       <!-- Кнопка -->
-      <button onclick="runPortfolioAnalysis()" style="width:100%;background:linear-gradient(135deg,#6c63ff,#8b5cf6);color:#fff;border:none;border-radius:10px;padding:16px;font-size:15px;font-weight:700;cursor:pointer;">
+      <button onclick="runPortfolioAnalysis()" style="width:100%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;border-radius:10px;padding:16px;font-size:15px;font-weight:700;cursor:pointer;">
         🚀 Подобрать портфель
       </button>
 
@@ -1295,14 +1295,14 @@ function renderPortfolioQuestionnaire(div) {
 function selectOption(question, value) {
   // Убираем выделение со всех вариантов вопроса
   document.querySelectorAll('#' + question + '-options .q-option').forEach(el => {
-    el.style.borderColor = '#2a2a3a';
-    el.style.background = '#0f0f13';
+    el.style.borderColor = '#2d3748';
+    el.style.background = '#0f1117';
   });
   // Выделяем выбранный
   var selected = document.getElementById(question + '-' + value);
   if (selected) {
-    selected.style.borderColor = '#6c63ff';
-    selected.style.background = '#6c63ff11';
+    selected.style.borderColor = '#3b82f6';
+    selected.style.background = '#3b82f611';
   }
   // Сохраняем ответ
   if (!window.portfolioAnswers) window.portfolioAnswers = {};
@@ -1320,18 +1320,18 @@ function toggleDirection(el, cat) {
   // Максимум 4 направления
   if (idx >= 0) {
     window.portfolioAnswers.q5.splice(idx, 1);
-    el.style.borderColor = '#2a2a3a';
+    el.style.borderColor = '#2d3748';
     el.querySelector('div:nth-child(2)').style.color = '#888';
-    el.style.background = '#0f0f13';
+    el.style.background = '#0f1117';
   } else {
     if (window.portfolioAnswers.q5.length >= 4) {
       alert('Выберите не более 4 направлений');
       return;
     }
     window.portfolioAnswers.q5.push(cat);
-    el.style.borderColor = '#6c63ff';
-    el.querySelector('div:nth-child(2)').style.color = '#a78bfa';
-    el.style.background = '#6c63ff11';
+    el.style.borderColor = '#3b82f6';
+    el.querySelector('div:nth-child(2)').style.color = '#93c5fd';
+    el.style.background = '#3b82f611';
   }
 }
 
@@ -1344,7 +1344,7 @@ async function runPortfolioAnalysis() {
   }
 
   var resultDiv = document.getElementById('portfolio-result');
-  resultDiv.innerHTML = '<div style="background:#0f0f13;border-radius:12px;padding:30px;text-align:center;"><div style="font-size:32px;margin-bottom:12px;">🤖</div><div style="font-size:14px;color:#aaa;">Claude анализирует 7000+ ниш и подбирает портфель...</div><div style="font-size:12px;color:#555;margin-top:8px;">Обычно занимает 20-30 секунд</div></div>';
+  resultDiv.innerHTML = '<div style="background:#0f1117;border-radius:12px;padding:30px;text-align:center;"><div style="font-size:32px;margin-bottom:12px;">🤖</div><div style="font-size:14px;color:#aaa;">Claude анализирует 7000+ ниш и подбирает портфель...</div><div style="font-size:12px;color:#555;margin-top:8px;">Обычно занимает 20-30 секунд</div></div>';
 
   // Scroll to result
   resultDiv.scrollIntoView({behavior:'smooth'});
@@ -1376,18 +1376,18 @@ function renderPortfolioResult(data, sym, rate) {
   var niches = data.niches || [];
   var summary = data.summary || {};
 
-  var html = '<div style="border-top:1px solid #1a1a2e;padding-top:24px;">';
+  var html = '<div style="border-top:1px solid #1e2433;padding-top:24px;">';
 
   // Заголовок с итогами
-  html += '<div style="background:linear-gradient(135deg,#1a1a2e,#0f0f1a);border-radius:12px;padding:20px;margin-bottom:24px;border:1px solid #6c63ff33;">' +
-    '<div style="font-size:10px;color:#6c63ff;letter-spacing:1px;margin-bottom:8px;">РЕКОМЕНДАЦИЯ AI</div>' +
+  html += '<div style="background:linear-gradient(135deg,#1e2433,#0f1117);border-radius:12px;padding:20px;margin-bottom:24px;border:1px solid #3b82f633;">' +
+    '<div style="font-size:10px;color:#3b82f6;letter-spacing:1px;margin-bottom:8px;">РЕКОМЕНДАЦИЯ AI</div>' +
     '<div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:10px;">' + (summary.title||'Подобранный портфель') + '</div>' +
     '<div style="font-size:13px;color:#aaa;line-height:1.6;margin-bottom:16px;">' + (summary.description||'') + '</div>' +
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">' +
-      '<div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">НИШ В ПОРТФЕЛЕ</div><div style="font-size:18px;font-weight:700;color:#a78bfa;">' + niches.length + '</div></div>' +
-      '<div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">БЮДЖЕТ ВХОДА</div><div style="font-size:16px;font-weight:700;color:#38bdf8;">' + fmtM(summary.total_budget_rub) + '</div></div>' +
-      '<div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ПОТЕНЦИАЛ/МЕС</div><div style="font-size:16px;font-weight:700;color:#4ade80;">' + fmtM(summary.monthly_potential_rub) + '</div></div>' +
-      '<div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ОКУПАЕМОСТЬ</div><div style="font-size:16px;font-weight:700;color:#fbbf24;">' + (summary.payback_months||'—') + ' мес</div></div>' +
+      '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">НИШ В ПОРТФЕЛЕ</div><div style="font-size:18px;font-weight:700;color:#93c5fd;">' + niches.length + '</div></div>' +
+      '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">БЮДЖЕТ ВХОДА</div><div style="font-size:16px;font-weight:700;color:#38bdf8;">' + fmtM(summary.total_budget_rub) + '</div></div>' +
+      '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ПОТЕНЦИАЛ/МЕС</div><div style="font-size:16px;font-weight:700;color:#4ade80;">' + fmtM(summary.monthly_potential_rub) + '</div></div>' +
+      '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ОКУПАЕМОСТЬ</div><div style="font-size:16px;font-weight:700;color:#fbbf24;">' + (summary.payback_months||'—') + ' мес</div></div>' +
     '</div>' +
   '</div>';
 
@@ -1396,23 +1396,23 @@ function renderPortfolioResult(data, sym, rate) {
   niches.forEach(function(n, i) {
     var priorityColor = n.priority === 'high' ? '#4ade80' : n.priority === 'medium' ? '#fbbf24' : '#38bdf8';
     var priorityLabel = n.priority === 'high' ? '🔥 Высокий приоритет' : n.priority === 'medium' ? '⭐ Средний приоритет' : '🌱 На перспективу';
-    html += '<div style="background:#1a1a24;border-radius:12px;padding:16px;border-left:3px solid ' + priorityColor + ';">' +
+    html += '<div style="background:#1e2433;border-radius:12px;padding:16px;border-left:3px solid ' + priorityColor + ';">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">' +
         '<div>' +
           '<div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;">' + (n.name||'') + '</div>' +
           '<div style="font-size:11px;color:' + priorityColor + ';">' + priorityLabel + '</div>' +
         '</div>' +
-        '<button onclick="openNicheFromPortfolio(this)" data-full="' + (n.full||n.name||'') + '" style="background:#6c63ff22;border:1px solid #6c63ff44;border-radius:6px;padding:4px 10px;color:#a78bfa;font-size:11px;cursor:pointer;">Открыть</button>' +
+        '<button onclick="openNicheFromPortfolio(this)" data-full="' + (n.full||n.name||'') + '" style="background:#3b82f622;border:1px solid #3b82f644;border-radius:6px;padding:4px 10px;color:#93c5fd;font-size:11px;cursor:pointer;">Открыть</button>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">' +
-        '<div style="background:#0f0f13;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:2px;">ОБОРОТ</div><div style="font-size:13px;font-weight:700;color:#38bdf8;">' + (n.turnover_days||'—') + ' дн</div></div>' +
-        '<div style="background:#0f0f13;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:2px;">МАРЖА</div><div style="font-size:13px;font-weight:700;color:#a78bfa;">' + (n.margin_pct||'—') + '%</div></div>' +
-        '<div style="background:#0f0f13;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:2px;">ВЫКУП</div><div style="font-size:13px;font-weight:700;color:#4ade80;">' + (n.buyout_pct||'—') + '%</div></div>' +
+        '<div style="background:#0f1117;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:2px;">ОБОРОТ</div><div style="font-size:13px;font-weight:700;color:#38bdf8;">' + (n.turnover_days||'—') + ' дн</div></div>' +
+        '<div style="background:#0f1117;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:2px;">МАРЖА</div><div style="font-size:13px;font-weight:700;color:#93c5fd;">' + (n.margin_pct||'—') + '%</div></div>' +
+        '<div style="background:#0f1117;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:2px;">ВЫКУП</div><div style="font-size:13px;font-weight:700;color:#4ade80;">' + (n.buyout_pct||'—') + '%</div></div>' +
       '</div>' +
-      '<div style="background:#0f0f13;border-radius:8px;padding:10px;margin-bottom:10px;">' +
+      '<div style="background:#0f1117;border-radius:8px;padding:10px;margin-bottom:10px;">' +
         '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:11px;"><span style="color:#555;">Вход (закупка+доставка)</span><span style="color:#fff;">' + fmtM(n.entry_cost_rub) + '</span></div>' +
         '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:11px;"><span style="color:#555;">Реклама старт</span><span style="color:#fff;">' + fmtM(n.ad_budget_rub) + '</span></div>' +
-        '<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid #2a2a3a;padding-top:6px;"><span style="color:#aaa;">Потенциал/цикл</span><span style="color:#4ade80;font-weight:700;">' + fmtM(n.profit_per_cycle_rub) + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid #2d3748;padding-top:6px;"><span style="color:#aaa;">Потенциал/цикл</span><span style="color:#4ade80;font-weight:700;">' + fmtM(n.profit_per_cycle_rub) + '</span></div>' +
       '</div>' +
       '<div style="font-size:11px;color:#555;line-height:1.5;">' + (n.reason||'') + '</div>' +
       (n.seasonal_warning ? '<div style="margin-top:8px;background:#fbbf2422;border:1px solid #fbbf2444;border-radius:6px;padding:10px;font-size:11px;color:#fbbf24;"><div style="font-weight:600;margin-bottom:3px;">&#127810; Сезонный товар</div><div style="color:#aaa;">' + n.seasonal_warning + '</div></div>' : '') +
@@ -1423,7 +1423,7 @@ function renderPortfolioResult(data, sym, rate) {
   // Кнопка сохранить портфель
   // Блок расчёта контейнера
   window._portfolioNiches = niches;
-  html += '<div style="margin-top:24px;background:linear-gradient(135deg,#0a1a0a,#0f0f1a);border-radius:12px;padding:20px;border:1px solid #34d39933;">';
+  html += '<div style="margin-top:24px;background:linear-gradient(135deg,#0a1a0a,#0f1117);border-radius:12px;padding:20px;border:1px solid #34d39933;">';
   html += '<div style="font-size:10px;color:#34d399;letter-spacing:1px;margin-bottom:8px;">ЭТАП 2 — ЛОГИСТИКА</div>';
   html += '<div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:6px;">&#128230; Расчёт контейнера и поставок</div>';
   html += '<div style="font-size:12px;color:#555;margin-bottom:16px;">Рассчитаем оптимальный тип доставки, стоимость первой поставки и график заказов</div>';
@@ -1432,8 +1432,8 @@ function renderPortfolioResult(data, sym, rate) {
   html += '</div>';
 
   html += '<div style="margin-top:20px;display:flex;gap:12px;">' +
-  '<button onclick="resetPortfolioForm()" style="flex:1;background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:12px;color:#888;cursor:pointer;font-size:13px;">&#128260; Изменить параметры</button>' +
-  '<button onclick="runPortfolioAnalysis()" style="flex:1;background:#6c63ff22;border:1px solid #6c63ff44;border-radius:8px;padding:12px;color:#a78bfa;cursor:pointer;font-size:13px;">&#128260; Показать другие варианты</button>' +
+  '<button onclick="resetPortfolioForm()" style="flex:1;background:#1e2433;border:1px solid #2d3748;border-radius:8px;padding:12px;color:#888;cursor:pointer;font-size:13px;">&#128260; Изменить параметры</button>' +
+  '<button onclick="runPortfolioAnalysis()" style="flex:1;background:#3b82f622;border:1px solid #3b82f644;border-radius:8px;padding:12px;color:#93c5fd;cursor:pointer;font-size:13px;">&#128260; Показать другие варианты</button>' +
   '</div>';
   html += '</div>';
   div.innerHTML = html;
@@ -1452,12 +1452,12 @@ async function showTopNiches() {
       <div style="font-size:20px;font-weight:700;color:#fff;">Топ ниши по потенциалу</div>
       <div style="display:flex;gap:8px;">
         <button onclick="runTrendsFinder()" title="AI анализ растущих ниш — найти категории с растущим спросом до того как они стали популярными" style="background:#f59e0b22;border:1px solid #f59e0b44;border-radius:8px;padding:8px 16px;color:#f59e0b;cursor:pointer;font-size:13px;">📈 Найти тренды</button>
-        <button onclick="refreshTopNiches()" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:8px 16px;color:#888;cursor:pointer;font-size:13px;">🔄 Показать другие</button>
+        <button onclick="refreshTopNiches()" style="background:#1e2433;border:1px solid #2d3748;border-radius:8px;padding:8px 16px;color:#888;cursor:pointer;font-size:13px;">🔄 Показать другие</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
       ${data.map(n => `
-        <div onclick="setQuery('${n.full}')" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:12px;padding:16px;cursor:pointer;" onmouseover="this.style.borderColor='#6c63ff'" onmouseout="this.style.borderColor='#2a2a3a'">
+        <div onclick="setQuery('${n.full}')" style="background:#1e2433;border:1px solid #2d3748;border-radius:12px;padding:16px;cursor:pointer;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#2d3748'">
           <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:8px">${n.full}</div>
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div style="font-size:13px;color:#555">${fmt(n.revenue/2)}/год</div>
@@ -1499,7 +1499,7 @@ function buildCatChips() {
   const sorted = order.filter(k => cats[k]).concat(Object.keys(cats).filter(k => !order.includes(k) && k !== 'Все'));
   document.getElementById('cat-chips').innerHTML = sorted.map(cat => {
     const active = activeCatFilter === cat;
-    return `<span onclick="setCatFilter('${cat}')" style="cursor:pointer;padding:6px 14px;border-radius:20px;font-size:12px;white-space:nowrap;border:1px solid ${active ? '#6c63ff' : '#2a2a3a'};background:${active ? '#6c63ff22' : 'transparent'};color:${active ? '#a78bfa' : '#666'};">${cat} <span style="color:#444;">${cats[cat] || 0}</span></span>`;
+    return `<span onclick="setCatFilter('${cat}')" style="cursor:pointer;padding:6px 14px;border-radius:20px;font-size:12px;white-space:nowrap;border:1px solid ${active ? '#3b82f6' : '#2d3748'};background:${active ? '#3b82f622' : 'transparent'};color:${active ? '#93c5fd' : '#666'};">${cat} <span style="color:#444;">${cats[cat] || 0}</span></span>`;
   }).join('');
 }
 
@@ -1524,7 +1524,7 @@ function filterCatalog() {
   else if (sort === 'turnover') data.sort((a,b) => a.turnover - b.turnover);
   document.getElementById('cat-stats').textContent = `Показано ${data.length} ниш`;
   document.getElementById('cat-list').innerHTML = data.map(n => `
-    <div onclick="selectFromCatalog('${n.full}')" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:10px;padding:16px;margin-bottom:8px;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;" onmouseover="this.style.borderColor='#6c63ff'" onmouseout="this.style.borderColor='#2a2a3a'">
+    <div onclick="selectFromCatalog('${n.full}')" style="background:#1e2433;border:1px solid #2d3748;border-radius:10px;padding:16px;margin-bottom:8px;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#2d3748'">
       <div>
         <div style="font-size:15px;color:#fff;font-weight:500;margin-bottom:6px;">${activeCatFilter !== 'Все' && n.name.includes(' / ') ? n.name.split(' / ').slice(1).join(' / ') : n.name}</div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
@@ -1591,7 +1591,7 @@ async function loadCharts(name) {
     if (revenueChartInstance) revenueChartInstance.destroy();
     if (salesChartInstance) salesChartInstance.destroy();
     
-    const gridColor = '#1a1a2e';
+    const gridColor = '#1e2433';
     const tickColor = '#555';
     const commonScales = {
       x: { ticks: { color: tickColor, font: { size: 11 } }, grid: { color: gridColor } },
@@ -1674,8 +1674,8 @@ async function loadCharts(name) {
           responsive: true,
           plugins: { legend: { display: false } },
           scales: {
-            x: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1a1a2e' } },
-            y: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1a1a2e' } }
+            x: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1e2433' } },
+            y: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1e2433' } }
           }
         }
       });
@@ -1693,10 +1693,10 @@ async function loadCharts(name) {
             data: sellerPct,
             backgroundColor: [
               '#06b6d4', '#f97316', '#fbbf24', '#4ade80',
-              '#38bdf8', '#a78bfa', '#fb7185', '#34d399',
+              '#38bdf8', '#93c5fd', '#fb7185', '#34d399',
               '#6b7280'
             ],
-            borderColor: '#0f0f13',
+            borderColor: '#0f1117',
             borderWidth: 2
           }]
         },
@@ -1716,7 +1716,7 @@ async function loadCharts(name) {
 
     // Статистика продавцов
     if (document.getElementById('sellersStats') && data.seller_labels && data.seller_pct) {
-      const colors = ['#06b6d4','#f97316','#fbbf24','#4ade80','#38bdf8','#a78bfa','#fb7185','#34d399','#6b7280'];
+      const colors = ['#06b6d4','#f97316','#fbbf24','#4ade80','#38bdf8','#93c5fd','#fb7185','#34d399','#6b7280'];
       let html = '<div style="font-size:10px;color:#555;margin-bottom:6px;letter-spacing:1px;">ДОЛЯ РЫНКА</div>';
       data.seller_labels.forEach((label, i) => {
         const pct = data.seller_pct[i] || 0;
@@ -1734,11 +1734,11 @@ async function loadCharts(name) {
     if (document.getElementById('topItemsContent') && data.top_items && data.top_items.length > 0) {
       let html = '';
       // Блок загрузки фото ПЕРЕД таблицей
-      html += '<div style="background:#0f0f13;border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid #34d39933;">';
+      html += '<div style="background:#0f1117;border-radius:10px;padding:14px;margin-bottom:12px;border:1px solid #34d39933;">';
       html += '<div style="font-size:10px;color:#34d399;font-weight:600;letter-spacing:1px;margin-bottom:10px;">&#128269; ПОИСК ПОСТАВЩИКА</div>';
       html += '<div style="font-size:10px;color:#555;margin-bottom:4px;">1. ВЫБЕРИТЕ ТОВАР ИЗ ТОП-20</div>';
       html += '<div style="display:flex;gap:8px;margin-bottom:10px;">';
-      html += '<select id="supplier-item-select" style="flex:1;background:#1a1a24;border:1px solid #2a2a3a;border-radius:6px;padding:7px;color:#fff;font-size:11px;cursor:pointer;">';
+      html += '<select id="supplier-item-select" style="flex:1;background:#1e2433;border:1px solid #2d3748;border-radius:6px;padding:7px;color:#fff;font-size:11px;cursor:pointer;">';
       html += '<option value="">— выберите товар —</option>';
       data.top_items.forEach(function(item, idx) { html += '<option value="' + item.id + '" data-name="' + item.name.replace(/"/g,'') + '" data-price="' + item.price + '">' + (idx+1) + '. ' + item.name.substring(0,45) + ' (' + item.price + '₽)</option>'; });
       html += '</select>';
@@ -1746,14 +1746,14 @@ async function loadCharts(name) {
       html += '</div>';
       html += '<div style="font-size:10px;color:#555;margin-bottom:6px;">2. ФОТО ТОВАРА (необязательно — повышает точность)</div>';
       html += '<div style="display:flex;gap:8px;align-items:center;">';
-      html += '<input type="file" id="custom-photo-input" accept="image/*" style="flex:1;background:#1a1a24;border:1px solid #2a2a3a;border-radius:5px;padding:5px;color:#888;font-size:10px;cursor:pointer;" onchange="previewCustomPhoto(this)">';
+      html += '<input type="file" id="custom-photo-input" accept="image/*" style="flex:1;background:#1e2433;border:1px solid #2d3748;border-radius:5px;padding:5px;color:#888;font-size:10px;cursor:pointer;" onchange="previewCustomPhoto(this)">';
       html += '<div id="photo-status" style="font-size:10px;color:#555;">без фото</div>';
       html += '</div>';
       html += '<div id="custom-photo-preview" style="margin-top:6px;"></div>';
       html += '</div>';
       html += '<div style="font-size:10px;color:#555;margin-bottom:6px;">&#128204; ШАГ 2: Нажмите "&#128269; Найти" у нужного товара в таблице</div>';
       html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
-      html += '<tr style="color:#555;border-bottom:1px solid #2a2a3a;">';
+      html += '<tr style="color:#555;border-bottom:1px solid #2d3748;">';
       html += '<th style="text-align:left;padding:6px 8px;">#</th>';
       html += '<th style="text-align:left;padding:6px 8px;">Товар</th>';
       html += '<th style="text-align:left;padding:6px 8px;">Продавец</th>';
@@ -1764,7 +1764,7 @@ async function loadCharts(name) {
       html += '<th style="text-align:center;padding:6px 8px;">Артикул WB</th>';
       html += '</tr>';
       data.top_items.forEach((item, i) => {
-        html += `<tr style="border-bottom:1px solid #1a1a2e;cursor:pointer;" onmouseover="this.style.background='#1a1a2e'" onmouseout="this.style.background=''">`; 
+        html += `<tr style="border-bottom:1px solid #1e2433;cursor:pointer;" onmouseover="this.style.background='#1e2433'" onmouseout="this.style.background=''">`; 
         html += `<td style="padding:8px;color:#555;">${i+1}</td>`;
         html += `<td style="padding:8px;color:#ddd;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.name}</td>`;
         html += `<td style="padding:8px;color:#888;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.seller}</td>`;
@@ -1772,7 +1772,7 @@ async function loadCharts(name) {
         html += `<td style="padding:8px;color:#38bdf8;text-align:right;">${fmtCurrency(item.revenue * 1000)}</td>`;
         html += `<td style="padding:8px;color:#4ade80;text-align:right;">${item.sales.toLocaleString('ru')}</td>`;
         html += `<td style="padding:8px;color:#fbbf24;text-align:right;">${item.rating > 0 ? '★ ' + item.rating : '—'}</td>`;
-        html += `<td style="padding:8px;text-align:center;">${item.url ? '<a href="' + item.url + '" target="_blank" style="color:#6c63ff;text-decoration:none;font-size:11px;">' + item.id + '</a>' : '—'}</td>`;
+        html += `<td style="padding:8px;text-align:center;">${item.url ? '<a href="' + item.url + '" target="_blank" style="color:#3b82f6;text-decoration:none;font-size:11px;">' + item.id + '</a>' : '—'}</td>`;
 
         html += '</tr>';
       });
@@ -1841,17 +1841,17 @@ async function loadCharts(name) {
       const cpmEmoji = { green: '🟢', yellow: '🟡', red: '🔴' };
       let adHtml = `
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
-          <div style="background:#0f0f13;border-radius:8px;padding:12px;">
+          <div style="background:#0f1117;border-radius:8px;padding:12px;">
             <div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">СРЕДНИЙ CPM</div>
             <div style="font-size:22px;font-weight:700;color:#fff;">${data.avg_cpm > 0 ? data.avg_cpm + ' ₽' : 'Нет данных'}</div>
             <div style="font-size:11px;color:${data.avg_cpm > 0 ? cpmColors[data.cpm_status] : '#555'};margin-top:4px;">${data.avg_cpm > 0 ? cpmEmoji[data.cpm_status] + ' ' + data.cpm_label : 'MPStats не предоставляет'}</div>
           </div>
-          <div style="background:#0f0f13;border-radius:8px;padding:12px;">
+          <div style="background:#0f1117;border-radius:8px;padding:12px;">
             <div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">ТОВАРОВ С РЕКЛАМОЙ</div>
             <div style="font-size:22px;font-weight:700;color:#fff;">${data.ad_pct}%</div>
             <div style="font-size:11px;color:${cpmColors[data.ad_pct_status]};margin-top:4px;">${cpmEmoji[data.ad_pct_status]} ${data.ad_pct < 30 ? 'Низкая конкуренция' : data.ad_pct < 60 ? 'Умеренная конкуренция' : 'Высокая конкуренция'}</div>
           </div>
-          <div style="background:#0f0f13;border-radius:8px;padding:12px;">
+          <div style="background:#0f1117;border-radius:8px;padding:12px;">
             <div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">РЕКЛАМНАЯ НАГРУЗКА</div>
             <div style="font-size:14px;font-weight:700;color:${data.ad_verdict_color};margin-top:8px;">${data.ad_verdict}</div>
           </div>
@@ -1922,8 +1922,8 @@ async function loadCharts(name) {
             tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y + ' млн ₽' } }
           },
           scales: {
-            x: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1a1a2e' } },
-            y: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1a1a2e' } }
+            x: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1e2433' } },
+            y: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1e2433' } }
           }
         }
       });
@@ -1964,8 +1964,8 @@ async function loadCharts(name) {
           responsive: true,
           plugins: { legend: { display: false } },
           scales: {
-            x: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1a1a2e' } },
-            y: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1a1a2e' } }
+            x: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1e2433' } },
+            y: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1e2433' } }
           }
         }
       });
@@ -2005,7 +2005,7 @@ function openChartModal(title, type, labels, data, color, isHorizontal) {
     modalChartInstance = new Chart(modalCanvas, {
       type: 'bar',
       data: { labels: labels, datasets: [{ data: data, backgroundColor: ['#fbbf24aa','#fbbf24bb','#fbbf24cc','#fbbf24dd','#fbbf24ee','#fbbf24'], borderColor: '#fde68a', borderWidth: 1, borderRadius: 4 }] },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888', font: { size: 12 } }, grid: { color: '#1a1a2e' } }, y: { ticks: { color: '#888', font: { size: 12 } }, grid: { color: '#1a1a2e' } } } }
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888', font: { size: 12 } }, grid: { color: '#1e2433' } }, y: { ticks: { color: '#888', font: { size: 12 } }, grid: { color: '#1e2433' } } } }
     });
     return;
   }
@@ -2019,15 +2019,15 @@ function openChartModal(title, type, labels, data, color, isHorizontal) {
         { data: allRevenue, borderColor: '#ffffff', backgroundColor: '#ffffff11', borderWidth: 2, tension: 0.4, fill: true, pointRadius: 3, pointBackgroundColor: '#ffffff' },
         { data: forecastFull, borderColor: '#38bdf8', backgroundColor: 'transparent', borderWidth: 2, borderDash: [6,4], tension: 0.4, fill: false, pointRadius: 4, pointBackgroundColor: '#38bdf8' }
       ]},
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#1a1a2e' } }, y: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#1a1a2e' } } } }
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#1e2433' } }, y: { ticks: { color: '#888', font: { size: 11 } }, grid: { color: '#1e2433' } } } }
     });
     return;
   }
   if (type === 'doughnut') {
-    const doughnutColors = ['#06b6d4','#f97316','#fbbf24','#4ade80','#38bdf8','#a78bfa','#fb7185','#34d399','#6b7280'];
+    const doughnutColors = ['#06b6d4','#f97316','#fbbf24','#4ade80','#38bdf8','#93c5fd','#fb7185','#34d399','#6b7280'];
     modalChartInstance = new Chart(modalCanvas, {
       type: 'doughnut',
-      data: { labels: labels, datasets: [{ data: data, backgroundColor: doughnutColors, borderColor: '#0f0f13', borderWidth: 2 }] },
+      data: { labels: labels, datasets: [{ data: data, backgroundColor: doughnutColors, borderColor: '#0f1117', borderWidth: 2 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'right', labels: { color: '#aaa', font: { size: 12 }, padding: 16 } }, tooltip: { callbacks: { label: ctx => ' ' + ctx.label + ': ' + ctx.parsed + '%' } } } }
     });
     return;
@@ -2039,8 +2039,8 @@ function openChartModal(title, type, labels, data, color, isHorizontal) {
     responsive: true,
     plugins: { legend: { display: false } },
     scales: {
-      x: { ticks: { color: '#888', font: { size: 12 } }, grid: { color: '#1a1a2e' } },
-      y: { ticks: { color: '#888', font: { size: 12 } }, grid: { color: '#1a1a2e' } }
+      x: { ticks: { color: '#888', font: { size: 12 } }, grid: { color: '#1e2433' } },
+      y: { ticks: { color: '#888', font: { size: 12 } }, grid: { color: '#1e2433' } }
     }
   };
   if (isHorizontal) options.indexAxis = 'y';
@@ -2139,13 +2139,13 @@ document.getElementById('query').addEventListener('keypress', e => {
     if (idx >= 0) items[idx].classList.remove('highlighted');
     idx = Math.min(idx + 1, items.length - 1);
     items[idx].classList.add('highlighted');
-    items[idx].style.background = '#2a2a3a';
+    items[idx].style.background = '#2d3748';
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
     if (idx >= 0) items[idx].classList.remove('highlighted');
     idx = Math.max(idx - 1, 0);
     items[idx].classList.add('highlighted');
-    items[idx].style.background = '#2a2a3a';
+    items[idx].style.background = '#2d3748';
   } else if (e.key === 'Enter' && idx >= 0) {
     items[idx].click();
   }
@@ -2191,7 +2191,7 @@ async function smartSearch(q) {
   if (!box) {
     box = document.createElement('div');
     box.id = 'suggestions';
-    box.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:#1a1a24;border:1px solid #2a2a3a;border-radius:10px;margin-top:4px;overflow:hidden;z-index:100;';
+    box.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:#1e2433;border:1px solid #2d3748;border-radius:10px;margin-top:4px;overflow:hidden;z-index:100;';
     document.querySelector('.search-row').style.position = 'relative';
     document.querySelector('.search-row').appendChild(box);
   }
@@ -2219,12 +2219,12 @@ async function smartSearch(q) {
       // Показываем умный результат
       const smartResult = document.createElement('div');
       smartResult.id = 'smart-banner';
-      smartResult.style.cssText = 'padding:12px 16px;background:#0f0f1a;border-top:1px solid #6c63ff44;cursor:pointer;';
+      smartResult.style.cssText = 'padding:12px 16px;background:#0f1117;border-top:1px solid #3b82f644;cursor:pointer;';
       smartResult.innerHTML = 
-        '<div style="font-size:10px;color:#6c63ff;letter-spacing:1px;margin-bottom:4px;">🧠 AI НАШЁЛ СЕМАНТИЧЕСКИ</div>' +
+        '<div style="font-size:10px;color:#3b82f6;letter-spacing:1px;margin-bottom:4px;">🧠 AI НАШЁЛ СЕМАНТИЧЕСКИ</div>' +
         '<div style="display:flex;justify-content:space-between;align-items:center;">' +
           '<div>' +
-            '<span style="color:#a78bfa;font-size:13px;font-weight:600;">' + data.niche_display + '</span>' +
+            '<span style="color:#93c5fd;font-size:13px;font-weight:600;">' + data.niche_display + '</span>' +
             '<div style="font-size:11px;color:#555;margin-top:2px;">' + data.explanation + '</div>' +
           '</div>' +
           '<span style="color:#555;font-size:12px;">' + fmt(data.revenue) + '</span>' +
@@ -2246,13 +2246,13 @@ function showSuggestions(items) {
   if (!box) {
     box = document.createElement('div');
     box.id = 'suggestions';
-    box.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:#1a1a24;border:1px solid #2a2a3a;border-radius:10px;margin-top:4px;overflow:hidden;z-index:100;';
+    box.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:#1e2433;border:1px solid #2d3748;border-radius:10px;margin-top:4px;overflow:hidden;z-index:100;';
     document.querySelector('.search-row').style.position = 'relative';
     document.querySelector('.search-row').appendChild(box);
   }
   if (!items.length) { hideSuggestions(); return; }
   box.innerHTML = items.map(i => `
-    <div onclick="setQuery('${i.full}')" style="padding:12px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1f1f2e;background:#0f0f13;" 
+    <div onclick="setQuery('${i.full}')" style="padding:12px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1f1f2e;background:#0f1117;" 
       <span style="color:#ddd;font-size:14px">${i.name}</span>
       <span style="color:#555;font-size:12px">${fmt(i.revenue)}</span>
     </div>
@@ -2283,9 +2283,9 @@ async function analyze() {
         const errEl = document.getElementById('error');
         if (errEl) {
           errEl.style.display = 'block';
-          errEl.style.color = '#a78bfa';
-          errEl.style.background = '#1a1a2e';
-          errEl.style.border = '1px solid #6c63ff44';
+          errEl.style.color = '#93c5fd';
+          errEl.style.background = '#1e2433';
+          errEl.style.border = '1px solid #3b82f644';
           errEl.innerHTML = '🧠 Ниша не найдена напрямую — ищем семантически через AI...';
         }
         try {
@@ -2294,7 +2294,7 @@ async function analyze() {
           if (sd.niche) {
             if (errEl) {
               window._smartNiche = sd.niche;
-              errEl.innerHTML = '🧠 AI нашёл: <strong style="color:#a78bfa;">' + sd.niche_display + '</strong> — ' + sd.explanation + '. <span style="color:#6c63ff;cursor:pointer;text-decoration:underline;" onclick="setQuery(window._smartNiche);analyze();">Открыть нишу →</span>';
+              errEl.innerHTML = '🧠 AI нашёл: <strong style="color:#93c5fd;">' + sd.niche_display + '</strong> — ' + sd.explanation + '. <span style="color:#3b82f6;cursor:pointer;text-decoration:underline;" onclick="setQuery(window._smartNiche);analyze();">Открыть нишу →</span>';
             }
             // Автоматически открываем найденную нишу
             setQuery(sd.niche);
@@ -2449,7 +2449,7 @@ function renderResult(d) {
     <div class="chart-card" id="adBlock" style="margin-bottom:16px;display:none;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div class="chart-title" style="margin:0;">📢 Анализ рекламы WB</div>
-        <button id="adStrategyBtn" onclick="runAdAnalysis()" style="background:transparent;color:#6c63ff;border:1px solid #6c63ff44;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;opacity:0.7;">🎯 стратегия</button>
+        <button id="adStrategyBtn" onclick="runAdAnalysis()" style="background:transparent;color:#3b82f6;border:1px solid #3b82f644;border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;opacity:0.7;">🎯 стратегия</button>
       </div>
       <div id="adContent" style="margin-top:12px;"></div>
       <div id="adStrategyContent" style="margin-top:16px;"></div>
@@ -2549,8 +2549,8 @@ function renderResult(d) {
   if (swb) {
     var inWl = isInWatchlist(d.full||d.name);
     swb.textContent = inWl ? '📌 В работе' : '🔖 В работе';
-    swb.style.borderColor = inWl ? '#6c63ff' : '#2a2a3a';
-    swb.style.color = inWl ? '#a78bfa' : '#888';
+    swb.style.borderColor = inWl ? '#3b82f6' : '#2d3748';
+    swb.style.color = inWl ? '#93c5fd' : '#888';
   }
 }
 
@@ -2560,8 +2560,8 @@ function toggleStickyWL(btn) {
   toggleWatchlist(n.full||n.name, n.name, n.revenue||0);
   var inWl = isInWatchlist(n.full||n.name);
   btn.textContent = inWl ? '📌 В работе' : '🔖 В работе';
-  btn.style.borderColor = inWl ? '#6c63ff' : '#2a2a3a';
-  btn.style.color = inWl ? '#a78bfa' : '#888';
+  btn.style.borderColor = inWl ? '#3b82f6' : '#2d3748';
+  btn.style.color = inWl ? '#93c5fd' : '#888';
 }
 
 
@@ -2606,20 +2606,20 @@ function renderSupplierResult(data) {
   const sym = symbols[currentCurrency];
   const rate = rates[currentCurrency];
   var html = '';
-  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #34d399;">';
+  html += '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #34d399;">';
   html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:8px;">ДИАПАЗОН ЦЕН ЗАКУПКИ</div>';
   html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">';
-  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:10px;color:#555;margin-bottom:4px;">TAOBAO/1688</div><div style="font-size:16px;font-weight:700;color:#34d399;">$' + (data.price_taobao_usd||'—') + '</div><div style="font-size:10px;color:#555;">самая низкая</div></div>';
-  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ALIBABA</div><div style="font-size:16px;font-weight:700;color:#fbbf24;">$' + (data.price_alibaba_usd||'—') + '</div><div style="font-size:10px;color:#555;">оптовая</div></div>';
-  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:10px;color:#555;margin-bottom:4px;">MOQ</div><div style="font-size:16px;font-weight:700;color:#a78bfa;">' + (data.moq||'—') + ' шт</div><div style="font-size:10px;color:#555;">мин. партия</div></div>';
+  html += '<div style="text-align:center;background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:10px;color:#555;margin-bottom:4px;">TAOBAO/1688</div><div style="font-size:16px;font-weight:700;color:#34d399;">$' + (data.price_taobao_usd||'—') + '</div><div style="font-size:10px;color:#555;">самая низкая</div></div>';
+  html += '<div style="text-align:center;background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ALIBABA</div><div style="font-size:16px;font-weight:700;color:#fbbf24;">$' + (data.price_alibaba_usd||'—') + '</div><div style="font-size:10px;color:#555;">оптовая</div></div>';
+  html += '<div style="text-align:center;background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:10px;color:#555;margin-bottom:4px;">MOQ</div><div style="font-size:16px;font-weight:700;color:#93c5fd;">' + (data.moq||'—') + ' шт</div><div style="font-size:10px;color:#555;">мин. партия</div></div>';
   html += '</div>';
   html += '<div style="font-size:12px;color:#aaa;line-height:1.6;">' + (data.summary||'') + '</div>';
   html += '</div>';
   if (data.search_links && data.search_links.length > 0) {
-    html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">';
+    html += '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">';
     html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ССЫЛКИ ДЛЯ ПОИСКА</div>';
     data.search_links.forEach(function(link) {
-      html += '<a href="' + link.url + '" target="_blank" style="display:flex;align-items:center;gap:10px;background:#1a1a24;border-radius:8px;padding:10px;text-decoration:none;margin-bottom:8px;">';
+      html += '<a href="' + link.url + '" target="_blank" style="display:flex;align-items:center;gap:10px;background:#1e2433;border-radius:8px;padding:10px;text-decoration:none;margin-bottom:8px;">';
       html += '<div style="font-size:18px;">' + link.icon + '</div>';
       html += '<div><div style="font-size:12px;color:#fff;font-weight:600;">' + link.platform + '</div><div style="font-size:11px;color:#555;">' + link.description + '</div></div>';
       html += '<div style="margin-left:auto;font-size:11px;color:#34d399;">&#8594; открыть</div></a>';
@@ -2628,7 +2628,7 @@ function renderSupplierResult(data) {
   }
   if (data.real_margin_pct) {
     var mc = data.real_margin_pct >= 30 ? '#4ade80' : data.real_margin_pct >= 15 ? '#fbbf24' : '#ef4444';
-    html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">';
+    html += '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">';
     html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">РЕАЛЬНАЯ МАРЖИНАЛЬНОСТЬ (после себестоимости)</div>';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">';
     html += '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">МАРЖА</div><div style="font-size:20px;font-weight:700;color:' + mc + ';">' + data.real_margin_pct + '%</div></div>';
@@ -2637,19 +2637,19 @@ function renderSupplierResult(data) {
     html += '</div></div>';
   }
   // Блок ручного ввода и применения цен
-  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-top:12px;">';
+  html += '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-top:12px;">';
   html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ВВЕСТИ РЕАЛЬНУЮ ЦЕНУ ЗАКУПКИ</div>';
   html += '<div style="font-size:11px;color:#555;margin-bottom:12px;">Укажите фактическую цену после переговоров с поставщиком — все расчёты пересчитаются автоматически</div>';
   html += '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">';
-  html += '<div><div style="font-size:10px;color:#555;margin-bottom:4px;">ЦЕНА ЗАКУПКИ ($/шт)</div><input id="real-price-usd" type="number" step="0.1" placeholder="например 3.5" value="' + (data.price_taobao_usd||'') + '" style="width:100%;background:#1a1a24;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;"></div>';
-  html += '<div><div style="font-size:10px;color:#555;margin-bottom:4px;">КОЛ-ВО В ПАРТИИ (шт)</div><input id="real-batch-qty" type="number" placeholder="например 100" value="100" style="width:100%;background:#1a1a24;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;"></div>';
+  html += '<div><div style="font-size:10px;color:#555;margin-bottom:4px;">ЦЕНА ЗАКУПКИ ($/шт)</div><input id="real-price-usd" type="number" step="0.1" placeholder="например 3.5" value="' + (data.price_taobao_usd||'') + '" style="width:100%;background:#1e2433;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;"></div>';
+  html += '<div><div style="font-size:10px;color:#555;margin-bottom:4px;">КОЛ-ВО В ПАРТИИ (шт)</div><input id="real-batch-qty" type="number" placeholder="например 100" value="100" style="width:100%;background:#1e2433;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;"></div>';
   html += '<button onclick="applyRealPrice()" style="background:#34d399;border:none;border-radius:6px;padding:9px 16px;color:#000;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;">Применить</button>';
   html += '</div>';
   html += '<div id="real-price-result" style="margin-top:12px;"></div>';
   html += '</div>';
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">';
-  html += '<button onclick="applySupplierPrice(' + (data.price_taobao_usd||0) + ',' + (data.price_alibaba_usd||0) + ')" style="background:#0a1a0f;border:1px solid #34d39944;border-radius:8px;padding:10px;color:#34d399;cursor:pointer;font-size:12px;">&#10003; Применить цены агента</button>';
-  html += '<button onclick="hideSupplierBlock()" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:10px;color:#555;cursor:pointer;font-size:12px;">Скрыть</button>';
+  html += '<button onclick="applySupplierPrice(' + (data.price_taobao_usd||0) + ',' + (data.price_alibaba_usd||0) + ')" style="background:#0f1a2e;border:1px solid #34d39944;border-radius:8px;padding:10px;color:#34d399;cursor:pointer;font-size:12px;">&#10003; Применить цены агента</button>';
+  html += '<button onclick="hideSupplierBlock()" style="background:#1e2433;border:1px solid #2d3748;border-radius:8px;padding:10px;color:#555;cursor:pointer;font-size:12px;">Скрыть</button>';
   html += '</div>';
   container.innerHTML = html;
 }
@@ -2702,7 +2702,7 @@ function showAppliedPriceResult(priceUsd, batchQty) {
   var marginColor = marginPct >= 30 ? '#4ade80' : marginPct >= 15 ? '#fbbf24' : '#ef4444';
   var container = document.getElementById('real-price-result');
   if (!container) return;
-  var html = '<div style="background:#1a1a24;border-radius:8px;padding:12px;border-left:3px solid ' + marginColor + ';">';
+  var html = '<div style="background:#1e2433;border-radius:8px;padding:12px;border-left:3px solid ' + marginColor + ';">';
   html += '<div style="font-size:10px;color:#555;margin-bottom:8px;letter-spacing:1px;">РАСЧЁТ С РЕАЛЬНОЙ ЦЕНОЙ ЗАКУПКИ</div>';
   html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">';
   html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;">ЗАКУПКА/ШТ</div><div style="font-size:14px;font-weight:700;color:#fff;">$' + priceUsd.toFixed(1) + '</div><div style="font-size:10px;color:#555;">' + Math.round(priceRub) + ' ₽</div></div>';
@@ -2760,7 +2760,7 @@ async function findSupplierByPhoto(itemId, itemName, itemPrice) {
     });
   }
   var hasPhoto = photoBase64.length > 0;
-  container.innerHTML = '<div style="background:#0f0f13;border-radius:10px;padding:20px;text-align:center;"><div style="font-size:24px;margin-bottom:8px;">&#128247;</div><div style="font-size:13px;color:#aaa;">' + (hasPhoto ? '&#9989; Анализируем фото + название...' : 'Анализируем по названию...') + '</div><div style="font-size:11px;color:#555;margin-top:4px;">Alibaba · 1688 · Made-in-China · AliExpress</div></div>';
+  container.innerHTML = '<div style="background:#0f1117;border-radius:10px;padding:20px;text-align:center;"><div style="font-size:24px;margin-bottom:8px;">&#128247;</div><div style="font-size:13px;color:#aaa;">' + (hasPhoto ? '&#9989; Анализируем фото + название...' : 'Анализируем по названию...') + '</div><div style="font-size:11px;color:#555;margin-top:4px;">Alibaba · 1688 · Made-in-China · AliExpress</div></div>';
   container.scrollIntoView({behavior:'smooth'});
   try {
     var resp = await fetch('/photo-supplier-search', {
@@ -2782,7 +2782,7 @@ function renderPhotoSupplierResult(data, itemName, itemPrice) {
   var rate = rates[currentCurrency];
   var usdRate = 90;
 
-  var html = '<div style="background:#0f0f13;border-radius:10px;padding:16px;border-left:3px solid #34d399;">';
+  var html = '<div style="background:#0f1117;border-radius:10px;padding:16px;border-left:3px solid #34d399;">';
   html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:8px;">АНАЛИЗ ТОВАРА И ПОИСК АНАЛОГОВ</div>';
   html += '<div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">' + itemName + '</div>';
   var photoSourceLabels = {wb_auto:'📷 Фото с WB', user_upload:'🖼 Загруженное фото', text_fallback:'📝 Анализ по названию'};
@@ -2794,7 +2794,7 @@ function renderPhotoSupplierResult(data, itemName, itemPrice) {
 
   // Характеристики товара
   if (data.characteristics) {
-    html += '<div style="background:#1a1a24;border-radius:8px;padding:12px;margin-bottom:12px;">';
+    html += '<div style="background:#1e2433;border-radius:8px;padding:12px;margin-bottom:12px;">';
     html += '<div style="font-size:10px;color:#555;margin-bottom:6px;">ХАРАКТЕРИСТИКИ ТОВАРА</div>';
     html += '<div style="font-size:12px;color:#aaa;line-height:1.6;">' + data.characteristics + '</div>';
     html += '</div>';
@@ -2812,7 +2812,7 @@ function renderPhotoSupplierResult(data, itemName, itemPrice) {
       var priceRub = p.price * usdRate;
       var margin = Math.round((itemPrice - priceRub) / itemPrice * 100);
       var marginColor = margin >= 40 ? '#4ade80' : margin >= 20 ? '#fbbf24' : '#ef4444';
-      html += '<div style="background:#1a1a24;border-radius:8px;padding:10px;text-align:center;">';
+      html += '<div style="background:#1e2433;border-radius:8px;padding:10px;text-align:center;">';
       html += '<div style="font-size:9px;color:#555;margin-bottom:4px;">' + p.label + '</div>';
       html += '<div style="font-size:15px;font-weight:700;color:' + p.color + ';">$' + p.price + '</div>';
       html += '<div style="font-size:10px;color:#555;">' + Math.round(priceRub) + ' ₽</div>';
@@ -2827,7 +2827,7 @@ function renderPhotoSupplierResult(data, itemName, itemPrice) {
     html += '<div style="margin-bottom:12px;">';
     html += '<div style="font-size:10px;color:#555;margin-bottom:8px;">ССЫЛКИ ДЛЯ ПОИСКА АНАЛОГА</div>';
     data.search_links.forEach(function(link) {
-      html += '<a href="' + link.url + '" target="_blank" style="display:flex;align-items:center;gap:8px;background:#1a1a24;border-radius:6px;padding:8px;text-decoration:none;margin-bottom:6px;">';
+      html += '<a href="' + link.url + '" target="_blank" style="display:flex;align-items:center;gap:8px;background:#1e2433;border-radius:6px;padding:8px;text-decoration:none;margin-bottom:6px;">';
       html += '<span style="font-size:16px;">' + link.icon + '</span>';
       html += '<div style="flex:1;"><div style="font-size:11px;color:#fff;font-weight:600;">' + link.platform + '</div>';
       html += '<div style="font-size:10px;color:#555;">' + link.query_hint + '</div></div>';
@@ -2838,14 +2838,14 @@ function renderPhotoSupplierResult(data, itemName, itemPrice) {
 
   // Рекомендация
   if (data.recommendation) {
-    html += '<div style="background:#1a1a24;border-radius:8px;padding:12px;margin-bottom:12px;">';
+    html += '<div style="background:#1e2433;border-radius:8px;padding:12px;margin-bottom:12px;">';
     html += '<div style="font-size:10px;color:#555;margin-bottom:4px;">РЕКОМЕНДАЦИЯ</div>';
     html += '<div style="font-size:12px;color:#aaa;line-height:1.5;">' + data.recommendation + '</div>';
     html += '</div>';
   }
 
   // Кнопка применить
-  html += '<button onclick="applyPhotoSupplierPrice(' + (data.price_1688_usd||0) + ',' + (data.moq||100) + ')" style="width:100%;background:#0a1a0f;border:1px solid #34d39944;border-radius:8px;padding:10px;color:#34d399;cursor:pointer;font-size:12px;font-weight:600;">✓ Применить цену закупки</button>';
+  html += '<button onclick="applyPhotoSupplierPrice(' + (data.price_1688_usd||0) + ',' + (data.moq||100) + ')" style="width:100%;background:#0f1a2e;border:1px solid #34d39944;border-radius:8px;padding:10px;color:#34d399;cursor:pointer;font-size:12px;font-weight:600;">✓ Применить цену закупки</button>';
   html += '</div>';
 
   container.innerHTML = html;
@@ -2881,7 +2881,7 @@ async function searchFromUnifiedBlock() {
   }
 
   var hasPhoto = photoBase64.length > 0;
-  container.innerHTML = '<div style="background:#0f0f13;border-radius:10px;padding:20px;text-align:center;">' +
+  container.innerHTML = '<div style="background:#0f1117;border-radius:10px;padding:20px;text-align:center;">' +
     '<div style="font-size:24px;margin-bottom:8px;">' + (hasPhoto ? '&#127919;' : '&#128269;') + '</div>' +
     '<div style="font-size:13px;color:#aaa;">' + (hasPhoto ? 'Ищем по фото + названию — максимальная точность...' : 'Ищем по названию товара...') + '</div>' +
     '<div style="font-size:11px;color:#555;margin-top:4px;">1688 · Alibaba · Made-in-China · AliExpress</div>' +
@@ -2920,7 +2920,7 @@ function previewCustomPhoto(input) {
     var reader = new FileReader();
     reader.onload = function(e) {
       preview.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">' +
-        '<img src="' + e.target.result + '" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #2a2a3a;">' +
+        '<img src="' + e.target.result + '" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #2d3748;">' +
         '<div style="font-size:11px;color:#4ade80;">&#10003; Фото готово к анализу</div>' +
         '</div>';
     };
@@ -2937,7 +2937,7 @@ async function searchByCustomPhoto() {
   }
   if (!container) return;
 
-  container.innerHTML = '<div style="background:#0f0f13;border-radius:10px;padding:20px;text-align:center;">' +
+  container.innerHTML = '<div style="background:#0f1117;border-radius:10px;padding:20px;text-align:center;">' +
     '<div style="font-size:24px;margin-bottom:8px;">&#128247;</div>' +
     '<div style="font-size:13px;color:#aaa;">Claude анализирует фото и ищет аналоги...</div>' +
     '</div>';
@@ -3046,15 +3046,15 @@ function calcContainer(niches) {
     return v + ' ' + sym;
   };
   var html = '';
-  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">';
+  html += '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">';
   html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ОБЪЁМ ПОРТФЕЛЯ</div>';
   html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">';
-  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ВЕС</div><div style="font-size:15px;font-weight:700;color:#38bdf8;">' + Math.round(totalWeightKg) + ' кг</div></div>';
-  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ОБЪЁМ</div><div style="font-size:15px;font-weight:700;color:#38bdf8;">' + totalVolM3.toFixed(1) + ' м³</div></div>';
-  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЗАКУПКА</div><div style="font-size:15px;font-weight:700;color:#a78bfa;">' + fmtRub(totalPurchaseRub) + '</div></div>';
-  html += '<div style="text-align:center;background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ПЕРВАЯ ПОСТАВКА</div><div style="font-size:15px;font-weight:700;color:#4ade80;">' + fmtRub(totalFirstShipment) + '</div></div>';
+  html += '<div style="text-align:center;background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ВЕС</div><div style="font-size:15px;font-weight:700;color:#38bdf8;">' + Math.round(totalWeightKg) + ' кг</div></div>';
+  html += '<div style="text-align:center;background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ОБЪЁМ</div><div style="font-size:15px;font-weight:700;color:#38bdf8;">' + totalVolM3.toFixed(1) + ' м³</div></div>';
+  html += '<div style="text-align:center;background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЗАКУПКА</div><div style="font-size:15px;font-weight:700;color:#93c5fd;">' + fmtRub(totalPurchaseRub) + '</div></div>';
+  html += '<div style="text-align:center;background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ПЕРВАЯ ПОСТАВКА</div><div style="font-size:15px;font-weight:700;color:#4ade80;">' + fmtRub(totalFirstShipment) + '</div></div>';
   html += '</div></div>';
-  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #34d399;">';
+  html += '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #34d399;">';
   html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:8px;">РЕКОМЕНДОВАННАЯ ДОСТАВКА</div>';
   html += '<div style="font-size:16px;font-weight:700;color:#34d399;margin-bottom:4px;">&#128230; ' + deliveryType + '</div>';
   html += '<div style="font-size:12px;color:#aaa;margin-bottom:12px;">' + deliveryDesc + '</div>';
@@ -3063,10 +3063,10 @@ function calcContainer(niches) {
   html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">СРОК</div><div style="font-size:14px;font-weight:700;color:#fff;">' + deliveryDays + ' дней</div></div>';
   html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ТАМОЖНЯ+НДС</div><div style="font-size:14px;font-weight:700;color:#fff;">' + fmtRub(customsRub+vatRub) + '</div></div>';
   html += '</div></div>';
-  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">';
+  html += '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">';
   html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:12px;">ГРАФИК ПЕРВОЙ ПОСТАВКИ</div>';
   var steps = [
-    {date: fmtDate(today), label: 'Размещение заказа', desc: 'Договор с поставщиком, предоплата 30%', color: '#6c63ff'},
+    {date: fmtDate(today), label: 'Размещение заказа', desc: 'Договор с поставщиком, предоплата 30%', color: '#3b82f6'},
     {date: fmtDate(new Date(today.getTime()+productionDays*86400000)), label: 'Производство завершено', desc: 'Оплата остатка, отгрузка', color: '#38bdf8'},
     {date: fmtDate(new Date(today.getTime()+(productionDays+deliveryDays)*86400000)), label: 'Прибытие в РБ', desc: 'Таможенное оформление', color: '#fbbf24'},
     {date: fmtDate(arrivalDate), label: 'Приёмка WB', desc: 'Отправка на склад WB', color: '#f59e0b'},
@@ -3086,9 +3086,9 @@ function calcContainer(niches) {
   if (nextOrderDate <= today) nextOrderDate = new Date(today.getTime() + 7*86400000);
   var daysUntilNext = Math.round((nextOrderDate-today)/86400000);
   var urgencyColor = daysUntilNext < 14 ? '#ef4444' : daysUntilNext < 30 ? '#fbbf24' : '#4ade80';
-  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;">';
+  html += '<div style="background:#0f1117;border-radius:10px;padding:16px;">';
   html += '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">СЛЕДУЮЩИЙ ЗАКАЗ — БЕЗ ТОВАРНОГО РАЗРЫВА</div>';
-  html += '<div style="display:flex;align-items:center;gap:16px;background:#1a1a24;border-radius:8px;padding:14px;">';
+  html += '<div style="display:flex;align-items:center;gap:16px;background:#1e2433;border-radius:8px;padding:14px;">';
   html += '<div style="font-size:32px;">&#128197;</div>';
   html += '<div><div style="font-size:14px;font-weight:700;color:'+urgencyColor+';">Заказать: ' + fmtDate(nextOrderDate) + '</div>';
   html += '<div style="font-size:11px;color:#555;margin-top:2px;">Через '+daysUntilNext+' дней · Оборот '+Math.round(avgTurnover)+' дн · Доставка '+deliveryDays+' дней</div></div>';
@@ -3188,7 +3188,7 @@ function renderCompany() {
     const nameField = emp.fixed
       ? `<span style="color:#e2e8f0;">${emp.name}</span>`
       : `<input type="text" value="${emp.name}" placeholder="${emp.placeholder||''}" onchange="companyUpdateEmpName(${i},this.value)"
-           style="background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:13px;width:220px;">`;
+           style="background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:13px;width:220px;">`;
     // Налоги РБ: ФСЗН 34% (работодатель) + подоходный 13% (работник)
     const fsznAmt = Math.round(emp.salary * 0.34);
     const pitAmt  = Math.round(emp.salary * 0.13);
@@ -3199,10 +3199,10 @@ function renderCompany() {
       <td style="padding:8px 12px;">${nameField}${deleteBtn}</td>
       <td style="padding:8px 12px;">
         <input type="number" value="${emp.salary}" min="0" onchange="companyUpdateEmpSalary(${i},this.value)"
-          style="background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:4px 8px;color:#a78bfa;font-size:13px;width:100px;">
+          style="background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:4px 8px;color:#93c5fd;font-size:13px;width:100px;">
         <span style="color:#888;margin-left:4px;">$</span>
       </td>
-      <td style="padding:8px 12px;color:#a78bfa;font-weight:500;">${fmt(emp.salary)} ${sym}</td>
+      <td style="padding:8px 12px;color:#93c5fd;font-weight:500;">${fmt(emp.salary)} ${sym}</td>
       <td style="padding:8px 12px;color:#64748b;font-size:12px;">
         <span style="color:#fbbf24;">+${fmt(fsznAmt)} ${sym} ФСЗН</span><br>
         <span style="color:#94a3b8;">−${fmt(pitAmt)} ${sym} ПН</span>
@@ -3221,12 +3221,12 @@ function renderCompany() {
 
   const html = `
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-    <div style="color:#a78bfa;font-size:22px;font-weight:700;">⚙️ Компания</div>
-    <button onclick="resetCompanySettings()" style="background:#1e1b3a;border:1px solid #ef444444;border-radius:8px;padding:6px 14px;color:#ef4444;font-size:12px;cursor:pointer;">🔄 Сбросить все значения</button>
+    <div style="color:#93c5fd;font-size:22px;font-weight:700;">⚙️ Компания</div>
+    <button onclick="resetCompanySettings()" style="background:#1e2433;border:1px solid #ef444444;border-radius:8px;padding:6px 14px;color:#ef4444;font-size:12px;cursor:pointer;">🔄 Сбросить все значения</button>
   </div>
 
   <!-- СОТРУДНИКИ -->
-  <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;margin-bottom:20px;">
+  <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">👥 Сотрудники</div>
     <table style="width:100%;border-collapse:collapse;">
       <thead>
@@ -3240,49 +3240,49 @@ function renderCompany() {
       </thead>
       <tbody>${empRows}</tbody>
       <tfoot>
-        <tr style="border-top:1px solid #6c63ff33;">
-          <td style="padding:10px 12px;color:#a78bfa;font-weight:600;">Итого ФОТ</td>
-          <td style="padding:10px 12px;color:#a78bfa;font-weight:600;">${totalSalary.toLocaleString()} $</td>
-          <td style="padding:10px 12px;color:#a78bfa;font-weight:600;">${fmt(totalSalary)} ${sym}</td>
+        <tr style="border-top:1px solid #3b82f633;">
+          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">Итого ФОТ</td>
+          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${totalSalary.toLocaleString()} $</td>
+          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${fmt(totalSalary)} ${sym}</td>
           <td style="padding:10px 12px;color:#fbbf24;font-size:12px;">ФСЗН 34% = ${fmt(Math.round(totalSalary*0.34))} ${sym}</td>
-          <td style="padding:10px 12px;color:#a78bfa;font-weight:700;">${fmt(Math.round(totalSalary*1.34))} ${sym}<br><span style="color:#64748b;font-size:11px;">${Math.round(totalSalary*1.34).toLocaleString()} $</span></td>
+          <td style="padding:10px 12px;color:#93c5fd;font-weight:700;">${fmt(Math.round(totalSalary*1.34))} ${sym}<br><span style="color:#64748b;font-size:11px;">${Math.round(totalSalary*1.34).toLocaleString()} $</span></td>
         </tr>
       </tfoot>
     </table>
-    <button onclick="companyAddEmployee()" style="margin-top:12px;background:#6c63ff22;border:1px solid #6c63ff55;border-radius:8px;padding:7px 16px;color:#a78bfa;font-size:13px;cursor:pointer;">+ Добавить сотрудника</button>
+    <button onclick="companyAddEmployee()" style="margin-top:12px;background:#3b82f622;border:1px solid #3b82f655;border-radius:8px;padding:7px 16px;color:#93c5fd;font-size:13px;cursor:pointer;">+ Добавить сотрудника</button>
   </div>
 
   <!-- СКЛАД -->
-  <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;margin-bottom:20px;">
+  <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">🏭 Аренда склада (РБ)</div>
     <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
       <label style="color:#94a3b8;font-size:13px;">Площадь (м²):
         <input type="number" value="${s.warehouse_m2}" min="0" onchange="companyUpdateWarehouse('m2',this.value)"
-          style="margin-left:8px;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:4px 8px;color:#a78bfa;font-size:13px;width:80px;">
+          style="margin-left:8px;background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:4px 8px;color:#93c5fd;font-size:13px;width:80px;">
       </label>
       <label style="color:#94a3b8;font-size:13px;">Ставка ($/м²/мес):
         <input type="number" value="${s.warehouse_rate}" min="0" step="0.5" onchange="companyUpdateWarehouse('rate',this.value)"
-          style="margin-left:8px;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:4px 8px;color:#a78bfa;font-size:13px;width:80px;">
+          style="margin-left:8px;background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:4px 8px;color:#93c5fd;font-size:13px;width:80px;">
       </label>
-      <div style="color:#e2e8f0;font-size:14px;">= <span style="color:#a78bfa;font-weight:600;">${warehouseCost.toLocaleString()} $</span> / мес <span style="color:#64748b;">(${fmt(warehouseCost)} ${sym})</span></div>
+      <div style="color:#e2e8f0;font-size:14px;">= <span style="color:#93c5fd;font-weight:600;">${warehouseCost.toLocaleString()} $</span> / мес <span style="color:#64748b;">(${fmt(warehouseCost)} ${sym})</span></div>
     </div>
   </div>
 
   <!-- НАЛОГИ -->
-  <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;margin-bottom:20px;">
+  <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">📋 Налоговый режим (РБ)</div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;">
       ${Object.entries(taxLabels).map(([k,v]) => `
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:${s.tax_mode===k?'#6c63ff22':'#1e1b3a'};border:1px solid ${s.tax_mode===k?'#6c63ff':'#6c63ff33'};border-radius:8px;padding:8px 14px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:${s.tax_mode===k?'#3b82f622':'#1e2433'};border:1px solid ${s.tax_mode===k?'#3b82f6':'#3b82f633'};border-radius:8px;padding:8px 14px;">
         <input type="radio" name="tax_mode" value="${k}" ${s.tax_mode===k?'checked':''} onchange="companyUpdateTax('${k}')"
-          style="accent-color:#6c63ff;">
+          style="accent-color:#3b82f6;">
         <span style="color:#e2e8f0;font-size:13px;">${v}</span>
       </label>`).join('')}
     </div>
   </div>
 
   <!-- ПРОЧИЕ РАСХОДЫ -->
-  <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;margin-bottom:20px;">
+  <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">💸 Прочие расходы / мес</div>
     <table style="width:100%;border-collapse:collapse;">
       <thead>
@@ -3298,17 +3298,17 @@ function renderCompany() {
           <td style="padding:7px 12px;color:#e2e8f0;">${item.name}</td>
           <td style="padding:7px 12px;">
             <input type="number" value="${item.amount}" min="0" onchange="companyUpdateOtherItem(${i},this.value)"
-              style="background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:4px 8px;color:#a78bfa;font-size:13px;width:100px;">
+              style="background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:4px 8px;color:#93c5fd;font-size:13px;width:100px;">
             <span style="color:#888;margin-left:4px;">$</span>
           </td>
           <td style="padding:7px 12px;color:#64748b;">${fmt(item.amount)} ${sym}</td>
         </tr>`).join('')}
       </tbody>
       <tfoot>
-        <tr style="border-top:1px solid #6c63ff33;">
-          <td style="padding:10px 12px;color:#a78bfa;font-weight:600;">Итого прочие</td>
-          <td style="padding:10px 12px;color:#a78bfa;font-weight:600;">${otherTotal.toLocaleString()} $</td>
-          <td style="padding:10px 12px;color:#a78bfa;font-weight:600;">${fmt(otherTotal)} ${sym}</td>
+        <tr style="border-top:1px solid #3b82f633;">
+          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">Итого прочие</td>
+          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${otherTotal.toLocaleString()} $</td>
+          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${fmt(otherTotal)} ${sym}</td>
         </tr>
       </tfoot>
     </table>
@@ -3317,49 +3317,49 @@ function renderCompany() {
 
 
   <!-- ИТОГО -->
-  <div style="background:linear-gradient(135deg,#1e1b3a,#13102a);border:1px solid #6c63ff55;border-radius:12px;padding:20px;margin-bottom:20px;">
+  <div style="background:linear-gradient(135deg,#1e2433,#1a2035);border:1px solid #3b82f655;border-radius:12px;padding:20px;margin-bottom:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">📊 Итого расходов в месяц</div>
     <div style="display:flex;gap:32px;flex-wrap:wrap;">
       <div><div style="color:#64748b;font-size:12px;">ФОТ (с ФСЗН)</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${totalSalaryWithTax.toLocaleString()} $</div></div>
       <div><div style="color:#64748b;font-size:12px;">Склад</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${warehouseCost.toLocaleString()} $</div></div>
       <div><div style="color:#64748b;font-size:12px;">Прочее</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${otherTotal.toLocaleString()} $</div></div>
-      <div style="border-left:1px solid #6c63ff33;padding-left:32px;"><div style="color:#a78bfa;font-size:12px;">ИТОГО</div><div style="color:#a78bfa;font-size:24px;font-weight:700;">${totalMonthly.toLocaleString()} $</div><div style="color:#64748b;font-size:12px;">${fmt(totalMonthly)} ${sym}</div></div>
+      <div style="border-left:1px solid #3b82f633;padding-left:32px;"><div style="color:#93c5fd;font-size:12px;">ИТОГО</div><div style="color:#93c5fd;font-size:24px;font-weight:700;">${totalMonthly.toLocaleString()} $</div><div style="color:#64748b;font-size:12px;">${fmt(totalMonthly)} ${sym}</div></div>
     </div>
   </div>
 
   <!-- ПУТЬ К ОКУПАЕМОСТИ -->
-  <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;margin-bottom:20px;">
+  <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:18px;">📈 Путь к окупаемости</div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px;">
       <label style="color:#94a3b8;font-size:13px;">💰 Стартовый капитал ($)
         <input type="number" id="inv-capital" value="${s.start_capital > 0 ? s.start_capital : ''}" placeholder="введите сумму" min="0" step="1000"
           onchange="companyUpdateCapital(this.value);renderCashflow()"
-          style="display:block;margin-top:6px;width:100%;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;">
+          style="display:block;margin-top:6px;width:100%;background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:6px 10px;color:#93c5fd;font-size:14px;">
       </label>
       <label style="color:#94a3b8;font-size:13px;">📅 Дата старта
         <input type="date" id="inv-start" value="${s.start_date||''}"
           onchange="companyUpdateStartDate(this.value);renderCashflow()"
-          style="display:block;margin-top:6px;width:100%;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;">
+          style="display:block;margin-top:6px;width:100%;background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:6px 10px;color:#93c5fd;font-size:14px;">
       </label>
       <label style="color:#94a3b8;font-size:13px;">📦 Маржинальность (%)
         <input type="number" id="inv-margin" value="${s.margin_pct||22}" min="1" max="80"
           onchange="companyUpdateMargin(this.value);renderCashflow()"
-          style="display:block;margin-top:6px;width:100%;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;">
+          style="display:block;margin-top:6px;width:100%;background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:6px 10px;color:#93c5fd;font-size:14px;">
       </label>
       <label style="color:#94a3b8;font-size:13px;">🚢 Цикл товара (дней)
         <input type="number" id="inv-cycle" value="${s.goods_cycle||45}" min="7" max="120"
           onchange="companyUpdateCycle(this.value);renderCashflow()"
-          style="display:block;margin-top:6px;width:100%;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;">
+          style="display:block;margin-top:6px;width:100%;background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:6px 10px;color:#93c5fd;font-size:14px;">
       </label>
       <label style="color:#94a3b8;font-size:13px;">⏳ Задержка выплат WB (дней)
         <input type="number" id="inv-wb" value="${s.wb_delay||14}" min="0" max="30"
           onchange="companyUpdateWbDelay(this.value);renderCashflow()"
-          style="display:block;margin-top:6px;width:100%;background:#1e1b3a;border:1px solid #6c63ff44;border-radius:6px;padding:6px 10px;color:#a78bfa;font-size:14px;">
+          style="display:block;margin-top:6px;width:100%;background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:6px 10px;color:#93c5fd;font-size:14px;">
       </label>
     </div>
 
-    <div id="cashflow-controls" style="background:#1a1730;border-radius:10px;padding:14px;margin-bottom:16px;"></div>
+    <div id="cashflow-controls" style="background:#1a2035;border-radius:10px;padding:14px;margin-bottom:16px;"></div>
     <div id="cashflow-summary" style="margin-bottom:20px;"></div>
     <div id="cashflow-chart" style="margin-bottom:20px;"></div>
     <div id="cashflow-table" style="overflow-x:auto;"></div>
@@ -3401,7 +3401,7 @@ function renderCashflow() {
     if (ctrl) ctrl.innerHTML = `
       <div style="text-align:center;padding:32px;color:#64748b;">
         <div style="font-size:32px;margin-bottom:12px;">📊</div>
-        <div style="font-size:15px;color:#a78bfa;font-weight:600;margin-bottom:8px;">Введите данные для расчёта</div>
+        <div style="font-size:15px;color:#93c5fd;font-weight:600;margin-bottom:8px;">Введите данные для расчёта</div>
         <div style="font-size:13px;">Заполните поля <span style="color:#e2e8f0;">Стартовый капитал</span> и <span style="color:#e2e8f0;">Дата старта</span> выше</div>
         <div style="font-size:12px;margin-top:8px;color:#475569;">После этого все параметры, график и таблица появятся автоматически</div>
       </div>`;
@@ -3482,7 +3482,7 @@ function renderCashflow() {
     // Фазы и закупки
     let phase=0, phaseName='', phaseColor='', capDraw=monthlyExp, capitalNote='';
     if (m <= phaseEnd0) {
-      phase=0; phaseName='Подготовка'; phaseColor='#6c63ff';
+      phase=0; phaseName='Подготовка'; phaseColor='#3b82f6';
       capitalNote='Орг. расходы';
     } else if (m <= phaseEnd1) {
       phase=1; phaseName='Тест'; phaseColor='#f59e0b';
@@ -3537,15 +3537,15 @@ function renderCashflow() {
           {key:'wb_commission',label:'Комиссия WB %',val:s.wb_commission||25,min:10,max:40},
           {key:'wb_returns',   label:'Возвраты товара %', val:s.wb_returns||8, min:0, max:20},
           {key:'wb_logistics', label:'Логистика WB %',val:s.wb_logistics||6, min:2, max:15},
-        ].map(f=>`<div style="background:#1e1b3a;border-radius:8px;padding:10px;">
+        ].map(f=>`<div style="background:#1e2433;border-radius:8px;padding:10px;">
           <div style="color:#94a3b8;font-size:11px;margin-bottom:4px;">${f.label}</div>
           <div style="display:flex;align-items:center;gap:6px;">
             <input type="range" min="${f.min}" max="${f.max}" value="${f.val}" step="1"
               oninput="this.nextElementSibling.textContent=this.value+'%'"
               onmouseup="companyUpdatePhase('${f.key}',this.value)"
               ontouchend="companyUpdatePhase('${f.key}',this.value)"
-              style="flex:1;accent-color:#6c63ff;cursor:pointer;">
-            <span style="color:#a78bfa;font-weight:700;min-width:36px;">${f.val}%</span>
+              style="flex:1;accent-color:#3b82f6;cursor:pointer;">
+            <span style="color:#93c5fd;font-weight:700;min-width:36px;">${f.val}%</span>
           </div></div>`).join('')}
       </div>
       <div style="color:#e2e8f0;font-size:13px;font-weight:600;margin-bottom:10px;">📅 Фазы (месяц)</div>
@@ -3556,15 +3556,15 @@ function renderCashflow() {
           {key:'phase2_end',  label:'📦 Крупные закупки до',    val:phaseEnd2,  min:4,max:12},
           {key:'phase3_end',  label:'🚀 Контейнер/пик до', val:phaseEnd3, min:8,max:18},
           {key:'return_start',label:'💰 Возврат с',    val:returnStart,min:6,max:18},
-        ].map(sl=>`<div style="background:#1e1b3a;border-radius:8px;padding:10px;">
+        ].map(sl=>`<div style="background:#1e2433;border-radius:8px;padding:10px;">
           <div style="color:#94a3b8;font-size:11px;margin-bottom:4px;">${sl.label}</div>
           <div style="display:flex;align-items:center;gap:6px;">
             <input type="range" min="${sl.min}" max="${sl.max}" value="${sl.val}" step="1"
               oninput="this.nextElementSibling.textContent='м'+this.value"
               onmouseup="companyUpdatePhase('${sl.key}',this.value)"
               ontouchend="companyUpdatePhase('${sl.key}',this.value)"
-              style="flex:1;accent-color:#6c63ff;cursor:pointer;">
-            <span style="color:#a78bfa;font-weight:700;min-width:30px;">м${sl.val}</span>
+              style="flex:1;accent-color:#3b82f6;cursor:pointer;">
+            <span style="color:#93c5fd;font-weight:700;min-width:30px;">м${sl.val}</span>
           </div></div>`).join('')}
       </div>`;
   }
@@ -3583,32 +3583,32 @@ function renderCashflow() {
 
   if (summaryEl) summaryEl.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0;">
-      <div style="background:#1e1b3a;border-radius:10px;padding:12px;text-align:center;" title="Минимальный оборот при котором операционная прибыль покрывает все расходы">
+      <div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;" title="Минимальный оборот при котором операционная прибыль покрывает все расходы">
         <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Мин. оборот/мес</div>
         <div style="color:#fbbf24;font-size:15px;font-weight:700;">${breakEvenRevenue.toLocaleString()} $</div>
         <div style="color:#64748b;font-size:10px;">${fmt(breakEvenRevenue)} ${sym}</div>
       </div>
-      <div style="background:#1e1b3a;border-radius:10px;padding:12px;text-align:center;" title="10% от стартового капитала зарезервировано на кассовые разрывы">
+      <div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;" title="10% от стартового капитала зарезервировано на кассовые разрывы">
         <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Резерв (10%)</div>
         <div style="color:#f97316;font-size:15px;font-weight:700;">${reserve.toLocaleString()} $</div>
         <div style="color:#64748b;font-size:10px;">${fmt(reserve)} ${sym}</div>
       </div>
-      <div style="background:#1e1b3a;border-radius:10px;padding:12px;text-align:center;" title="Период от оплаты закупки до получения денег с WB: цикл товара (${cycleDays}дн) + задержка выплат WB (${wbDelay}дн). Деньги заморожены в каждой поставке на этот срок.">
+      <div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;" title="Период от оплаты закупки до получения денег с WB: цикл товара (${cycleDays}дн) + задержка выплат WB (${wbDelay}дн). Деньги заморожены в каждой поставке на этот срок.">
         <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Заморозка / поставка ℹ️</div>
-        <div style="color:#a78bfa;font-size:15px;font-weight:700;">${freezeDays} дн</div>
+        <div style="color:#93c5fd;font-size:15px;font-weight:700;">${freezeDays} дн</div>
         <div style="color:#64748b;font-size:10px;">${cycleDays}дн цикл + ${wbDelay}дн WB</div>
       </div>
-      <div style="background:#1e1b3a;border-radius:10px;padding:12px;text-align:center;" title="Максимальный месячный оборот за 24 месяца">
+      <div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;" title="Максимальный месячный оборот за 24 месяца">
         <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Пик оборота ℹ️</div>
         <div style="color:#34d399;font-size:15px;font-weight:700;">${peakRevenue.toLocaleString()} $</div>
         <div style="color:#64748b;font-size:10px;">мес ${peakMonth} · ${getMonthLabel(peakMonth)}</div>
       </div>
-      <div style="background:#1e1b3a;border-radius:10px;padding:12px;text-align:center;" title="Месяц от старта проекта когда операционная прибыль впервые становится положительной">
+      <div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;" title="Месяц от старта проекта когда операционная прибыль впервые становится положительной">
         <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Выход в плюс ℹ️</div>
         <div style="color:#34d399;font-size:15px;font-weight:700;">${breakEvenMonth ? 'Мес ' + breakEvenMonth : '>24'}</div>
         <div style="color:#64748b;font-size:10px;">${breakEvenMonth ? getMonthLabel(breakEvenMonth) + ' · от старта' : 'не достигнут'}</div>
       </div>
-      <div style="background:#1e1b3a;border-radius:10px;padding:12px;text-align:center;" title="Месяц от старта проекта когда долг инвестору полностью погашен. В скобках — сколько месяцев заняло погашение с момента начала выплат.">
+      <div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;" title="Месяц от старта проекта когда долг инвестору полностью погашен. В скобках — сколько месяцев заняло погашение с момента начала выплат.">
         <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Полная окупаемость ℹ️</div>
         <div style="color:${debtFreeMonth?'#34d399':'#ef4444'};font-size:15px;font-weight:700;">${debtFreeMonth ? 'Мес ' + debtFreeMonth : '>24 мес'}</div>
         <div style="color:#64748b;font-size:10px;">${debtFreeMonth ? getMonthLabel(debtFreeMonth) + ' · ' + returnMonthCount + ' мес выплат' : 'увеличьте маржу'}</div>
@@ -3645,7 +3645,7 @@ function renderCashflow() {
         <span style="color:#fbbf24;">╌╌ Точка безубыточности</span>
         <span style="color:#34d399;">╌╌ Начало возврата инвестиций</span>
       </div>
-      <svg viewBox="0 0 ${W} ${H}" style="width:100%;background:#0f0d1f;border-radius:8px;">
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;background:#0f1117;border-radius:8px;">
         ${beL}${retL}
         <path d="${dPath}" fill="none" stroke="#ef4444" stroke-width="3"/>
         <path d="${rPath}" fill="none" stroke="#34d399" stroke-width="2.5"/>
@@ -3661,11 +3661,11 @@ function renderCashflow() {
     const tRows = rows.map(r=>{
       const pc=r.operProfit>=0?'#34d399':'#ef4444';
       const dc=r.remDebt===0?'#34d399':r.remDebt<capital*0.5?'#fbbf24':'#f97316';
-      return `<tr style="border-bottom:1px solid #1a1730;${r.warning?'background:#1a1015;':''}">
+      return `<tr style="border-bottom:1px solid #1a2035;${r.warning?'background:#1a1015;':''}">
         <td style="padding:5px 8px;">
           <span style="color:${r.phaseColor};font-size:10px;font-weight:600;">${r.phaseName}</span>
           <span style="color:#94a3b8;font-size:11px;margin-left:4px;">${r.label}</span>
-          ${r.capitalNote?`<br><span style="color:#6c63ff;font-size:10px;">${r.capitalNote}</span>`:''}
+          ${r.capitalNote?`<br><span style="color:#3b82f6;font-size:10px;">${r.capitalNote}</span>`:''}
           ${r.warning?`<br><span style="color:#fbbf24;font-size:10px;">${r.warning}</span>`:''}
         </td>
         <td style="padding:5px 8px;color:#e2e8f0;font-size:11px;">${r.grossRevenue.toLocaleString()}$<br><span style="color:#64748b;font-size:10px;">${fmt(r.grossRevenue)} ${sym}</span></td>
@@ -3681,7 +3681,7 @@ function renderCashflow() {
     }).join('');
     tableEl.innerHTML = `
       <table style="width:100%;border-collapse:collapse;">
-        <thead><tr style="color:#64748b;font-size:10px;border-bottom:1px solid #6c63ff33;background:#0f0d1f;">
+        <thead><tr style="color:#64748b;font-size:10px;border-bottom:1px solid #3b82f633;background:#0f1117;">
           <th style="padding:6px 8px;text-align:left;">Фаза/Мес</th>
           <th style="padding:6px 8px;text-align:left;" title="Валовый оборот — сумма продаж покупателям до вычетов WB">Оборот (продажи) ℹ️</th>
           <th style="padding:6px 8px;text-align:left;">Net продажи</th>
@@ -3772,7 +3772,7 @@ function renderPortfolioSection() {
   var sym = symbols[currentCurrency];
   var rate = rates[currentCurrency];
 
-  var statusColors = {planning:'#6c63ff', ordered:'#fbbf24', shipping:'#38bdf8', customs:'#f59e0b', wb_stock:'#a78bfa', selling:'#4ade80', paused:'#ef4444'};
+  var statusColors = {planning:'#3b82f6', ordered:'#fbbf24', shipping:'#38bdf8', customs:'#f59e0b', wb_stock:'#93c5fd', selling:'#4ade80', paused:'#ef4444'};
   var statusLabels = {planning:'📋 Планируется', ordered:'📦 Заказан', shipping:'🚢 В пути', customs:'🏛 Таможня', wb_stock:'🏭 На складе WB', selling:'💰 Продаётся', paused:'⏸ Приостановлен'};
 
   var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">';
@@ -3780,26 +3780,26 @@ function renderPortfolioSection() {
   html += '<div style="font-size:12px;color:#555;margin-top:4px;">Товары которые вы закупаете и продаёте на WB</div></div>';
   html += '</div>';
   // Roadmap блок
-  html += '<div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:16px;margin-bottom:20px;">';
+  html += '<div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:16px;margin-bottom:20px;">';
   html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
-  html += '<div style="font-size:13px;font-weight:600;color:#a78bfa;">🚀 Полная версия Портфеля — в разработке</div>';
-  html += '<div style="background:#6c63ff22;color:#a78bfa;font-size:10px;border-radius:4px;padding:2px 8px;border:1px solid #6c63ff44;">Coming Soon</div>';
+  html += '<div style="font-size:13px;font-weight:600;color:#93c5fd;">🚀 Полная версия Портфеля — в разработке</div>';
+  html += '<div style="background:#3b82f622;color:#93c5fd;font-size:10px;border-radius:4px;padding:2px 8px;border:1px solid #3b82f644;">Coming Soon</div>';
   html += '</div>';
   html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">';
-  html += '<div style="background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:11px;color:#a78bfa;margin-bottom:4px;">📊 Финансы</div><div style="font-size:11px;color:#555;">Цена закупки/продажи, маржа план vs факт, ROI по каждому товару</div></div>';
-  html += '<div style="background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:11px;color:#38bdf8;margin-bottom:4px;">🚢 Логистика</div><div style="font-size:11px;color:#555;">Даты заказа/отправки/прибытия, остатки по складам WB</div></div>';
-  html += '<div style="background:#1a1a24;border-radius:8px;padding:10px;"><div style="font-size:11px;color:#34d399;margin-bottom:4px;">🔗 Интеграции</div><div style="font-size:11px;color:#555;">WB API, складская программа, бухгалтерия, раздел Компания</div></div>';
+  html += '<div style="background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:11px;color:#93c5fd;margin-bottom:4px;">📊 Финансы</div><div style="font-size:11px;color:#555;">Цена закупки/продажи, маржа план vs факт, ROI по каждому товару</div></div>';
+  html += '<div style="background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:11px;color:#38bdf8;margin-bottom:4px;">🚢 Логистика</div><div style="font-size:11px;color:#555;">Даты заказа/отправки/прибытия, остатки по складам WB</div></div>';
+  html += '<div style="background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:11px;color:#34d399;margin-bottom:4px;">🔗 Интеграции</div><div style="font-size:11px;color:#555;">WB API, складская программа, бухгалтерия, раздел Компания</div></div>';
   html += '</div></div>';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div></div>';
   // кнопка В работе убрана из заголовка
   html += '</div>';
 
   if (items.length === 0) {
-    html += '<div style="background:#1a1a24;border-radius:12px;padding:40px;text-align:center;">';
+    html += '<div style="background:#1e2433;border-radius:12px;padding:40px;text-align:center;">';
     html += '<div style="font-size:48px;margin-bottom:12px;">📦</div>';
     html += '<div style="font-size:16px;color:#fff;margin-bottom:8px;">Портфель пуст</div>';
     html += '<div style="font-size:13px;color:#555;margin-bottom:20px;">Перемещайте товары из раздела "В работе" или добавляйте вручную</div>';
-    html += '<button onclick="showWatchlist()" style="background:#6c63ff22;border:1px solid #6c63ff44;border-radius:8px;padding:10px 20px;color:#a78bfa;cursor:pointer;font-size:13px;">Перейти в "В работе"</button>';
+    html += '<button onclick="showWatchlist()" style="background:#3b82f622;border:1px solid #3b82f644;border-radius:8px;padding:10px 20px;color:#93c5fd;cursor:pointer;font-size:13px;">Перейти в "В работе"</button>';
     html += '</div>';
     div.innerHTML = html;
     return;
@@ -3810,10 +3810,10 @@ function renderPortfolioSection() {
   var selling = items.filter(function(i){return i.status==='selling';}).length;
   var inTransit = items.filter(function(i){return i.status==='shipping'||i.status==='ordered';}).length;
   html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">';
-  html += '<div style="background:#1a1a24;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ВСЕГО ПОЗИЦИЙ</div><div style="font-size:20px;font-weight:700;color:#a78bfa;">' + totalItems + '</div></div>';
-  html += '<div style="background:#1a1a24;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ПРОДАЁТСЯ</div><div style="font-size:20px;font-weight:700;color:#4ade80;">' + selling + '</div></div>';
-  html += '<div style="background:#1a1a24;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">В ПУТИ/ЗАКАЗАНО</div><div style="font-size:20px;font-weight:700;color:#38bdf8;">' + inTransit + '</div></div>';
-  html += '<div style="background:#1a1a24;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ДАТА ОБНОВЛЕНИЯ</div><div style="font-size:12px;font-weight:700;color:#555;">' + new Date().toLocaleDateString('ru-RU') + '</div></div>';
+  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ВСЕГО ПОЗИЦИЙ</div><div style="font-size:20px;font-weight:700;color:#93c5fd;">' + totalItems + '</div></div>';
+  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ПРОДАЁТСЯ</div><div style="font-size:20px;font-weight:700;color:#4ade80;">' + selling + '</div></div>';
+  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">В ПУТИ/ЗАКАЗАНО</div><div style="font-size:20px;font-weight:700;color:#38bdf8;">' + inTransit + '</div></div>';
+  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ДАТА ОБНОВЛЕНИЯ</div><div style="font-size:12px;font-weight:700;color:#555;">' + new Date().toLocaleDateString('ru-RU') + '</div></div>';
   html += '</div>';
 
   // Карточки товаров
@@ -3822,7 +3822,7 @@ function renderPortfolioSection() {
     var sc = statusColors[item.status] || '#555';
     var sl = statusLabels[item.status] || item.status;
     var name = (item.full || item.name || '').split(' / ').pop();
-    html += '<div style="background:#1a1a24;border-radius:12px;padding:16px;border-left:3px solid ' + sc + ';">';
+    html += '<div style="background:#1e2433;border-radius:12px;padding:16px;border-left:3px solid ' + sc + ';">';
     html += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:12px;align-items:center;">';
     // Название и статус
     html += '<div><div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:4px;">' + name + '</div>';
@@ -3844,7 +3844,7 @@ function renderPortfolioSection() {
     html += '<div style="font-size:11px;color:#fbbf24;">' + (item.next_order || '—') + '</div></div>';
     // Кнопки управления
     html += '<div style="display:flex;gap:6px;">';
-    html += '<select onchange="updatePortfolioStatus(' + idx + ',this.value)" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:5px;color:#fff;padding:4px;font-size:10px;cursor:pointer;">';
+    html += '<select onchange="updatePortfolioStatus(' + idx + ',this.value)" style="background:#0f1117;border:1px solid #2d3748;border-radius:5px;color:#fff;padding:4px;font-size:10px;cursor:pointer;">';
     Object.keys(statusLabels).forEach(function(s) {
       html += '<option value="' + s + '"' + (item.status===s?' selected':'') + '>' + statusLabels[s] + '</option>';
     });
@@ -3910,11 +3910,11 @@ async function runMasterAgent() {
   masterBlock.innerHTML = `
     <div class="ai-card">
       <div class="ai-header">
-        <div class="ai-dot" style="background:#6c63ff;"></div>
+        <div class="ai-dot" style="background:#3b82f6;"></div>
         <div class="ai-title">🧠 Полный анализ ниши</div>
       </div>
       <div id="master-progress" style="margin:16px 0;">
-        ${steps.map(s => `<div id="step-${s.id}" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;margin-bottom:6px;background:#0f0f13;">
+        ${steps.map(s => `<div id="step-${s.id}" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;margin-bottom:6px;background:#0f1117;">
           <span style="font-size:16px;">${s.icon}</span>
           <span style="font-size:13px;color:#555;" id="step-${s.id}-label">${s.label}</span>
           <span style="margin-left:auto;font-size:11px;color:#333;" id="step-${s.id}-status">⏳ ожидание</span>
@@ -3929,7 +3929,7 @@ async function runMasterAgent() {
     if (el) el.textContent = status;
     if (label) label.style.color = color;
     const row = document.getElementById(`step-${id}`);
-    if (row) row.style.background = color === '#22c55e' ? '#0f1a0f' : color === '#ef4444' ? '#1a0f0f' : '#13131a';
+    if (row) row.style.background = color === '#22c55e' ? '#0f1a1f' : color === '#ef4444' ? '#1a1f2e' : '#1e2433';
   };
 
   const results = {};
@@ -3938,11 +3938,11 @@ async function runMasterAgent() {
   let si = 0;
   const animInterval = setInterval(() => {
     if (si > 0) setStep(steps_anim[si-1], '✅ готово', '#22c55e');
-    if (si < steps_anim.length) { setStep(steps_anim[si], '⚙️ анализируем...', '#a78bfa'); si++; }
+    if (si < steps_anim.length) { setStep(steps_anim[si], '⚙️ анализируем...', '#93c5fd'); si++; }
   }, 800);
 
   // ШАГ 6: Финальный сводный вывод — один запрос
-  setStep('s6', '⚙️ формируем вывод...', '#a78bfa');
+  setStep('s6', '⚙️ формируем вывод...', '#93c5fd');
   try {
     const payload = {
       niche_name: d.name, display_name: d.display_name||d.name,
@@ -4040,7 +4040,7 @@ function renderDocsResult(data) {
   let html = '';
 
   // Общая сложность
-  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid ' + (complexityColor[r.complexity]||'#fbbf24') + ';">' +
+  html += '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid ' + (complexityColor[r.complexity]||'#fbbf24') + ';">' +
     '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:6px;">СЛОЖНОСТЬ ОФОРМЛЕНИЯ</div>' +
     '<div style="font-size:16px;font-weight:700;color:' + (complexityColor[r.complexity]||'#fbbf24') + ';margin-bottom:8px;">' + (complexityLabel[r.complexity]||'🟡 Умеренная') + '</div>' +
     '<div style="font-size:13px;color:#ccc;line-height:1.6;">' + (r.summary||'') + '</div>' +
@@ -4048,7 +4048,7 @@ function renderDocsResult(data) {
 
   // Документы для WB
   if (r.wb_docs && r.wb_docs.length > 0) {
-    html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">' +
+    html += '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">' +
       '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ДОКУМЕНТЫ ДЛЯ WB</div>';
     r.wb_docs.forEach(function(doc) {
       const reqColor = doc.required ? '#ef4444' : '#fbbf24';
@@ -4057,7 +4057,7 @@ function renderDocsResult(data) {
         '<div>' +
           '<div style="font-size:12px;color:#fff;font-weight:600;">' + doc.name + '</div>' +
           '<div style="font-size:11px;color:#555;margin-top:2px;">' + doc.description + '</div>' +
-          (doc.cost && doc.cost != '0' ? '<div style="font-size:11px;color:#a78bfa;margin-top:2px;">&#128176; ' + doc.cost + ' ₽</div>' : '') +
+          (doc.cost && doc.cost != '0' ? '<div style="font-size:11px;color:#93c5fd;margin-top:2px;">&#128176; ' + doc.cost + ' ₽</div>' : '') +
           (doc.duration ? '<div style="font-size:11px;color:#38bdf8;margin-top:2px;">&#9201; ' + doc.duration + '</div>' : '') +
           (doc.where_rb ? '<div style="font-size:11px;color:#4ade80;margin-top:4px;">&#127463;&#127486; РБ: ' + doc.where_rb + '</div>' : '') +
           (doc.where_rf ? '<div style="font-size:11px;color:#f59e0b;margin-top:2px;">&#127479;&#127482; РФ: ' + doc.where_rf + '</div>' : '') +
@@ -4070,7 +4070,7 @@ function renderDocsResult(data) {
 
   // Таможенные документы РБ
   if (r.customs_docs && r.customs_docs.length > 0) {
-    html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">' +
+    html += '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">' +
       '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ТАМОЖНЯ И ВВОЗ В РБ</div>';
     r.customs_docs.forEach(function(doc) {
       html += '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">' +
@@ -4083,12 +4083,12 @@ function renderDocsResult(data) {
 
   // Документы от китайского поставщика
   if (r.supplier_docs && r.supplier_docs.length > 0) {
-    html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">' +
+    html += '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">' +
       '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ЗАПРОСИТЬ У КИТАЙСКОГО ПОСТАВЩИКА</div>';
     r.supplier_docs.forEach(function(doc) {
       var acceptColor = doc.accepted_in_eaes ? '#4ade80' : '#fbbf24';
       var acceptLabel = doc.accepted_in_eaes ? '✓ Принимается в ЕАЭС' : '⚠ Требует переоформления';
-      html += '<div style="margin-bottom:10px;padding:10px;background:#1a1a24;border-radius:8px;">' +
+      html += '<div style="margin-bottom:10px;padding:10px;background:#1e2433;border-radius:8px;">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
           '<div style="font-size:12px;color:#fff;font-weight:600;">' + doc.name + '</div>' +
           '<div style="font-size:10px;color:' + acceptColor + ';">' + acceptLabel + '</div>' +
@@ -4101,7 +4101,7 @@ function renderDocsResult(data) {
 
   // Риски и особенности
   if (r.risks && r.risks.length > 0) {
-    html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">' +
+    html += '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">' +
       '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">РИСКИ И ОСОБЕННОСТИ</div>';
     r.risks.forEach(function(risk) {
       html += '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">' +
@@ -4113,7 +4113,7 @@ function renderDocsResult(data) {
   }
 
   // Итоговые затраты
-  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;">' +
+  html += '<div style="background:#0f1117;border-radius:10px;padding:16px;">' +
     '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ИТОГОВЫЕ ЗАТРАТЫ НА ДОКУМЕНТЫ</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
       '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">СТОИМОСТЬ</div><div style="font-size:14px;font-weight:700;color:#84cc16;">'+(r.total_cost_byn||convertDocsCost(r.total_cost||''))+' Br</div><div style="font-size:10px;color:#555;margin-top:2px;">'+(r.total_cost||'')+'</div></div>' +
@@ -4150,24 +4150,24 @@ function showUnitEconomy() {
       <!-- Валюта закупки -->
       <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;">
         <div style="font-size:12px;color:#555;margin-right:4px;">Валюта закупки:</div>
-        <button onclick="setUnitCurrency('cny')" id="ucur-cny" style="background:#1a1a2e;border:1px solid #6c63ff;border-radius:6px;padding:6px 12px;color:#a78bfa;font-size:12px;cursor:pointer;">¥ CNY</button>
-        <button onclick="setUnitCurrency('usd')" id="ucur-usd" style="background:#0f0f13;border:1px solid #333;border-radius:6px;padding:6px 12px;color:#555;font-size:12px;cursor:pointer;">$ USD</button>
-        <button onclick="setUnitCurrency('rub')" id="ucur-rub" style="background:#0f0f13;border:1px solid #333;border-radius:6px;padding:6px 12px;color:#555;font-size:12px;cursor:pointer;">₽ RUB</button>
-        <button onclick="setUnitCurrency('byn')" id="ucur-byn" style="background:#0f0f13;border:1px solid #333;border-radius:6px;padding:6px 12px;color:#555;font-size:12px;cursor:pointer;">Br BYN</button>
+        <button onclick="setUnitCurrency('cny')" id="ucur-cny" style="background:#1e2433;border:1px solid #3b82f6;border-radius:6px;padding:6px 12px;color:#93c5fd;font-size:12px;cursor:pointer;">¥ CNY</button>
+        <button onclick="setUnitCurrency('usd')" id="ucur-usd" style="background:#0f1117;border:1px solid #333;border-radius:6px;padding:6px 12px;color:#555;font-size:12px;cursor:pointer;">$ USD</button>
+        <button onclick="setUnitCurrency('rub')" id="ucur-rub" style="background:#0f1117;border:1px solid #333;border-radius:6px;padding:6px 12px;color:#555;font-size:12px;cursor:pointer;">₽ RUB</button>
+        <button onclick="setUnitCurrency('byn')" id="ucur-byn" style="background:#0f1117;border:1px solid #333;border-radius:6px;padding:6px 12px;color:#555;font-size:12px;cursor:pointer;">Br BYN</button>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
         <div>
           <div style="font-size:11px;color:#555;margin-bottom:4px;">ЦЕНА ПРОДАЖИ НА WB (₽)</div>
-          <input id="ue-price" type="number" value="${Math.round(d.avg_price||0)}" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+          <input id="ue-price" type="number" value="${Math.round(d.avg_price||0)}" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
         <div>
           <div style="font-size:11px;color:#555;margin-bottom:4px;">ЗАКУПОЧНАЯ ЦЕНА (<span id="ucur-label">¥</span>)</div>
-          <input id="ue-cost" type="number" placeholder="цена закупки" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+          <input id="ue-cost" type="number" placeholder="цена закупки" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
         <div>
           <div style="font-size:11px;color:#555;margin-bottom:4px;">КОМИССИЯ WB (%)</div>
-          <input id="ue-commission" type="number" value="${Math.round(d.commission||15)}" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+          <input id="ue-commission" type="number" value="${Math.round(d.commission||15)}" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
       </div>
 
@@ -4177,36 +4177,36 @@ function showUnitEconomy() {
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
         <div>
           <div style="font-size:10px;color:#555;margin-bottom:4px;">ДЛИНА (см)</div>
-          <input id="ue-length" type="number" value="${avgLen}" placeholder="см" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+          <input id="ue-length" type="number" value="${avgLen}" placeholder="см" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
         <div>
           <div style="font-size:10px;color:#555;margin-bottom:4px;">ШИРИНА (см)</div>
-          <input id="ue-width" type="number" value="${avgWid}" placeholder="см" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+          <input id="ue-width" type="number" value="${avgWid}" placeholder="см" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
         <div>
           <div style="font-size:10px;color:#555;margin-bottom:4px;">ВЫСОТА (см)</div>
-          <input id="ue-height" type="number" value="${avgHei}" placeholder="см" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+          <input id="ue-height" type="number" value="${avgHei}" placeholder="см" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
         <div>
           <div style="font-size:10px;color:#555;margin-bottom:4px;">ВЕС (кг)</div>
-          <input id="ue-weight" type="number" value="${avgWgt}" placeholder="кг" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+          <input id="ue-weight" type="number" value="${avgWgt}" placeholder="кг" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
         <div>
           <div style="font-size:10px;color:#555;margin-bottom:4px;">ЕД. В КОРОБЕ</div>
-          <input id="ue-units" type="number" value="20" placeholder="шт" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+          <input id="ue-units" type="number" value="20" placeholder="шт" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
       </div>
 
       <!-- Способ доставки -->
       <div style="font-size:11px;color:#555;letter-spacing:1px;margin-bottom:8px;">СПОСОБ ДОСТАВКИ ИЗ КИТАЯ</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;">
-        <button onclick="setDelivery('sea')" id="udel-sea" style="background:#1a1a2e;border:1px solid #38bdf8;border-radius:6px;padding:10px;color:#38bdf8;font-size:12px;cursor:pointer;text-align:left;">
+        <button onclick="setDelivery('sea')" id="udel-sea" style="background:#1e2433;border:1px solid #38bdf8;border-radius:6px;padding:10px;color:#38bdf8;font-size:12px;cursor:pointer;text-align:left;">
           🚢 Море<div style="font-size:10px;color:#555;margin-top:2px;">45-60 дней · $1.5-2.5/кг</div>
         </button>
-        <button onclick="setDelivery('rail')" id="udel-rail" style="background:#0f0f13;border:1px solid #333;border-radius:6px;padding:10px;color:#555;font-size:12px;cursor:pointer;text-align:left;">
+        <button onclick="setDelivery('rail')" id="udel-rail" style="background:#0f1117;border:1px solid #333;border-radius:6px;padding:10px;color:#555;font-size:12px;cursor:pointer;text-align:left;">
           🚂 ЖД<div style="font-size:10px;color:#444;margin-top:2px;">18-25 дней · $2-3.5/кг</div>
         </button>
-        <button onclick="setDelivery('truck')" id="udel-truck" style="background:#0f0f13;border:1px solid #333;border-radius:6px;padding:10px;color:#555;font-size:12px;cursor:pointer;text-align:left;">
+        <button onclick="setDelivery('truck')" id="udel-truck" style="background:#0f1117;border:1px solid #333;border-radius:6px;padding:10px;color:#555;font-size:12px;cursor:pointer;text-align:left;">
           🚛 Авто<div style="font-size:10px;color:#444;margin-top:2px;">20-30 дней · $3-5/кг</div>
         </button>
       </div>
@@ -4215,15 +4215,15 @@ function showUnitEconomy() {
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
         <div>
           <div style="font-size:11px;color:#555;margin-bottom:4px;">ТАМОЖЕННАЯ ПОШЛИНА (%)</div>
-          <input id="ue-customs" type="number" value="10" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+          <input id="ue-customs" type="number" value="10" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
         <div>
           <div style="font-size:11px;color:#555;margin-bottom:4px;">НДС ИМПОРТ (%)</div>
-          <input id="ue-vat" type="number" value="20" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+          <input id="ue-vat" type="number" value="20" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
         <div>
           <div style="font-size:11px;color:#555;margin-bottom:4px;">НАЛОГ УСН (%)</div>
-          <input id="ue-tax" type="number" value="6" style="width:100%;background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+          <input id="ue-tax" type="number" value="6" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
       </div>
 
@@ -4243,11 +4243,11 @@ function setUnitCurrency(cur) {
     const btn = document.getElementById('ucur-' + c);
     if (!btn) return;
     if (c === cur) {
-      btn.style.background = '#1a1a2e';
-      btn.style.borderColor = '#6c63ff';
-      btn.style.color = '#a78bfa';
+      btn.style.background = '#1e2433';
+      btn.style.borderColor = '#3b82f6';
+      btn.style.color = '#93c5fd';
     } else {
-      btn.style.background = '#0f0f13';
+      btn.style.background = '#0f1117';
       btn.style.borderColor = '#333';
       btn.style.color = '#555';
     }
@@ -4260,11 +4260,11 @@ function setDelivery(mode) {
     const btn = document.getElementById('udel-' + m);
     if (!btn) return;
     if (m === mode) {
-      btn.style.background = '#1a1a2e';
+      btn.style.background = '#1e2433';
       btn.style.borderColor = '#38bdf8';
       btn.style.color = '#38bdf8';
     } else {
-      btn.style.background = '#0f0f13';
+      btn.style.background = '#0f1117';
       btn.style.borderColor = '#333';
       btn.style.color = '#555';
     }
@@ -4337,14 +4337,14 @@ function renderUnitEconomy(data, sym, rate) {
     return v.toLocaleString('ru-RU') + ' ' + sym;
   };
 
-  const sc_colors = {'s1':'#38bdf8', 's2':'#a78bfa', 's3':'#4ade80'};
+  const sc_colors = {'s1':'#38bdf8', 's2':'#93c5fd', 's3':'#4ade80'};
   const verdict_colors = {'profit':'#4ade80', 'marginal':'#fbbf24', 'loss':'#ef4444'};
   const verdict_labels = {'profit':'✅ Прибыльно', 'marginal':'⚠️ На грани', 'loss':'❌ Убыток'};
 
-  let html = '<div style="border-top:1px solid #1a1a2e;padding-top:20px;">';
+  let html = '<div style="border-top:1px solid #1e2433;padding-top:20px;">';
 
   // Рекомендация Claude
-  html += '<div style="background:linear-gradient(135deg,#1a1a2e,#0f0f1a);border-radius:10px;padding:16px;margin-bottom:20px;border:1px solid #f59e0b44;">' +
+  html += '<div style="background:linear-gradient(135deg,#1e2433,#0f1117);border-radius:10px;padding:16px;margin-bottom:20px;border:1px solid #f59e0b44;">' +
     '<div style="font-size:10px;color:#f59e0b;letter-spacing:1px;margin-bottom:6px;">🏆 РЕКОМЕНДАЦИЯ AI</div>' +
     '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:8px;">' + (data.recommendation?.title||'') + '</div>' +
     '<div style="font-size:13px;color:#ccc;line-height:1.6;">' + (data.recommendation?.detail||'') + '</div>' +
@@ -4358,14 +4358,14 @@ function renderUnitEconomy(data, sym, rate) {
     const vc = verdict_colors[s.verdict] || '#fbbf24';
     const vl = verdict_labels[s.verdict] || '⚠️';
     html +=
-      '<div style="background:#0f0f13;border-radius:10px;padding:16px;border-top:3px solid ' + sc_colors[key] + ';">' +
+      '<div style="background:#0f1117;border-radius:10px;padding:16px;border-top:3px solid ' + sc_colors[key] + ';">' +
         '<div style="font-size:11px;color:' + sc_colors[key] + ';font-weight:600;margin-bottom:8px;">' + (s.title||'') + '</div>' +
         '<div style="font-size:12px;color:' + vc + ';font-weight:600;margin-bottom:12px;">' + vl + '</div>' +
         '<div style="display:flex;flex-direction:column;gap:6px;">' +
           '<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#555;">Себест. с логистикой</span><span style="color:#fff;">' + fmtM(s.total_cost_rub) + '</span></div>' +
           '<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#555;">Комиссия WB</span><span style="color:#fff;">' + fmtM(s.wb_commission_rub) + '</span></div>' +
           '<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#555;">Логистика WB</span><span style="color:#fff;">' + fmtM(s.wb_logistics_rub) + '</span></div>' +
-          '<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid #1a1a2e;padding-top:6px;margin-top:2px;"><span style="color:#aaa;">Прибыль/ед</span><span style="color:' + vc + ';font-weight:700;">' + fmtM(s.profit_per_unit_rub) + '</span></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;border-top:1px solid #1e2433;padding-top:6px;margin-top:2px;"><span style="color:#aaa;">Прибыль/ед</span><span style="color:' + vc + ';font-weight:700;">' + fmtM(s.profit_per_unit_rub) + '</span></div>' +
           '<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#aaa;">ROI</span><span style="color:' + vc + ';font-weight:700;">' + (s.roi_pct||0) + '%</span></div>' +
           '<div style="display:flex;justify-content:space-between;font-size:11px;"><span style="color:#aaa;">Маржа</span><span style="color:' + vc + ';font-weight:700;">' + (s.margin_pct||0) + '%</span></div>' +
         '</div>' +
@@ -4375,10 +4375,10 @@ function renderUnitEconomy(data, sym, rate) {
   html += '</div>';
 
   // Детали расчёта
-  html += '<div style="background:#0f0f13;border-radius:10px;padding:16px;">' +
+  html += '<div style="background:#0f1117;border-radius:10px;padding:16px;">' +
     '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ДЕТАЛИ РАСЧЁТА</div>' +
     (data.calc_details||[]).map(d =>
-      '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1a1a2e;font-size:12px;">' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1e2433;font-size:12px;">' +
         '<span style="color:#666;">' + d.label + '</span>' +
         '<span style="color:#aaa;">' + d.value + '</span>' +
       '</div>'
@@ -4395,27 +4395,27 @@ function renderWarehouseMetrics(data) {
   if (!el) return;
   const w = data.warehouse_stats;
   if (!w) return;
-  const sc = {fbs:'#38bdf8', fbo:'#a78bfa', mixed:'#4ade80'};
+  const sc = {fbs:'#38bdf8', fbo:'#93c5fd', mixed:'#4ade80'};
   const dominant = w.fbs_pct > 60 ? 'FBS' : w.fbs_pct < 40 ? 'FBO' : 'Смешанный';
-  const domColor = w.fbs_pct > 60 ? '#38bdf8' : w.fbs_pct < 40 ? '#a78bfa' : '#4ade80';
+  const domColor = w.fbs_pct > 60 ? '#38bdf8' : w.fbs_pct < 40 ? '#93c5fd' : '#4ade80';
   el.innerHTML =
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px;">' +
-      '<div style="background:#0f0f13;border-radius:8px;padding:12px;text-align:center;">' +
+      '<div style="background:#0f1117;border-radius:8px;padding:12px;text-align:center;">' +
         '<div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">МОДЕЛЬ НИШИ</div>' +
         '<div style="font-size:16px;font-weight:700;color:' + domColor + ';">' + dominant + '</div>' +
         '<div style="font-size:11px;color:#555;margin-top:4px;">FBS ' + w.fbs_pct + '% / FBO ' + w.fbo_pct + '%</div>' +
       '</div>' +
-      '<div style="background:#0f0f13;border-radius:8px;padding:12px;text-align:center;">' +
+      '<div style="background:#0f1117;border-radius:8px;padding:12px;text-align:center;">' +
         '<div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">СКЛАДЫ У ЛИДЕРОВ</div>' +
         '<div style="font-size:16px;font-weight:700;color:#fff;">' + w.avg_wh_leaders + '</div>' +
         '<div style="font-size:11px;color:#555;margin-top:4px;">у остальных: ' + w.avg_wh_others + '</div>' +
       '</div>' +
-      '<div style="background:#0f0f13;border-radius:8px;padding:12px;text-align:center;">' +
+      '<div style="background:#0f1117;border-radius:8px;padding:12px;text-align:center;">' +
         '<div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">ОБОРАЧИВАЕМОСТЬ</div>' +
         '<div style="font-size:16px;font-weight:700;color:#fff;">' + w.avg_turnover + ' дн</div>' +
         '<div style="font-size:11px;color:#555;margin-top:4px;">в наличии: ' + w.avg_days_stock + ' дн</div>' +
       '</div>' +
-      '<div style="background:#0f0f13;border-radius:8px;padding:12px;text-align:center;">' +
+      '<div style="background:#0f1117;border-radius:8px;padding:12px;text-align:center;">' +
         '<div style="font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;">ЗАМОРОЗКА >10%</div>' +
         '<div style="font-size:16px;font-weight:700;color:' + (w.frozen_pct > 30 ? '#ef4444' : w.frozen_pct > 15 ? '#fbbf24' : '#4ade80') + ';">' + w.frozen_pct + '%</div>' +
         '<div style="font-size:11px;color:#555;margin-top:4px;">товаров с проблемой</div>' +
@@ -4430,7 +4430,7 @@ async function runWarehouseAnalysis() {
   btn.disabled = true;
   btn.textContent = '⏳ Анализируем...';
   btn.style.opacity = '0.6';
-  var wb = document.getElementById('warehouseBlock'); if (wb) { wb.style.display = 'block'; wb.scrollIntoView({behavior:'smooth'}); }  container.innerHTML = '<div style="background:#0f0f13;border-radius:12px;padding:20px;text-align:center;color:#555;"><div style="font-size:24px;margin-bottom:8px;">🤖</div><div style="font-size:13px;">Claude анализирует стратегию поставок...</div></div>';
+  var wb = document.getElementById('warehouseBlock'); if (wb) { wb.style.display = 'block'; wb.scrollIntoView({behavior:'smooth'}); }  container.innerHTML = '<div style="background:#0f1117;border-radius:12px;padding:20px;text-align:center;color:#555;"><div style="font-size:24px;margin-bottom:8px;">🤖</div><div style="font-size:13px;">Claude анализирует стратегию поставок...</div></div>';
   try {
     const d = window.currentNiche;
     const w = window._warehouseStats;
@@ -4468,33 +4468,33 @@ function renderWarehouseStrategy(r, sym, rate) {
   const container = document.getElementById('warehouseStrategy');
   if (!r) return;
   const fmtMoney = (rub) => !rub ? '—' : Math.round(rub * rate).toLocaleString('ru-RU') + ' ' + sym;
-  const sc = {fbs:'#38bdf8', fbo:'#a78bfa', mixed:'#4ade80', low:'#4ade80', medium:'#fbbf24', high:'#ef4444'};
+  const sc = {fbs:'#38bdf8', fbo:'#93c5fd', mixed:'#4ade80', low:'#4ade80', medium:'#fbbf24', high:'#ef4444'};
 
   container.innerHTML =
-    '<div style="border-top:1px solid #1a1a2e;padding-top:20px;">' +
+    '<div style="border-top:1px solid #1e2433;padding-top:20px;">' +
 
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">' +
       '<div style="width:36px;height:36px;background:linear-gradient(135deg,#0ea5e9,#38bdf8);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;">🏭</div>' +
       '<div><div style="font-size:15px;font-weight:700;color:#fff;">Стратегия поставок</div><div style="font-size:11px;color:#555;">AI-анализ топ-30 SKU ниши</div></div>' +
     '</div>' +
 
-    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid ' + (sc[r.model_color]||'#38bdf8') + ';">' +
+    '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid ' + (sc[r.model_color]||'#38bdf8') + ';">' +
       '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:6px;">РЕКОМЕНДУЕМАЯ МОДЕЛЬ</div>' +
       '<div style="font-size:16px;font-weight:700;color:' + (sc[r.model_color]||'#38bdf8') + ';margin-bottom:8px;">' + (r.model||'') + '</div>' +
       '<div style="font-size:13px;color:#ccc;line-height:1.6;">' + (r.model_detail||'') + '</div>' +
     '</div>' +
 
-    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #6c63ff;">' +
+    '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #3b82f6;">' +
       '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">РЕКОМЕНДАЦИИ ПО СКЛАДАМ</div>' +
       (r.warehouse_tips||[]).map((tip,i) =>
         '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">' +
-          '<div style="min-width:22px;height:22px;background:#6c63ff22;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#a78bfa;font-weight:700;">' + (i+1) + '</div>' +
+          '<div style="min-width:22px;height:22px;background:#3b82f622;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#93c5fd;font-weight:700;">' + (i+1) + '</div>' +
           '<div style="font-size:12px;color:#aaa;line-height:1.5;">' + tip + '</div>' +
         '</div>'
       ).join('') +
     '</div>' +
 
-    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #38bdf8;">' +
+    '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #38bdf8;">' +
       '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ОБЪЁМ ПЕРВОЙ ПОСТАВКИ</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">' +
         '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">МИНИМУМ</div><div style="font-size:15px;font-weight:700;color:#38bdf8;">' + (r.stock?.min_units||'—') + ' шт</div><div style="font-size:11px;color:#555;">' + fmtMoney(r.stock?.min_rub) + '</div></div>' +
@@ -4504,7 +4504,7 @@ function renderWarehouseStrategy(r, sym, rate) {
       '<div style="margin-top:12px;font-size:12px;color:#666;line-height:1.6;">' + (r.stock?.comment||'') + '</div>' +
     '</div>' +
 
-    '<div style="background:#0f0f13;border-radius:10px;padding:16px;border-left:3px solid #4ade80;">' +
+    '<div style="background:#0f1117;border-radius:10px;padding:16px;border-left:3px solid #4ade80;">' +
       '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:8px;">РИСКИ И ПРЕДУПРЕЖДЕНИЯ</div>' +
       (r.risks||[]).map(risk =>
         '<div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start;">' +
@@ -4525,7 +4525,7 @@ async function runAdAnalysis() {
   btn.disabled = true;
   btn.textContent = '⏳ Анализируем...';
   btn.style.opacity = '0.6';
-  var ab = document.getElementById('adBlock'); if (ab) { ab.style.display = 'block'; ab.scrollIntoView({behavior:'smooth'}); }  container.innerHTML = '<div style="background:#0f0f13;border-radius:12px;padding:20px;text-align:center;color:#555;"><div style="font-size:24px;margin-bottom:8px;">🤖</div><div style="font-size:13px;">Claude анализирует рекламную нишу...</div><div style="font-size:11px;margin-top:6px;color:#444;">Обычно занимает 15-20 секунд</div></div>';
+  var ab = document.getElementById('adBlock'); if (ab) { ab.style.display = 'block'; ab.scrollIntoView({behavior:'smooth'}); }  container.innerHTML = '<div style="background:#0f1117;border-radius:12px;padding:20px;text-align:center;color:#555;"><div style="font-size:24px;margin-bottom:8px;">🤖</div><div style="font-size:13px;">Claude анализирует рекламную нишу...</div><div style="font-size:11px;margin-top:6px;color:#444;">Обычно занимает 15-20 секунд</div></div>';
   try {
     const d = window.currentNiche;
     const cd = window._chartData || {};
@@ -4572,23 +4572,23 @@ function renderAdStrategy(data, sym, rate) {
     if (!rub) return '—';
     return Math.round(rub * rate).toLocaleString('ru-RU') + ' ' + sym;
   };
-  container.innerHTML = '<div style="border-top:1px solid #1a1a2e;padding-top:20px;margin-top:8px;">' +
+  container.innerHTML = '<div style="border-top:1px solid #1e2433;padding-top:20px;margin-top:8px;">' +
     '<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">' +
-      '<div style="width:36px;height:36px;background:linear-gradient(135deg,#6c63ff,#8b5cf6);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;">🎯</div>' +
+      '<div style="width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;">🎯</div>' +
       '<div><div style="font-size:15px;font-weight:700;color:#fff;">Рекламная стратегия</div><div style="font-size:11px;color:#555;">AI-анализ на основе данных ниши</div></div>' +
     '</div>' +
-    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid ' + (sc[r.load_level]||'#fbbf24') + ';">' +
+    '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid ' + (sc[r.load_level]||'#fbbf24') + ';">' +
       '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:6px;">РЕКЛАМНАЯ НАГРУЗКА</div>' +
       '<div style="font-size:16px;font-weight:700;color:' + (sc[r.load_level]||'#fbbf24') + ';margin-bottom:8px;">' + (sl[r.load_level]||'🟡 Умеренная') + '</div>' +
       '<div style="font-size:13px;color:#ccc;line-height:1.6;">' + (r.load_analysis||'') + '</div>' +
     '</div>' +
-    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #6c63ff;">' +
+    '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #3b82f6;">' +
       '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:6px;">СТРАТЕГИЯ ВХОДА</div>' +
-      '<div style="font-size:14px;font-weight:700;color:#a78bfa;margin-bottom:8px;">' + (r.strategy_type||'') + '</div>' +
+      '<div style="font-size:14px;font-weight:700;color:#93c5fd;margin-bottom:8px;">' + (r.strategy_type||'') + '</div>' +
       '<div style="font-size:13px;color:#ccc;line-height:1.6;">' + (r.strategy_detail||'') + '</div>' +
-      (r.strategy_steps ? '<div style="margin-top:12px;">' + r.strategy_steps.map((s,i) => '<div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-start;"><div style="min-width:22px;height:22px;background:#6c63ff22;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#a78bfa;font-weight:700;">' + (i+1) + '</div><div style="font-size:12px;color:#aaa;line-height:1.5;">' + s + '</div></div>').join('') + '</div>' : '') +
+      (r.strategy_steps ? '<div style="margin-top:12px;">' + r.strategy_steps.map((s,i) => '<div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-start;"><div style="min-width:22px;height:22px;background:#3b82f622;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#93c5fd;font-weight:700;">' + (i+1) + '</div><div style="font-size:12px;color:#aaa;line-height:1.5;">' + s + '</div></div>').join('') + '</div>' : '') +
     '</div>' +
-    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #38bdf8;">' +
+    '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;border-left:3px solid #38bdf8;">' +
       '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">РЕКОМЕНДУЕМЫЙ БЮДЖЕТ</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">' +
         '<div style="text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">СТАРТ (1-й мес)</div><div style="font-size:16px;font-weight:700;color:#38bdf8;">' + fmtMoney(budget.start_rub) + '</div></div>' +
@@ -4597,19 +4597,19 @@ function renderAdStrategy(data, sym, rate) {
       '</div>' +
       '<div style="margin-top:12px;font-size:12px;color:#666;line-height:1.6;">' + (budget.comment||'') + '</div>' +
     '</div>' +
-    '<div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:16px;border-left:3px solid #4ade80;">' +
+    '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:16px;border-left:3px solid #4ade80;">' +
       '<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">ПРОГНОЗ РЕЗУЛЬТАТОВ</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
         '<div style="background:#0a0a0f;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">CPM СТАРТ (новичок)</div><div style="font-size:15px;font-weight:700;color:#fbbf24;">' + fmtMoney(r.cpm_forecast && r.cpm_forecast.start_rub) + '</div></div>' +
         '<div style="background:#0a0a0f;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:10px;color:#555;margin-bottom:4px;">CPM ЧЕРЕЗ 2 МЕС</div><div style="font-size:15px;font-weight:700;color:#4ade80;">' + fmtMoney(r.cpm_forecast && r.cpm_forecast.month2_rub) + '</div></div>' +
       '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
-        '<div style="background:#0a0a0f;border-radius:8px;padding:12px;"><div style="font-size:11px;color:#a78bfa;font-weight:600;margin-bottom:8px;">📅 Месяц 1 — ожидать:</div>' + (m1.metrics||[]).map(m => '<div style="font-size:11px;color:#aaa;margin-bottom:4px;">• ' + m + '</div>').join('') + '</div>' +
+        '<div style="background:#0a0a0f;border-radius:8px;padding:12px;"><div style="font-size:11px;color:#93c5fd;font-weight:600;margin-bottom:8px;">📅 Месяц 1 — ожидать:</div>' + (m1.metrics||[]).map(m => '<div style="font-size:11px;color:#aaa;margin-bottom:4px;">• ' + m + '</div>').join('') + '</div>' +
         '<div style="background:#0a0a0f;border-radius:8px;padding:12px;"><div style="font-size:11px;color:#4ade80;font-weight:600;margin-bottom:8px;">📅 Месяц 2 — ожидать:</div>' + (m2.metrics||[]).map(m => '<div style="font-size:11px;color:#aaa;margin-bottom:4px;">• ' + m + '</div>').join('') + '</div>' +
       '</div>' +
       '<div style="margin-top:12px;font-size:12px;color:#666;line-height:1.6;">' + ((r.cpm_forecast && r.cpm_forecast.comment)||'') + '</div>' +
     '</div>' +
-    (window._adForecastId ? '<div style="border-top:1px solid #1a1a2e;padding-top:16px;"><div style="font-size:12px;color:#555;margin-bottom:10px;">📊 Введите реальные показатели через месяц для получения диагностики:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><button onclick="showMonitorForm(1)" style="background:#1a1a2e;color:#a78bfa;border:1px solid #6c63ff44;border-radius:8px;padding:10px;font-size:12px;cursor:pointer;">📊 Факт — месяц 1</button><button onclick="showMonitorForm(2)" style="background:#1a1a2e;color:#4ade80;border:1px solid #22c55e44;border-radius:8px;padding:10px;font-size:12px;cursor:pointer;">📊 Факт — месяц 2</button></div></div>' : '') +
+    (window._adForecastId ? '<div style="border-top:1px solid #1e2433;padding-top:16px;"><div style="font-size:12px;color:#555;margin-bottom:10px;">📊 Введите реальные показатели через месяц для получения диагностики:</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><button onclick="showMonitorForm(1)" style="background:#1e2433;color:#93c5fd;border:1px solid #3b82f644;border-radius:8px;padding:10px;font-size:12px;cursor:pointer;">📊 Факт — месяц 1</button><button onclick="showMonitorForm(2)" style="background:#1e2433;color:#4ade80;border:1px solid #22c55e44;border-radius:8px;padding:10px;font-size:12px;cursor:pointer;">📊 Факт — месяц 2</button></div></div>' : '') +
   '</div>';
 }
 
@@ -4623,14 +4623,14 @@ function showMonitorForm(month) {
     ['m'+month+'_pos','Позиция в поиске (средняя)','например 15'],
     ['m'+month+'_revenue','Выручка за месяц (₽)','например 120000']
   ];
-  container.innerHTML = '<div style="background:#0f0f13;border-radius:10px;padding:16px;border:1px solid #6c63ff44;">' +
+  container.innerHTML = '<div style="background:#0f1117;border-radius:10px;padding:16px;border:1px solid #3b82f644;">' +
     '<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:14px;">📊 Реальные показатели — Месяц ' + month + '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
-    fields.map(f => '<div><div style="font-size:11px;color:#555;margin-bottom:4px;">' + f[1] + '</div><input id="' + f[0] + '" type="number" step="0.01" placeholder="' + f[2] + '" style="width:100%;background:#0a0a0f;border:1px solid #1a1a2e;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;"></div>').join('') +
+    fields.map(f => '<div><div style="font-size:11px;color:#555;margin-bottom:4px;">' + f[1] + '</div><input id="' + f[0] + '" type="number" step="0.01" placeholder="' + f[2] + '" style="width:100%;background:#0a0a0f;border:1px solid #1e2433;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;"></div>').join('') +
     '</div>' +
     '<div style="display:flex;gap:8px;">' +
-      '<button onclick="submitMonitor(' + month + ')" style="background:linear-gradient(135deg,#6c63ff,#8b5cf6);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:12px;font-weight:600;cursor:pointer;flex:1;">🔍 Получить диагностику</button>' +
-      '<button onclick="clearMonitor()" style="background:#1a1a2e;color:#555;border:none;border-radius:8px;padding:10px 16px;font-size:12px;cursor:pointer;">✕</button>' +
+      '<button onclick="submitMonitor(' + month + ')" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:12px;font-weight:600;cursor:pointer;flex:1;">🔍 Получить диагностику</button>' +
+      '<button onclick="clearMonitor()" style="background:#1e2433;color:#555;border:none;border-radius:8px;padding:10px 16px;font-size:12px;cursor:pointer;">✕</button>' +
     '</div></div>';
 }
 
@@ -4655,13 +4655,13 @@ async function submitMonitor(month) {
     const diag = result.diagnosis;
     const sc = {good:'#4ade80', warning:'#fbbf24', bad:'#ef4444'};
     const se = {good:'✅', warning:'⚠️', bad:'🚨'};
-    container.innerHTML = '<div style="background:#0f0f13;border-radius:10px;padding:16px;border:1px solid ' + (sc[diag.status]||'#fbbf24') + '44;">' +
+    container.innerHTML = '<div style="background:#0f1117;border-radius:10px;padding:16px;border:1px solid ' + (sc[diag.status]||'#fbbf24') + '44;">' +
       '<div style="font-size:13px;font-weight:700;color:' + (sc[diag.status]||'#fbbf24') + ';margin-bottom:10px;">' + (se[diag.status]||'⚠️') + ' Диагностика месяц ' + month + '</div>' +
       '<div style="margin-bottom:14px;">' +
-      (diag.comparison||[]).map(c => '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1a1a2e;"><div style="font-size:12px;color:#aaa;">' + c.metric + '</div><div style="display:flex;gap:16px;font-size:12px;"><span style="color:#555;">План: ' + c.plan + '</span><span style="color:' + (sc[c.status]||'#aaa') + ';">Факт: ' + c.actual + '</span></div></div>').join('') +
+      (diag.comparison||[]).map(c => '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1e2433;"><div style="font-size:12px;color:#aaa;">' + c.metric + '</div><div style="display:flex;gap:16px;font-size:12px;"><span style="color:#555;">План: ' + c.plan + '</span><span style="color:' + (sc[c.status]||'#aaa') + ';">Факт: ' + c.actual + '</span></div></div>').join('') +
       '</div>' +
       '<div style="font-size:13px;color:#ccc;line-height:1.6;margin-bottom:12px;">' + (diag.summary||'') + '</div>' +
-      ((diag.recommendations||[]).length > 0 ? '<div style="margin-top:10px;"><div style="font-size:11px;color:#555;letter-spacing:1px;margin-bottom:8px;">РЕКОМЕНДАЦИИ:</div>' + diag.recommendations.map(rec => '<div style="display:flex;gap:8px;margin-bottom:6px;align-items:flex-start;"><div style="color:#6c63ff;font-size:14px;">→</div><div style="font-size:12px;color:#aaa;line-height:1.5;">' + rec + '</div></div>').join('') + '</div>' : '') +
+      ((diag.recommendations||[]).length > 0 ? '<div style="margin-top:10px;"><div style="font-size:11px;color:#555;letter-spacing:1px;margin-bottom:8px;">РЕКОМЕНДАЦИИ:</div>' + diag.recommendations.map(rec => '<div style="display:flex;gap:8px;margin-bottom:6px;align-items:flex-start;"><div style="color:#3b82f6;font-size:14px;">→</div><div style="font-size:12px;color:#aaa;line-height:1.5;">' + rec + '</div></div>').join('') + '</div>' : '') +
     '</div>';
   } catch(e) {
     container.innerHTML = '<div style="color:#ef4444;padding:12px;font-size:13px;">❌ ' + e.message + '</div>';
@@ -4671,26 +4671,26 @@ async function submitMonitor(month) {
 </div>
 </div>
 </div>
-  <div id="sticky-agents" style="display:none;position:fixed;bottom:0;left:220px;right:0;background:#0d0d14;border-top:1px solid #1a1a2e;padding:8px 24px;z-index:1000;box-shadow:0 -4px 20px rgba(0,0,0,0.5);">
+  <div id="sticky-agents" style="display:none;position:fixed;bottom:0;left:220px;right:0;background:#0f1117;border-top:1px solid #1e2433;padding:8px 24px;z-index:1000;box-shadow:0 -4px 20px rgba(0,0,0,0.5);">
     <div style="display:flex;align-items:center;gap:8px;">
       <span style="font-size:10px;color:#333;margin-right:4px;white-space:nowrap;">AI:</span>
       <!-- ПОЛНЫЙ АНАЛИЗ -->
-      <button onclick="runMasterAgent()" style="background:linear-gradient(135deg,#1a2a1a,#1a1a2a);border:1px solid #6c63ff66;border-radius:8px;padding:7px 16px;cursor:pointer;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:6px;">
+      <button onclick="runMasterAgent()" style="background:linear-gradient(135deg,#1a2a1a,#1a1a2a);border:1px solid #3b82f666;border-radius:8px;padding:7px 16px;cursor:pointer;color:#fff;font-size:12px;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:6px;">
         🧠 <span>Полный анализ</span>
       </button>
       <!-- РАЗДЕЛИТЕЛЬ -->
-      <div style="width:1px;background:#2a2a3a;height:24px;margin:0 4px;"></div>
+      <div style="width:1px;background:#2d3748;height:24px;margin:0 4px;"></div>
       <span style="font-size:10px;color:#444;white-space:nowrap;">Агенты:</span>
       <!-- ОТДЕЛЬНЫЕ АГЕНТЫ — иконки с tooltip -->
-      <div title="Глубокий анализ ниши" onclick="deepAnalysis(window.currentNiche);setTimeout(function(){var el=document.getElementById('deep-analysis-block');if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth'});}},500)" style="background:#0f1a0f;border:1px solid #22c55e44;border-radius:7px;padding:6px 10px;cursor:pointer;color:#22c55e;font-size:14px;">🔍</div>
-      <div title="Юнит-экономика" onclick="showUnitEconomy();setTimeout(function(){var el=document.getElementById('unit-economy-block');if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth'});}},300)" style="background:#1a150a;border:1px solid #f59e0b44;border-radius:7px;padding:6px 10px;cursor:pointer;color:#f59e0b;font-size:14px;">🧮</div>
-      <div title="Анализ рекламы" onclick="runAdAnalysis();setTimeout(function(){var el=document.getElementById('adBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0f0f1a;border:1px solid #6c63ff44;border-radius:7px;padding:6px 10px;cursor:pointer;color:#a78bfa;font-size:14px;">🎯</div>
-      <div title="Стратегия поставок" onclick="runWarehouseAnalysis();setTimeout(function(){var el=document.getElementById('warehouseBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0a1520;border:1px solid #38bdf844;border-radius:7px;padding:6px 10px;cursor:pointer;color:#38bdf8;font-size:14px;">📦</div>
-      <div title="Документы и сертификаты" onclick="runDocsAnalysis()" style="background:#1a120a;border:1px solid #d9770644;border-radius:7px;padding:6px 10px;cursor:pointer;color:#d97706;font-size:14px;">📋</div>
-      <div title="Контент для карточки" onclick="runContentAgent()" style="background:#1a0a14;border:1px solid #ec489944;border-radius:7px;padding:6px 10px;cursor:pointer;color:#ec4899;font-size:14px;">📝</div>
-      <div title="Поиск поставщиков" onclick="runSupplierAnalysis()" style="background:#0a1a0f;border:1px solid #34d39944;border-radius:7px;padding:6px 10px;cursor:pointer;color:#34d399;font-size:14px;">🏭</div>
+      <div title="Глубокий анализ ниши" onclick="deepAnalysis(window.currentNiche);setTimeout(function(){var el=document.getElementById('deep-analysis-block');if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth'});}},500)" style="background:#0f1a1f;border:1px solid #22c55e44;border-radius:7px;padding:6px 10px;cursor:pointer;color:#22c55e;font-size:14px;">🔍</div>
+      <div title="Юнит-экономика" onclick="showUnitEconomy();setTimeout(function(){var el=document.getElementById('unit-economy-block');if(el){el.style.display='block';el.scrollIntoView({behavior:'smooth'});}},300)" style="background:#1a2030;border:1px solid #f59e0b44;border-radius:7px;padding:6px 10px;cursor:pointer;color:#f59e0b;font-size:14px;">🧮</div>
+      <div title="Анализ рекламы" onclick="runAdAnalysis();setTimeout(function(){var el=document.getElementById('adBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0f1117;border:1px solid #3b82f644;border-radius:7px;padding:6px 10px;cursor:pointer;color:#93c5fd;font-size:14px;">🎯</div>
+      <div title="Стратегия поставок" onclick="runWarehouseAnalysis();setTimeout(function(){var el=document.getElementById('warehouseBlock');if(el)el.scrollIntoView({behavior:'smooth'});},500)" style="background:#0f1a2e;border:1px solid #38bdf844;border-radius:7px;padding:6px 10px;cursor:pointer;color:#38bdf8;font-size:14px;">📦</div>
+      <div title="Документы и сертификаты" onclick="runDocsAnalysis()" style="background:#1a2030;border:1px solid #d9770644;border-radius:7px;padding:6px 10px;cursor:pointer;color:#d97706;font-size:14px;">📋</div>
+      <div title="Контент для карточки" onclick="runContentAgent()" style="background:#0f1a2e;border:1px solid #ec489944;border-radius:7px;padding:6px 10px;cursor:pointer;color:#ec4899;font-size:14px;">📝</div>
+      <div title="Поиск поставщиков" onclick="runSupplierAnalysis()" style="background:#0f1a2e;border:1px solid #34d39944;border-radius:7px;padding:6px 10px;cursor:pointer;color:#34d399;font-size:14px;">🏭</div>
       <div style="flex:1;"></div>
-      <button id="sticky-wl-btn" onclick="toggleStickyWL(this)" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:7px;padding:6px 14px;cursor:pointer;color:#888;font-size:11px;white-space:nowrap;">&#128278; В работе</button>
+      <button id="sticky-wl-btn" onclick="toggleStickyWL(this)" style="background:#1e2433;border:1px solid #2d3748;border-radius:7px;padding:6px 14px;cursor:pointer;color:#888;font-size:11px;white-space:nowrap;">&#128278; В работе</button>
     </div>
   </div>
 </body>
@@ -5011,41 +5011,41 @@ class Handler(BaseHTTPRequestHandler):
 
                 html = f'''
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;">
-                  <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
+                  <div style="background:#0f1117;border-radius:10px;padding:16px;text-align:center;">
                     <div style="font-size:11px;color:#555;margin-bottom:8px;">ВЕРДИКТ</div>
                     <div style="font-size:22px;font-weight:700;color:{ai["verdict_color"]};">{ai["verdict"]}</div>
                     <div style="font-size:11px;color:#555;margin-top:6px;">{ai["verdict_desc"]}</div>
                   </div>
-                  <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
+                  <div style="background:#0f1117;border-radius:10px;padding:16px;text-align:center;">
                     <div style="font-size:11px;color:#555;margin-bottom:8px;">БЮДЖЕТ НА ВХОД</div>
                     <div style="font-size:22px;font-weight:700;color:#fff;">{ai["entry_budget"]:,.0f} {sym}</div>
                     <div style="font-size:11px;color:#555;margin-top:6px;">минимальная партия 30 шт</div>
                   </div>
-                  <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
+                  <div style="background:#0f1117;border-radius:10px;padding:16px;text-align:center;">
                     <div style="font-size:11px;color:#555;margin-bottom:8px;">БЮДЖЕТ НА РЕКЛАМУ</div>
                     <div style="font-size:22px;font-weight:700;color:#fff;">{ai["ad_budget"]:,.0f} {sym}</div>
                     <div style="font-size:11px;color:#555;margin-top:6px;">первый месяц</div>
                   </div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-                  <div style="background:#0f0f13;border-radius:10px;padding:16px;">
+                  <div style="background:#0f1117;border-radius:10px;padding:16px;">
                     <div style="font-size:11px;color:#555;margin-bottom:4px;">ТОЧКА БЕЗУБЫТОЧНОСТИ</div>
                     <div style="font-size:18px;font-weight:700;color:#fff;">{ai["breakeven"]:,.0f} {sym}</div>
                   </div>
-                  <div style="background:#0f0f13;border-radius:10px;padding:16px;">
+                  <div style="background:#0f1117;border-radius:10px;padding:16px;">
                     <div style="font-size:11px;color:#555;margin-bottom:4px;">ПРОГНОЗ ROI (3 мес)</div>
                     <div style="font-size:18px;font-weight:700;color:#22c55e;">{ai["roi_forecast"]}</div>
                   </div>
                 </div>
-                <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">
+                <div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">
                   <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">💰 Финансовый план</div>
                   <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai["financial_plan"]}</div>
                 </div>
-                <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">
+                <div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">
                   <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">🏆 Конкурентный анализ</div>
                   <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai["competitive_analysis"]}</div>
                 </div>
-                <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">
+                <div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">
                   <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">🎯 Свободные сегменты</div>
                   <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai["free_segments"]}</div>
                 </div>
@@ -5053,25 +5053,25 @@ class Handler(BaseHTTPRequestHandler):
                   <div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:8px;">✅ Рекомендация</div>
                   <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai["recommendation"]}</div>
                 </div>
-                <div style="background:#1a1500;border:1px solid #f59e0b33;border-radius:10px;padding:16px;">
+                <div style="background:#1a2010;border:1px solid #f59e0b33;border-radius:10px;padding:16px;">
                   <div style="font-size:13px;font-weight:600;color:#f59e0b;margin-bottom:12px;">📅 Сезонное планирование</div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-                    <div style="background:#0f0f13;border-radius:8px;padding:12px;">
+                    <div style="background:#0f1117;border-radius:8px;padding:12px;">
                       <div style="font-size:10px;color:#555;margin-bottom:4px;">ПИК ПРОДАЖ</div>
                       <div style="font-size:13px;color:#22c55e;font-weight:600;">{ai.get("season_peak_months","—")}</div>
                     </div>
-                    <div style="background:#0f0f13;border-radius:8px;padding:12px;">
+                    <div style="background:#0f1117;border-radius:8px;padding:12px;">
                       <div style="font-size:10px;color:#555;margin-bottom:4px;">СПАД ПРОДАЖ</div>
                       <div style="font-size:13px;color:#ef4444;font-weight:600;">{ai.get("season_low_months","—")}</div>
                     </div>
-                    <div style="background:#0f0f13;border-radius:8px;padding:12px;">
+                    <div style="background:#0f1117;border-radius:8px;padding:12px;">
                       <div style="font-size:10px;color:#555;margin-bottom:4px;">КОГДА ЗАКУПАТЬ</div>
                       <div style="font-size:13px;color:#f59e0b;font-weight:600;">{ai.get("purchase_months","—")}</div>
                       <div style="font-size:10px;color:#555;margin-top:2px;">с учётом 45 дн доставки</div>
                     </div>
-                    <div style="background:#0f0f13;border-radius:8px;padding:12px;">
+                    <div style="background:#0f1117;border-radius:8px;padding:12px;">
                       <div style="font-size:10px;color:#555;margin-bottom:4px;">ЗАПУСК РЕКЛАМЫ</div>
-                      <div style="font-size:13px;color:#a78bfa;font-weight:600;">{ai.get("ad_launch_months","—")}</div>
+                      <div style="font-size:13px;color:#93c5fd;font-weight:600;">{ai.get("ad_launch_months","—")}</div>
                     </div>
                   </div>
                   <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -6524,23 +6524,23 @@ class Handler(BaseHTTPRequestHandler):
                 html += '<div style="font-size:13px;font-weight:600;color:#f59e0b;margin-bottom:10px;">🔥 Горячие тренды</div>'
                 for t in ai.get('hot_trends', []):
                     uc = '#ef4444' if t.get('urgency')=='высокая' else '#f59e0b' if t.get('urgency')=='средняя' else '#34d399'
-                    html += f'<div style="background:#13131a;border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid {uc};">'
+                    html += f'<div style="background:#1e2433;border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid {uc};">'
                     html += f'<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
                     html += f'<div style="font-size:13px;font-weight:600;color:#e2e8f0;">{t.get("category","")}</div>'
                     html += f'<span style="font-size:10px;color:{uc};background:{uc}22;border-radius:4px;padding:2px 6px;">{t.get("urgency","")}</span>'
                     html += f'</div><div style="font-size:12px;color:#94a3b8;margin-bottom:3px;">📊 {t.get("why_trending","")}</div>'
                     html += f'<div style="font-size:12px;color:#34d399;">→ {t.get("opportunity","")}</div></div>'
 
-                html += '<div style="font-size:13px;font-weight:600;color:#a78bfa;margin:14px 0 10px;">💎 Недооценённые ниши</div>'
+                html += '<div style="font-size:13px;font-weight:600;color:#93c5fd;margin:14px 0 10px;">💎 Недооценённые ниши</div>'
                 for g in ai.get('hidden_gems', []):
-                    html += f'<div style="background:#13102a;border-radius:8px;padding:10px;margin-bottom:8px;">'
+                    html += f'<div style="background:#1a2035;border-radius:8px;padding:10px;margin-bottom:8px;">'
                     html += f'<div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:4px;">{g.get("name","")}</div>'
                     html += f'<div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">{g.get("why_undervalued","")}</div>'
-                    html += f'<div style="font-size:12px;color:#a78bfa;">Потенциал: {g.get("potential","")}</div></div>'
+                    html += f'<div style="font-size:12px;color:#93c5fd;">Потенциал: {g.get("potential","")}</div></div>'
 
                 act_now = ai.get('act_now', [])
                 if act_now:
-                    html += '<div style="background:#0f1a0f;border:1px solid #22c55e33;border-radius:8px;padding:12px;margin-top:4px;">'
+                    html += '<div style="background:#0f1a1f;border:1px solid #22c55e33;border-radius:8px;padding:12px;margin-top:4px;">'
                     html += '<div style="font-size:12px;font-weight:600;color:#22c55e;margin-bottom:6px;">⚡ Добавить в работу прямо сейчас:</div>'
                     html += ''.join([f'<span style="display:inline-block;background:#22c55e22;color:#22c55e;border-radius:4px;padding:3px 8px;font-size:12px;margin:2px;">{n}</span>' for n in act_now])
                     html += f'<div style="font-size:12px;color:#555;margin-top:8px;">{ai.get("market_insight","")}</div></div>'
@@ -6619,7 +6619,7 @@ class Handler(BaseHTTPRequestHandler):
                 ai = json.loads(msg.content[0].text.strip().replace('```json','').replace('```','').strip())
 
                 pc = ai.get('portfolio_color','#f59e0b')
-                html = f'''<div style="background:#0f0f13;border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid {pc}33;">
+                html = f'''<div style="background:#0f1117;border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid {pc}33;">
                   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
                     <div style="font-size:13px;font-weight:600;color:{pc};">Портфель: {ai.get("portfolio_status","—").upper()}</div>
                   </div>
@@ -6629,7 +6629,7 @@ class Handler(BaseHTTPRequestHandler):
                 for na in ai.get('niches_analysis', []):
                     sc = na.get('status_color','#f59e0b')
                     pc2 = na.get('priority_color','#f59e0b')
-                    html += f'''<div style="background:#13131a;border-radius:10px;padding:12px;margin-bottom:10px;border-left:3px solid {sc};">
+                    html += f'''<div style="background:#1e2433;border-radius:10px;padding:12px;margin-bottom:10px;border-left:3px solid {sc};">
                       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                         <div style="font-size:13px;font-weight:600;color:#e2e8f0;">{na.get("name","")}</div>
                         <div style="display:flex;gap:6px;">
@@ -6641,7 +6641,7 @@ class Handler(BaseHTTPRequestHandler):
                       <div style="font-size:12px;color:#34d399;">→ {na.get("action","")}</div>
                     </div>'''
 
-                html += f'''<div style="background:#1a1a0a;border:1px solid #f59e0b33;border-radius:10px;padding:14px;margin-top:4px;">
+                html += f'''<div style="background:#1a2010;border:1px solid #f59e0b33;border-radius:10px;padding:14px;margin-top:4px;">
                   <div style="font-size:12px;font-weight:600;color:#f59e0b;margin-bottom:6px;">🎯 Приоритет: {ai.get("top_priority","")}</div>
                   <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai.get("portfolio_recommendation","")}</div>
                 </div>'''
@@ -6781,26 +6781,26 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 sp = ai.get('seasonal_plan', {})
                 vc = ai.get('verdict_color', '#eab308')
 
-                html = f"""<div style="border-top:1px solid #6c63ff33;padding-top:20px;margin-top:8px;">
+                html = f"""<div style="border-top:1px solid #3b82f633;padding-top:20px;margin-top:8px;">
 
                   <!-- ВЕРДИКТ + ФИНАНСЫ -->
                   <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
-                    <div style="background:#0f0f13;border-radius:10px;padding:14px;text-align:center;border:1px solid {vc}44;">
+                    <div style="background:#0f1117;border-radius:10px;padding:14px;text-align:center;border:1px solid {vc}44;">
                       <div style="font-size:10px;color:#555;margin-bottom:4px;">ВЕРДИКТ</div>
                       <div style="font-size:20px;font-weight:700;color:{vc};">{ai.get('final_verdict','—')}</div>
                       <div style="font-size:10px;color:#555;margin-top:3px;">{ai.get('confidence','—')}</div>
                     </div>
-                    <div style="background:#0f0f13;border-radius:10px;padding:14px;text-align:center;">
+                    <div style="background:#0f1117;border-radius:10px;padding:14px;text-align:center;">
                       <div style="font-size:10px;color:#555;margin-bottom:4px;">ТЕСТ ПАРТИЯ</div>
                       <div style="font-size:16px;font-weight:700;color:#fff;">{fm.get('test_batch_units',0)} шт</div>
                       <div style="font-size:11px;color:#64748b;">{fm.get('test_batch_cost',0):,.0f} {sym}</div>
                     </div>
-                    <div style="background:#0f0f13;border-radius:10px;padding:14px;text-align:center;">
+                    <div style="background:#0f1117;border-radius:10px;padding:14px;text-align:center;">
                       <div style="font-size:10px;color:#555;margin-bottom:4px;">ОКУПАЕМОСТЬ</div>
-                      <div style="font-size:16px;font-weight:700;color:#a78bfa;">{fm.get('payback_months','?')} мес</div>
+                      <div style="font-size:16px;font-weight:700;color:#93c5fd;">{fm.get('payback_months','?')} мес</div>
                       <div style="font-size:11px;color:#64748b;">ROI {fm.get('roi_3months','?')}</div>
                     </div>
-                    <div style="background:#0f0f13;border-radius:10px;padding:14px;text-align:center;">
+                    <div style="background:#0f1117;border-radius:10px;padding:14px;text-align:center;">
                       <div style="font-size:10px;color:#555;margin-bottom:4px;">РЕКЛАМА/МЕС</div>
                       <div style="font-size:16px;font-weight:700;color:#f59e0b;">{fm.get('monthly_ad_budget',0):,.0f} {sym}</div>
                       <div style="font-size:11px;color:#64748b;">безубыток {fm.get('breakeven_units',0)} шт</div>
@@ -6808,42 +6808,42 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                   </div>
 
                   <!-- АНАЛИЗ РЫНКА -->
-                  <div style="background:#13102a;border-radius:10px;padding:16px;margin-bottom:12px;">
-                    <div style="font-size:13px;font-weight:600;color:#a78bfa;margin-bottom:8px;">📊 Анализ рынка</div>
+                  <div style="background:#1a2035;border-radius:10px;padding:16px;margin-bottom:12px;">
+                    <div style="font-size:13px;font-weight:600;color:#93c5fd;margin-bottom:8px;">📊 Анализ рынка</div>
                     <div style="font-size:13px;color:#e2e8f0;line-height:1.7;">{ai.get('market_analysis','')}</div>
                   </div>
 
                   <!-- КОНКУРЕНТЫ -->
-                  <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">
+                  <div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">
                     <div style="font-size:13px;font-weight:600;color:#38bdf8;margin-bottom:8px;">🏆 Конкурентный ландшафт</div>
                     <div style="font-size:13px;color:#e2e8f0;line-height:1.7;">{ai.get('competitive_landscape','')}</div>
                   </div>
 
                   <!-- СТРАТЕГИЯ ВХОДА -->
-                  <div style="background:#0f1a0a;border:1px solid #22c55e33;border-radius:10px;padding:16px;margin-bottom:12px;">
+                  <div style="background:#0f1a2e;border:1px solid #22c55e33;border-radius:10px;padding:16px;margin-bottom:12px;">
                     <div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:8px;">🎯 Стратегия входа</div>
                     <div style="font-size:13px;color:#e2e8f0;line-height:1.7;">{ai.get('entry_strategy','')}</div>
                   </div>
 
                   <!-- СЕЗОННОСТЬ -->
-                  <div style="background:#1a1500;border:1px solid #f59e0b33;border-radius:10px;padding:16px;margin-bottom:12px;">
+                  <div style="background:#1a2010;border:1px solid #f59e0b33;border-radius:10px;padding:16px;margin-bottom:12px;">
                     <div style="font-size:13px;font-weight:600;color:#f59e0b;margin-bottom:10px;">📅 Сезонный план</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;">
-                      <div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;">
+                      <div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;">
                         <div style="font-size:10px;color:#555;margin-bottom:3px;">ПИК</div>
                         <div style="font-size:12px;color:#22c55e;font-weight:600;">{sp.get('peak','—')}</div>
                       </div>
-                      <div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;">
+                      <div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;">
                         <div style="font-size:10px;color:#555;margin-bottom:3px;">СПАД</div>
                         <div style="font-size:12px;color:#ef4444;font-weight:600;">{sp.get('low','—')}</div>
                       </div>
-                      <div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;">
+                      <div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;">
                         <div style="font-size:10px;color:#555;margin-bottom:3px;">ЗАКУПКА</div>
                         <div style="font-size:12px;color:#f59e0b;font-weight:600;">{sp.get('buy_date','—')}</div>
                       </div>
-                      <div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;">
+                      <div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;">
                         <div style="font-size:10px;color:#555;margin-bottom:3px;">РЕКЛАМА</div>
-                        <div style="font-size:12px;color:#a78bfa;font-weight:600;">{sp.get('ad_date','—')}</div>
+                        <div style="font-size:12px;color:#93c5fd;font-weight:600;">{sp.get('ad_date','—')}</div>
                       </div>
                     </div>
                   </div>
@@ -6855,7 +6855,7 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                     cost_val = s.get('cost', 0)
                     try: cost_fmt = f"{float(cost_val):,.0f}"
                     except: cost_fmt = str(cost_val)
-                    action_html += f'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;padding:10px;background:#13131a;border-radius:8px;"><div style="background:#6c63ff;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">{s.get("step","")}</div><div style="flex:1;"><div style="font-size:13px;color:#e2e8f0;margin-bottom:4px;">{s.get("what","")}</div><div style="display:flex;gap:12px;font-size:11px;color:#64748b;"><span>⏱ {s.get("when","")}</span><span>💰 {cost_fmt} {sym}</span><span style="color:#34d399;">→ {s.get("result","")}</span></div></div></div>'
+                    action_html += f'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;padding:10px;background:#1e2433;border-radius:8px;"><div style="background:#3b82f6;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">{s.get("step","")}</div><div style="flex:1;"><div style="font-size:13px;color:#e2e8f0;margin-bottom:4px;">{s.get("what","")}</div><div style="display:flex;gap:12px;font-size:11px;color:#64748b;"><span>⏱ {s.get("when","")}</span><span>💰 {cost_fmt} {sym}</span><span style="color:#34d399;">→ {s.get("result","")}</span></div></div></div>'
 
                 risks_html = ""
                 for r in ai.get('risks', []):
@@ -6866,26 +6866,26 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                     opps_html += f'<div style="font-size:12px;color:#aaa;padding:5px 0;border-bottom:1px solid #1a2a1a;">• {o}</div>'
 
                 html += f"""
-                  <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">
+                  <div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">
                     <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:12px;">🗓 План действий</div>
                     {action_html}
                   </div>
 
                   <!-- РИСКИ И ВОЗМОЖНОСТИ -->
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-                    <div style="background:#1a0f0f;border:1px solid #ef444433;border-radius:10px;padding:16px;">
+                    <div style="background:#1a1f2e;border:1px solid #ef444433;border-radius:10px;padding:16px;">
                       <div style="font-size:13px;font-weight:600;color:#ef4444;margin-bottom:10px;">⚠️ Риски</div>
                       {risks_html}
                     </div>
-                    <div style="background:#0f1a0f;border:1px solid #22c55e33;border-radius:10px;padding:16px;">
+                    <div style="background:#0f1a1f;border:1px solid #22c55e33;border-radius:10px;padding:16px;">
                       <div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:10px;">✨ Возможности</div>
                       {opps_html}
                     </div>
                   </div>
 
                   <!-- ФИНАЛЬНАЯ РЕКОМЕНДАЦИЯ -->
-                  <div style="background:linear-gradient(135deg,#13102a,#0f1a0f);border:1px solid #6c63ff44;border-radius:10px;padding:16px;">
-                    <div style="font-size:13px;font-weight:600;color:#a78bfa;margin-bottom:8px;">🧠 Финальная рекомендация</div>
+                  <div style="background:linear-gradient(135deg,#1a2035,#0f1a1f);border:1px solid #3b82f644;border-radius:10px;padding:16px;">
+                    <div style="font-size:13px;font-weight:600;color:#93c5fd;margin-bottom:8px;">🧠 Финальная рекомендация</div>
                     <div style="font-size:13px;color:#e2e8f0;line-height:1.7;">{ai.get('final_recommendation','')}</div>
                   </div>
                 </div>"""

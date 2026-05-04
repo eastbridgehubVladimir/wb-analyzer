@@ -5004,7 +5004,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()
-                self.wfile.write(json.dumps({'html': html}, ensure_ascii=False).encode('utf-8'))
+                self.wfile.write(json.dumps({'html': html, 'raw': ai}, ensure_ascii=False).encode('utf-8'))
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')
@@ -6385,84 +6385,257 @@ class Handler(BaseHTTPRequestHandler):
                 results = body.get('results', {})
 
                 client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY',''))
-                prompt = f"""Ты старший аналитик по торговле на Wildberries. На основе данных от всех аналитических модулей составь итоговый стратегический отчёт по нише.
+
+                # Собираем реальные данные от агентов прямо на бэкенде
+                import urllib.request as urlreq
+
+                def call_agent_get(path):
+                    try:
+                        req = urlreq.Request(f'http://localhost:8080{path}')
+                        with urlreq.urlopen(req, timeout=30) as r:
+                            return json.loads(r.read().decode('utf-8'))
+                    except: return {}
+
+                def call_agent_post(path, data):
+                    try:
+                        payload = json.dumps(data, ensure_ascii=False).encode('utf-8')
+                        req = urlreq.Request(f'http://localhost:8080{path}', data=payload,
+                            headers={'Content-Type': 'application/json'})
+                        with urlreq.urlopen(req, timeout=30) as r:
+                            return json.loads(r.read().decode('utf-8'))
+                    except: return {}
+
+                from urllib.parse import urlencode
+                deep_params = urlencode({'name': niche_name, 'revenue': revenue,
+                    'avg_price': avg_price, 'commission': body.get('commission',0),
+                    'buyout_pct': buyout_pct, 'profit_pct': profit_pct,
+                    'turnover': turnover, 'sellers': sellers,
+                    'sellers_with_sales': sellers_with_sales,
+                    'currency': body.get('currency','rub'),
+                    'rate': body.get('rate',1), 'symbol': sym})
+                deep_data = call_agent_get(f'/deep-analysis?{deep_params}')
+
+                wh_stats = body.get('warehouse_stats') or results.get('warehouse', {})
+                wh_data = call_agent_post('/warehouse-analysis', {
+                    'niche_name': niche_name, 'avg_price': avg_price,
+                    'revenue': revenue, 'turnover': turnover,
+                    'buyout_pct': buyout_pct, 'profit_pct': profit_pct,
+                    'commission': body.get('commission',0),
+                    'warehouse_stats': wh_stats,
+                    'currency': body.get('currency','rub'),
+                    'rate': body.get('rate',1), 'symbol': sym})
+
+                chart_data = body.get('chart_data', {})
+                ad_data = call_agent_post('/ad-analysis', {
+                    'niche_name': niche_name,
+                    'avg_cpm': chart_data.get('avg_cpm', 0),
+                    'ad_pct': chart_data.get('ad_pct', 0),
+                    'cpm_status': chart_data.get('cpm_status', ''),
+                    'ad_verdict': chart_data.get('ad_verdict', ''),
+                    'avg_price': avg_price, 'revenue': revenue,
+                    'currency': body.get('currency','rub'),
+                    'rate': body.get('rate',1), 'symbol': sym})
+
+                # Извлекаем raw данные
+                deep_raw = deep_data.get('raw', {})
+                wh_raw = wh_data.get('analysis', wh_data)
+                ad_raw = ad_data.get('analysis', ad_data)
+
+                activity_pct = round(sellers_with_sales/sellers*100) if sellers > 0 else 0
+                avg_rev_seller = round(revenue/sellers_with_sales) if sellers_with_sales > 0 else 0
+
+                prompt = f"""Ты старший аналитик по торговле на Wildberries. Сделай ПОЛНЫЙ профессиональный анализ ниши на основе всех собранных данных.
 
 НИША: {display_name}
-КЛЮЧЕВЫЕ МЕТРИКИ:
-- Выручка ниши: {revenue:,.0f} ₽/мес
+ПЕРИОД АНАЛИЗА: последние 12 месяцев
+
+═══ МЕТРИКИ НИШИ ═══
+- Выручка: {revenue:,.0f} ₽/мес
 - Средняя цена: {avg_price:,.0f} ₽
 - Маржинальность: {profit_pct*100:.0f}%
 - Выкуп: {buyout_pct*100:.0f}%
 - Оборачиваемость: {turnover} дней
-- Продавцов: {sellers} (активных: {sellers_with_sales})
+- Всего продавцов: {sellers}
+- Активных продавцов: {sellers_with_sales} ({activity_pct}%)
+- Средняя выручка на продавца: {avg_rev_seller:,.0f} ₽/мес
 
-ДАННЫЕ ОТ АГЕНТОВ: {json.dumps(results, ensure_ascii=False)[:2000]}
+═══ ДАННЫЕ ГЛУБОКОГО АНАЛИЗА ═══
+Вердикт: {deep_raw.get('verdict', 'нет данных')}
+Бюджет входа: {deep_raw.get('entry_budget', 0):,.0f} {sym}
+ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
+Конкурентная ситуация: {deep_raw.get('competitive_analysis', 'нет данных')}
+Свободные сегменты: {deep_raw.get('free_segments', 'нет данных')}
+Сезон пик: {deep_raw.get('season_peak_months', 'нет данных')}
+Сезон спад: {deep_raw.get('season_low_months', 'нет данных')}
+Когда закупать: {deep_raw.get('purchase_months', 'нет данных')}
+Сезонный риск: {deep_raw.get('season_risk', 'нет данных')}
 
-Составь итоговый отчёт в формате JSON:
+═══ ДАННЫЕ РЕКЛАМЫ ═══
+{json.dumps(ad_raw, ensure_ascii=False)[:500] if ad_raw else 'нет данных'}
+
+═══ ДАННЫЕ ПОСТАВОК ═══
+Рекомендуемая модель: {wh_raw.get('model', 'нет данных') if isinstance(wh_raw, dict) else 'нет данных'}
+
+Составь ПОЛНЫЙ профессиональный отчёт в JSON формате:
 {{
   "final_verdict": "ВХОДИТЬ" или "ТЕСТИРОВАТЬ" или "НЕ ВХОДИТЬ",
   "verdict_color": "#22c55e" или "#eab308" или "#ef4444",
   "confidence": "высокая/средняя/низкая",
-  "summary": "2-3 предложения — главный вывод по нише",
+  "market_analysis": "профессиональный анализ рынка: динамика за период, концентрация, барьеры входа, 3-4 предложения с цифрами",
+  "competitive_landscape": "конкретный анализ конкурентов топ-20: кто доминирует, их слабые места, свободные ниши с конкретными ценовыми сегментами",
+  "entry_strategy": "конкретная стратегия входа: какой сегмент, какая цена, какое УТП, почему именно так",
+  "financial_model": {{
+    "test_batch_units": число,
+    "test_batch_cost": число в {sym},
+    "monthly_ad_budget": число в {sym},
+    "breakeven_units": число,
+    "breakeven_revenue": число в {sym},
+    "roi_3months": "X-Y%",
+    "payback_months": число
+  }},
+  "seasonal_plan": {{
+    "peak": "месяцы пика",
+    "low": "месяцы спада",
+    "buy_date": "когда закупать с учётом 45 дней",
+    "ad_date": "когда запускать рекламу",
+    "risk_level": "низкий/средний/высокий"
+  }},
   "action_plan": [
-    {{"step": 1, "action": "конкретное действие", "deadline": "срок", "budget": "бюджет"}},
-    {{"step": 2, "action": "конкретное действие", "deadline": "срок", "budget": "бюджет"}},
-    {{"step": 3, "action": "конкретное действие", "deadline": "срок", "budget": "бюджет"}},
-    {{"step": 4, "action": "конкретное действие", "deadline": "срок", "budget": "бюджет"}},
-    {{"step": 5, "action": "конкретное действие", "deadline": "срок", "budget": "бюджет"}}
+    {{"step": 1, "what": "конкретное действие уже выполненное Claude", "when": "срок", "cost": число, "result": "ожидаемый результат"}},
+    {{"step": 2, "what": "конкретное действие", "when": "срок", "cost": число, "result": "результат"}},
+    {{"step": 3, "what": "конкретное действие", "when": "срок", "cost": число, "result": "результат"}},
+    {{"step": 4, "what": "конкретное действие", "when": "срок", "cost": число, "result": "результат"}},
+    {{"step": 5, "what": "конкретное действие", "when": "срок", "cost": число, "result": "результат"}}
   ],
-  "key_risks": ["риск 1", "риск 2", "риск 3"],
-  "key_opportunities": ["возможность 1", "возможность 2", "возможность 3"],
-  "total_budget_min": число в {sym},
-  "total_budget_opt": число в {sym},
-  "payback_months": число
+  "risks": [
+    {{"risk": "конкретный риск", "probability": "высокая/средняя/низкая", "mitigation": "как снизить"}},
+    {{"risk": "риск 2", "probability": "...", "mitigation": "..."}},
+    {{"risk": "риск 3", "probability": "...", "mitigation": "..."}}
+  ],
+  "opportunities": ["конкретная возможность 1 с цифрами", "возможность 2", "возможность 3"],
+  "final_recommendation": "финальная рекомендация 3-4 предложения — конкретно что делать, когда, с каким бюджетом и почему"
 }}
-Только JSON без markdown."""
+Только JSON без markdown. Все суммы в {sym}."""
 
                 msg = client.messages.create(
                     model='claude-sonnet-4-5',
-                    max_tokens=2000,
+                    max_tokens=3000,
                     messages=[{'role':'user','content':prompt}]
                 )
                 ai = json.loads(msg.content[0].text.strip().replace('```json','').replace('```','').strip())
 
-                html = f'''
-                <div style="border-top:1px solid #6c63ff33;padding-top:20px;margin-top:8px;">
-                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
-                    <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;border:1px solid {ai["verdict_color"]}33;">
-                      <div style="font-size:10px;color:#555;margin-bottom:6px;">ИТОГОВЫЙ ВЕРДИКТ</div>
-                      <div style="font-size:24px;font-weight:700;color:{ai["verdict_color"]};">{ai["final_verdict"]}</div>
-                      <div style="font-size:10px;color:#555;margin-top:4px;">уверенность: {ai.get("confidence","—")}</div>
+                fm = ai.get('financial_model', {})
+                sp = ai.get('seasonal_plan', {})
+                vc = ai.get('verdict_color', '#eab308')
+
+                html = f"""<div style="border-top:1px solid #6c63ff33;padding-top:20px;margin-top:8px;">
+
+                  <!-- ВЕРДИКТ + ФИНАНСЫ -->
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+                    <div style="background:#0f0f13;border-radius:10px;padding:14px;text-align:center;border:1px solid {vc}44;">
+                      <div style="font-size:10px;color:#555;margin-bottom:4px;">ВЕРДИКТ</div>
+                      <div style="font-size:20px;font-weight:700;color:{vc};">{ai.get('final_verdict','—')}</div>
+                      <div style="font-size:10px;color:#555;margin-top:3px;">{ai.get('confidence','—')}</div>
                     </div>
-                    <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
-                      <div style="font-size:10px;color:#555;margin-bottom:6px;">МИНИМАЛЬНЫЙ БЮДЖЕТ</div>
-                      <div style="font-size:20px;font-weight:700;color:#fff;">{ai.get("total_budget_min",0):,.0f} {sym}</div>
+                    <div style="background:#0f0f13;border-radius:10px;padding:14px;text-align:center;">
+                      <div style="font-size:10px;color:#555;margin-bottom:4px;">ТЕСТ ПАРТИЯ</div>
+                      <div style="font-size:16px;font-weight:700;color:#fff;">{fm.get('test_batch_units',0)} шт</div>
+                      <div style="font-size:11px;color:#64748b;">{fm.get('test_batch_cost',0):,.0f} {sym}</div>
                     </div>
-                    <div style="background:#0f0f13;border-radius:10px;padding:16px;text-align:center;">
-                      <div style="font-size:10px;color:#555;margin-bottom:6px;">ОПТИМАЛЬНЫЙ БЮДЖЕТ</div>
-                      <div style="font-size:20px;font-weight:700;color:#a78bfa;">{ai.get("total_budget_opt",0):,.0f} {sym}</div>
-                      <div style="font-size:10px;color:#555;margin-top:4px;">окупаемость ~{ai.get("payback_months","?")} мес</div>
+                    <div style="background:#0f0f13;border-radius:10px;padding:14px;text-align:center;">
+                      <div style="font-size:10px;color:#555;margin-bottom:4px;">ОКУПАЕМОСТЬ</div>
+                      <div style="font-size:16px;font-weight:700;color:#a78bfa;">{fm.get('payback_months','?')} мес</div>
+                      <div style="font-size:11px;color:#64748b;">ROI {fm.get('roi_3months','?')}</div>
+                    </div>
+                    <div style="background:#0f0f13;border-radius:10px;padding:14px;text-align:center;">
+                      <div style="font-size:10px;color:#555;margin-bottom:4px;">РЕКЛАМА/МЕС</div>
+                      <div style="font-size:16px;font-weight:700;color:#f59e0b;">{fm.get('monthly_ad_budget',0):,.0f} {sym}</div>
+                      <div style="font-size:11px;color:#64748b;">безубыток {fm.get('breakeven_units',0)} шт</div>
                     </div>
                   </div>
+
+                  <!-- АНАЛИЗ РЫНКА -->
                   <div style="background:#13102a;border-radius:10px;padding:16px;margin-bottom:12px;">
-                    <div style="font-size:13px;font-weight:600;color:#a78bfa;margin-bottom:8px;">📊 Главный вывод</div>
-                    <div style="font-size:13px;color:#e2e8f0;line-height:1.7;">{ai.get("summary","")}</div>
+                    <div style="font-size:13px;font-weight:600;color:#a78bfa;margin-bottom:8px;">📊 Анализ рынка</div>
+                    <div style="font-size:13px;color:#e2e8f0;line-height:1.7;">{ai.get('market_analysis','')}</div>
                   </div>
+
+                  <!-- КОНКУРЕНТЫ -->
+                  <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">
+                    <div style="font-size:13px;font-weight:600;color:#38bdf8;margin-bottom:8px;">🏆 Конкурентный ландшафт</div>
+                    <div style="font-size:13px;color:#e2e8f0;line-height:1.7;">{ai.get('competitive_landscape','')}</div>
+                  </div>
+
+                  <!-- СТРАТЕГИЯ ВХОДА -->
+                  <div style="background:#0f1a0a;border:1px solid #22c55e33;border-radius:10px;padding:16px;margin-bottom:12px;">
+                    <div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:8px;">🎯 Стратегия входа</div>
+                    <div style="font-size:13px;color:#e2e8f0;line-height:1.7;">{ai.get('entry_strategy','')}</div>
+                  </div>
+
+                  <!-- СЕЗОННОСТЬ -->
+                  <div style="background:#1a1500;border:1px solid #f59e0b33;border-radius:10px;padding:16px;margin-bottom:12px;">
+                    <div style="font-size:13px;font-weight:600;color:#f59e0b;margin-bottom:10px;">📅 Сезонный план</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;">
+                      <div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;">
+                        <div style="font-size:10px;color:#555;margin-bottom:3px;">ПИК</div>
+                        <div style="font-size:12px;color:#22c55e;font-weight:600;">{sp.get('peak','—')}</div>
+                      </div>
+                      <div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;">
+                        <div style="font-size:10px;color:#555;margin-bottom:3px;">СПАД</div>
+                        <div style="font-size:12px;color:#ef4444;font-weight:600;">{sp.get('low','—')}</div>
+                      </div>
+                      <div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;">
+                        <div style="font-size:10px;color:#555;margin-bottom:3px;">ЗАКУПКА</div>
+                        <div style="font-size:12px;color:#f59e0b;font-weight:600;">{sp.get('buy_date','—')}</div>
+                      </div>
+                      <div style="background:#0f0f13;border-radius:8px;padding:10px;text-align:center;">
+                        <div style="font-size:10px;color:#555;margin-bottom:3px;">РЕКЛАМА</div>
+                        <div style="font-size:12px;color:#a78bfa;font-weight:600;">{sp.get('ad_date','—')}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ПЛАН ДЕЙСТВИЙ -->"""
+
+                action_html = ""
+                for s in ai.get('action_plan', []):
+                    cost_val = s.get('cost', 0)
+                    try: cost_fmt = f"{float(cost_val):,.0f}"
+                    except: cost_fmt = str(cost_val)
+                    action_html += f'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;padding:10px;background:#13131a;border-radius:8px;"><div style="background:#6c63ff;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">{s.get("step","")}</div><div style="flex:1;"><div style="font-size:13px;color:#e2e8f0;margin-bottom:4px;">{s.get("what","")}</div><div style="display:flex;gap:12px;font-size:11px;color:#64748b;"><span>⏱ {s.get("when","")}</span><span>💰 {cost_fmt} {sym}</span><span style="color:#34d399;">→ {s.get("result","")}</span></div></div></div>'
+
+                risks_html = ""
+                for r in ai.get('risks', []):
+                    risks_html += f'<div style="margin-bottom:8px;padding:8px;background:#0f0a0a;border-radius:6px;"><div style="font-size:12px;color:#e2e8f0;margin-bottom:2px;">{r.get("risk","")}</div><div style="font-size:11px;color:#64748b;">Вероятность: {r.get("probability","")} · {r.get("mitigation","")}</div></div>'
+
+                opps_html = ""
+                for o in ai.get('opportunities', []):
+                    opps_html += f'<div style="font-size:12px;color:#aaa;padding:5px 0;border-bottom:1px solid #1a2a1a;">• {o}</div>'
+
+                html += f"""
                   <div style="background:#0f0f13;border-radius:10px;padding:16px;margin-bottom:12px;">
                     <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:12px;">🗓 План действий</div>
-                    {"".join([f'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;padding:10px;background:#13131a;border-radius:8px;"><div style="background:#6c63ff;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">{s["step"]}</div><div style="flex:1;"><div style="font-size:13px;color:#e2e8f0;margin-bottom:3px;">{s["action"]}</div><div style="font-size:11px;color:#64748b;">{s.get("deadline","")} · {s.get("budget","")}</div></div></div>' for s in ai.get("action_plan",[])])}
+                    {action_html}
                   </div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+                  <!-- РИСКИ И ВОЗМОЖНОСТИ -->
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                     <div style="background:#1a0f0f;border:1px solid #ef444433;border-radius:10px;padding:16px;">
-                      <div style="font-size:13px;font-weight:600;color:#ef4444;margin-bottom:8px;">⚠️ Ключевые риски</div>
-                      {"".join([f'<div style="font-size:12px;color:#aaa;padding:4px 0;border-bottom:1px solid #2a1a1a;">• {r}</div>' for r in ai.get("key_risks",[])])}
+                      <div style="font-size:13px;font-weight:600;color:#ef4444;margin-bottom:10px;">⚠️ Риски</div>
+                      {risks_html}
                     </div>
                     <div style="background:#0f1a0f;border:1px solid #22c55e33;border-radius:10px;padding:16px;">
-                      <div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:8px;">✨ Возможности</div>
-                      {"".join([f'<div style="font-size:12px;color:#aaa;padding:4px 0;border-bottom:1px solid #1a2a1a;">• {o}</div>' for o in ai.get("key_opportunities",[])])}
+                      <div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:10px;">✨ Возможности</div>
+                      {opps_html}
                     </div>
                   </div>
-                </div>'''
+
+                  <!-- ФИНАЛЬНАЯ РЕКОМЕНДАЦИЯ -->
+                  <div style="background:linear-gradient(135deg,#13102a,#0f1a0f);border:1px solid #6c63ff44;border-radius:10px;padding:16px;">
+                    <div style="font-size:13px;font-weight:600;color:#a78bfa;margin-bottom:8px;">🧠 Финальная рекомендация</div>
+                    <div style="font-size:13px;color:#e2e8f0;line-height:1.7;">{ai.get('final_recommendation','')}</div>
+                  </div>
+                </div>"""
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')

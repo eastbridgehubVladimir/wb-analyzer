@@ -1099,6 +1099,45 @@ function setActiveMenu(el) {
 }
 
 let topNichesOffset = 0;
+async function runTrendsFinder() {
+  const topDiv = document.getElementById('top-niches');
+  if (!topDiv) return;
+
+  let trendsBlock = document.getElementById('trends-block');
+  if (!trendsBlock) {
+    trendsBlock = document.createElement('div');
+    trendsBlock.id = 'trends-block';
+    trendsBlock.style.cssText = 'margin-bottom:24px;';
+    topDiv.insertBefore(trendsBlock, topDiv.firstChild);
+  }
+
+  trendsBlock.innerHTML = `
+    <div style="background:#1a1500;border:1px solid #f59e0b33;border-radius:12px;padding:20px;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;animation:pulse 1s infinite;"></div>
+        <div style="font-size:15px;font-weight:600;color:#f59e0b;">📈 Поиск трендов</div>
+      </div>
+      <div style="color:#555;font-size:13px;">Анализируем базу ниш и ищем растущие категории...</div>
+      <div id="trends-result" style="margin-top:16px;"></div>
+    </div>`;
+  trendsBlock.scrollIntoView({behavior:'smooth'});
+
+  try {
+    const r = await fetch('/trends-finder', {method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        currency: currentCurrency,
+        rate: rates[currentCurrency],
+        symbol: symbols[currentCurrency]
+      })
+    });
+    const data = await r.json();
+    document.getElementById('trends-result').innerHTML = data.html || '<div style="color:#ef4444;">Ошибка</div>';
+  } catch(e) {
+    document.getElementById('trends-result').innerHTML = '<div style="color:#ef4444;">Ошибка: ' + e.message + '</div>';
+  }
+}
+
 function refreshTopNiches() {
   topNichesOffset += 21;
   showTopNiches();
@@ -1409,7 +1448,13 @@ async function showTopNiches() {
   const r = await fetch('/top-niches?offset=' + topNichesOffset);
   const data = await r.json();
   topDiv.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><div style="font-size:20px;font-weight:700;color:#fff;">Топ ниши по потенциалу</div><button onclick="refreshTopNiches()" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:8px 16px;color:#888;cursor:pointer;font-size:13px;">🔄 Показать другие</button></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-size:20px;font-weight:700;color:#fff;">Топ ниши по потенциалу</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="runTrendsFinder()" title="AI анализ растущих ниш — найти категории с растущим спросом до того как они стали популярными" style="background:#f59e0b22;border:1px solid #f59e0b44;border-radius:8px;padding:8px 16px;color:#f59e0b;cursor:pointer;font-size:13px;">📈 Найти тренды</button>
+        <button onclick="refreshTopNiches()" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:8px;padding:8px 16px;color:#888;cursor:pointer;font-size:13px;">🔄 Показать другие</button>
+      </div>
+    </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
       ${data.map(n => `
         <div onclick="setQuery('${n.full}')" style="background:#1a1a24;border:1px solid #2a2a3a;border-radius:12px;padding:16px;cursor:pointer;" onmouseover="this.style.borderColor='#6c63ff'" onmouseout="this.style.borderColor='#2a2a3a'">
@@ -6359,6 +6404,117 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
 
             except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+
+        elif self.path == '/trends-finder':
+            try:
+                import anthropic
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                sym = body.get('symbol', '₽')
+
+                # Берём топ ниши из БД и ищем растущие
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT name, COALESCE(display_name,name), revenue, profit_pct,
+                           buyout_pct, turnover, sellers, sellers_with_sales,
+                           lost_revenue_pct, avg_rating
+                    FROM niches
+                    WHERE revenue > 5000000
+                    AND profit_pct > 0.15
+                    AND buyout_pct > 0.6
+                    AND turnover < 60
+                    AND sellers_with_sales > 5
+                    ORDER BY (profit_pct * buyout_pct / NULLIF(turnover,0)) DESC NULLS LAST
+                    LIMIT 50
+                """)
+                rows = cur.fetchall()
+                cur.close()
+                conn.close()
+
+                niches_text = ''
+                for r in rows[:30]:
+                    activity = round(r[7]/r[6]*100) if r[6] > 0 else 0
+                    niches_text += f'\n- {r[1]}: выручка {float(r[2])/1e6:.1f}млн₽, маржа {float(r[3])*100:.0f}%, выкуп {float(r[4])*100:.0f}%, оборот {r[5]}дн, активность {activity}%'
+
+                client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY',''))
+                prompt = f"""Ты эксперт по трендам на Wildberries. Проанализируй список перспективных ниш и выяви реальные тренды.
+
+НИШИ С ВЫСОКИМ ПОТЕНЦИАЛОМ (отобраны по алгоритму):
+{niches_text}
+
+Выяви:
+1. Какие категории товаров сейчас в тренде и почему
+2. Какие ниши недооценены — высокий потенциал но мало конкуренции
+3. Какие ниши стоит добавить в "В работе" прямо сейчас
+
+Верни JSON:
+{{
+  "trend_summary": "2-3 предложения о главных трендах рынка WB сейчас",
+  "hot_trends": [
+    {{
+      "category": "название категории",
+      "why_trending": "почему растёт 1 предложение",
+      "opportunity": "конкретная возможность для входа",
+      "urgency": "высокая/средняя/низкая"
+    }}
+  ],
+  "hidden_gems": [
+    {{
+      "name": "название ниши",
+      "why_undervalued": "почему недооценена",
+      "potential": "потенциал в цифрах"
+    }}
+  ],
+  "act_now": ["ниша 1", "ниша 2", "ниша 3"],
+  "market_insight": "главный инсайт о рынке WB 1-2 предложения"
+}}
+Только JSON без markdown."""
+
+                msg = client.messages.create(
+                    model='claude-sonnet-4-5',
+                    max_tokens=2000,
+                    messages=[{'role':'user','content':prompt}]
+                )
+                ai = json.loads(msg.content[0].text.strip().replace('```json','').replace('```','').strip())
+
+                html = f'<div style="font-size:13px;color:#aaa;line-height:1.6;margin-bottom:14px;">{ai.get("trend_summary","")}</div>'
+
+                html += '<div style="font-size:13px;font-weight:600;color:#f59e0b;margin-bottom:10px;">🔥 Горячие тренды</div>'
+                for t in ai.get('hot_trends', []):
+                    uc = '#ef4444' if t.get('urgency')=='высокая' else '#f59e0b' if t.get('urgency')=='средняя' else '#34d399'
+                    html += f'<div style="background:#13131a;border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid {uc};">'
+                    html += f'<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+                    html += f'<div style="font-size:13px;font-weight:600;color:#e2e8f0;">{t.get("category","")}</div>'
+                    html += f'<span style="font-size:10px;color:{uc};background:{uc}22;border-radius:4px;padding:2px 6px;">{t.get("urgency","")}</span>'
+                    html += f'</div><div style="font-size:12px;color:#94a3b8;margin-bottom:3px;">📊 {t.get("why_trending","")}</div>'
+                    html += f'<div style="font-size:12px;color:#34d399;">→ {t.get("opportunity","")}</div></div>'
+
+                html += '<div style="font-size:13px;font-weight:600;color:#a78bfa;margin:14px 0 10px;">💎 Недооценённые ниши</div>'
+                for g in ai.get('hidden_gems', []):
+                    html += f'<div style="background:#13102a;border-radius:8px;padding:10px;margin-bottom:8px;">'
+                    html += f'<div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:4px;">{g.get("name","")}</div>'
+                    html += f'<div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">{g.get("why_undervalued","")}</div>'
+                    html += f'<div style="font-size:12px;color:#a78bfa;">Потенциал: {g.get("potential","")}</div></div>'
+
+                act_now = ai.get('act_now', [])
+                if act_now:
+                    html += '<div style="background:#0f1a0f;border:1px solid #22c55e33;border-radius:8px;padding:12px;margin-top:4px;">'
+                    html += '<div style="font-size:12px;font-weight:600;color:#22c55e;margin-bottom:6px;">⚡ Добавить в работу прямо сейчас:</div>'
+                    html += ''.join([f'<span style="display:inline-block;background:#22c55e22;color:#22c55e;border-radius:4px;padding:3px 8px;font-size:12px;margin:2px;">{n}</span>' for n in act_now])
+                    html += f'<div style="font-size:12px;color:#555;margin-top:8px;">{ai.get("market_insight","")}</div></div>'
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'html': html}, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                import traceback
+                print('TRENDS ERROR:', traceback.format_exc())
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()

@@ -1535,13 +1535,28 @@ function filterCatalog() {
         </div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:20px;font-weight:700;color:#fff;">${getScoreColor(n)}</div>
+        <div style="font-size:22px;font-weight:700;color:${getScoreColorHex(n)};">${calcScore(n)}</div>
         <div style="font-size:11px;color:#555;">потенциал</div>
       </div>
     </div>
   `).join('');
 }
 
+function calcScore(n) {
+  var activity = n.sellers > 0 ? n.sellers_with_sales / n.sellers : 0;
+  var score = Math.round(
+    activity * 30 +
+    Math.min(n.buyout_pct * 25, 25) +
+    Math.min(n.profit_pct * 20, 20) +
+    (n.turnover < 30 ? 15 : n.turnover < 60 ? 10 : n.turnover < 90 ? 5 : 0) +
+    Math.min((n.lost_revenue_pct || 0) * 10, 10)
+  );
+  return Math.min(score, 100);
+}
+function getScoreColorHex(n) {
+  var s = calcScore(n);
+  return s >= 65 ? '#4ade80' : s >= 40 ? '#fbbf24' : '#ef4444';
+}
 function getScoreColor(n) {
   const activity = n.sellers_with_sales / (n.sellers || 1);
   if (activity >= 0.7 && n.profit_pct >= 0.2 && n.buyout_pct >= 0.7) return '🟢';
@@ -2107,6 +2122,8 @@ function setQuery(q) {
   document.getElementById('query').value = q;
   document.getElementById('query').setAttribute('data-display', displayName);
   hideSuggestions();
+  // Снимаем активность со всех пунктов меню при выборе ниши
+  document.querySelectorAll('.sidebar-item').forEach(t => t.classList.remove('active'));
   analyze();
 }
 document.getElementById('query').addEventListener('keypress', e => {

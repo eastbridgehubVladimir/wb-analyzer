@@ -602,7 +602,10 @@ function renderWatchlist() {
 
   var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">';
   html += '<div style="font-size:20px;font-weight:700;color:#fff;">&#128204; В работе <span style="font-size:14px;color:#555;font-weight:400;">(' + list.length + ' ниш)</span></div>';
-  html += '<button onclick="calcContainerFromWatchlist()" style="background:#34d399;border:none;border-radius:8px;padding:8px 16px;color:#000;font-size:12px;font-weight:700;cursor:pointer;">&#128230; Рассчитать контейнер</button>';
+  html += '<div style="display:flex;gap:8px;">';
+  html += '<button onclick="calcContainerFromWatchlist()" title="Рассчитать объём контейнера для выбранных ниш" style="background:#34d399;border:none;border-radius:8px;padding:8px 16px;color:#000;font-size:12px;font-weight:700;cursor:pointer;">&#128230; Контейнер</button>';
+  html += '<button onclick="runWatchlistMonitor()" title="Проверить изменения метрик по всем нишам в работе и получить AI-анализ что изменилось" style="background:#6c63ff22;border:1px solid #6c63ff44;border-radius:8px;padding:8px 16px;color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer;">&#128276; Проверить изменения</button>';
+  html += '</div>';
   html += '</div>';
 
   // Индикатор контейнера
@@ -659,6 +662,57 @@ function renderWatchlist() {
   div.innerHTML = html;
   window._wlChecked = [];
   window._wlList = list;
+}
+
+async function runWatchlistMonitor() {
+  const list = getWatchlist();
+  if (list.length === 0) { alert('Нет ниш в работе!'); return; }
+
+  // Показываем блок мониторинга
+  let monBlock = document.getElementById('wl-monitor-block');
+  if (!monBlock) {
+    monBlock = document.createElement('div');
+    monBlock.id = 'wl-monitor-block';
+    monBlock.style.cssText = 'margin-top:20px;';
+    document.getElementById('watchlist').appendChild(monBlock);
+  }
+  monBlock.innerHTML = `
+    <div style="background:#13102a;border:1px solid #6c63ff33;border-radius:12px;padding:20px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:#a78bfa;animation:pulse 1s infinite;"></div>
+        <div style="font-size:15px;font-weight:600;color:#a78bfa;">🔔 Мониторинг изменений</div>
+      </div>
+      <div style="color:#555;font-size:13px;">Анализируем ${list.length} ниш...</div>
+      <div id="wl-monitor-result" style="margin-top:16px;"></div>
+    </div>`;
+  monBlock.scrollIntoView({behavior:'smooth'});
+
+  try {
+    const nichesData = list.map(n => ({
+      name: n.name, display_name: n.display_name || n.name,
+      revenue: n.revenue || 0, avg_price: n.avg_price || 0,
+      profit_pct: n.profit_pct || 0, buyout_pct: n.buyout_pct || 0,
+      turnover: n.turnover || 0, sellers: n.sellers || 0,
+      sellers_with_sales: n.sellers_with_sales || 0, score: n.score || 0
+    }));
+
+    const payload = {
+      niches: nichesData,
+      currency: currentCurrency,
+      rate: rates[currentCurrency],
+      symbol: symbols[currentCurrency]
+    };
+
+    const r = await fetch('/watchlist-monitor', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    document.getElementById('wl-monitor-result').innerHTML = data.html || '<div style="color:#ef4444;">Ошибка анализа</div>';
+  } catch(e) {
+    document.getElementById('wl-monitor-result').innerHTML = '<div style="color:#ef4444;">Ошибка: ' + e.message + '</div>';
+  }
 }
 
 function toggleWlCheck(idx) {
@@ -6305,6 +6359,107 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
 
             except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+
+        elif self.path == '/watchlist-monitor':
+            try:
+                import anthropic
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                niches = body.get('niches', [])
+                sym = body.get('symbol', '₽')
+                rate = body.get('rate', 1)
+
+                client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY',''))
+
+                niches_text = ''
+                for n in niches:
+                    activity = round(n.get('sellers_with_sales',0)/n.get('sellers',1)*100) if n.get('sellers',0) > 0 else 0
+                    niches_text += f"""
+- {n.get('display_name', n.get('name',''))}:
+  Выручка: {n.get('revenue',0):,.0f} ₽/мес | Цена: {n.get('avg_price',0):,.0f} ₽
+  Маржа: {n.get('profit_pct',0)*100:.0f}% | Выкуп: {n.get('buyout_pct',0)*100:.0f}%
+  Оборачиваемость: {n.get('turnover',0)} дн | Активность: {activity}%
+  Score: {n.get('score',0)}/100"""
+
+                prompt = f"""Ты аналитик по торговле на Wildberries. Проанализируй портфель ниш "В работе" и дай рекомендации.
+
+НИШИ В РАБОТЕ:
+{niches_text}
+
+Для каждой ниши оцени:
+1. Текущее состояние (растёт/стабильна/падает) на основе метрик
+2. Приоритет действий (срочно/планово/ждать)
+3. Главный риск или возможность
+
+Затем дай общую рекомендацию по портфелю.
+
+Верни JSON:
+{{
+  "portfolio_status": "отличный/хороший/требует внимания/критический",
+  "portfolio_color": "#22c55e/#4ade80/#f59e0b/#ef4444",
+  "portfolio_summary": "2-3 предложения об общем состоянии портфеля",
+  "niches_analysis": [
+    {{
+      "name": "название ниши",
+      "status": "растёт/стабильна/под давлением/падает",
+      "status_color": "#22c55e/#4ade80/#f59e0b/#ef4444",
+      "priority": "срочно/планово/ждать",
+      "priority_color": "#ef4444/#f59e0b/#34d399",
+      "key_insight": "главное наблюдение 1 предложение",
+      "action": "конкретное действие 1 предложение"
+    }}
+  ],
+  "top_priority": "название самой приоритетной ниши",
+  "portfolio_recommendation": "общая рекомендация по портфелю 2-3 предложения"
+}}
+Только JSON без markdown."""
+
+                msg = client.messages.create(
+                    model='claude-sonnet-4-5',
+                    max_tokens=2000,
+                    messages=[{'role':'user','content':prompt}]
+                )
+                ai = json.loads(msg.content[0].text.strip().replace('```json','').replace('```','').strip())
+
+                pc = ai.get('portfolio_color','#f59e0b')
+                html = f'''<div style="background:#0f0f13;border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid {pc}33;">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <div style="font-size:13px;font-weight:600;color:{pc};">Портфель: {ai.get("portfolio_status","—").upper()}</div>
+                  </div>
+                  <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai.get("portfolio_summary","")}</div>
+                </div>'''
+
+                for na in ai.get('niches_analysis', []):
+                    sc = na.get('status_color','#f59e0b')
+                    pc2 = na.get('priority_color','#f59e0b')
+                    html += f'''<div style="background:#13131a;border-radius:10px;padding:12px;margin-bottom:10px;border-left:3px solid {sc};">
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <div style="font-size:13px;font-weight:600;color:#e2e8f0;">{na.get("name","")}</div>
+                        <div style="display:flex;gap:6px;">
+                          <span style="font-size:10px;color:{sc};background:{sc}22;border-radius:4px;padding:2px 6px;">{na.get("status","")}</span>
+                          <span style="font-size:10px;color:{pc2};background:{pc2}22;border-radius:4px;padding:2px 6px;">{na.get("priority","")}</span>
+                        </div>
+                      </div>
+                      <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">💡 {na.get("key_insight","")}</div>
+                      <div style="font-size:12px;color:#34d399;">→ {na.get("action","")}</div>
+                    </div>'''
+
+                html += f'''<div style="background:#1a1a0a;border:1px solid #f59e0b33;border-radius:10px;padding:14px;margin-top:4px;">
+                  <div style="font-size:12px;font-weight:600;color:#f59e0b;margin-bottom:6px;">🎯 Приоритет: {ai.get("top_priority","")}</div>
+                  <div style="font-size:12px;color:#aaa;line-height:1.6;">{ai.get("portfolio_recommendation","")}</div>
+                </div>'''
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'html': html}, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                import traceback
+                print('MONITOR ERROR:', traceback.format_exc())
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()

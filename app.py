@@ -3797,77 +3797,15 @@ async function runMasterAgent() {
   };
 
   const results = {};
+  // Показываем прогресс анимацией пока идёт один финальный запрос
+  const steps_anim = ['s1','s2','s3','s4','s5'];
+  let si = 0;
+  const animInterval = setInterval(() => {
+    if (si > 0) setStep(steps_anim[si-1], '✅ готово', '#22c55e');
+    if (si < steps_anim.length) { setStep(steps_anim[si], '⚙️ анализируем...', '#a78bfa'); si++; }
+  }, 800);
 
-  // ШАГ 1: Глубокий анализ
-  setStep('s1', '⚙️ анализируем...', '#a78bfa');
-  try {
-    const params = new URLSearchParams({
-      name: d.name, revenue: d.revenue||0, avg_price: d.avg_price||0,
-      commission: d.commission||0, buyout_pct: d.buyout_pct||0,
-      profit_pct: d.profit_pct||0, turnover: d.turnover||0,
-      sellers: d.sellers||0, sellers_with_sales: d.sellers_with_sales||0,
-      currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency]
-    });
-    const r = await fetch('/deep-analysis?' + params);
-    const data = await r.json();
-    results.deep = data.raw || data;
-    setStep('s1', '✅ готово', '#22c55e');
-  } catch(e) { setStep('s1', '❌ ошибка', '#ef4444'); }
-
-  // ШАГ 2: Реклама
-  setStep('s2', '⚙️ анализируем...', '#a78bfa');
-  try {
-    const w = window._chartData || {};
-    const payload = {niche_name: d.name, avg_cpm: w.avg_cpm||0, ad_pct: w.ad_pct||0,
-      cpm_status: w.cpm_status||'', ad_verdict: w.ad_verdict||'',
-      avg_price: d.avg_price||0, revenue: d.revenue||0,
-      currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency]};
-    const r = await fetch('/ad-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-    const data = await r.json();
-    results.ads = data.raw || data;
-    setStep('s2', '✅ готово', '#22c55e');
-  } catch(e) { setStep('s2', '❌ ошибка', '#ef4444'); }
-
-  // ШАГ 3: Поставки
-  setStep('s3', '⚙️ анализируем...', '#a78bfa');
-  try {
-    const w = window._warehouseStats || {};
-    const payload = {niche_name: d.name, avg_price: d.avg_price||0,
-      revenue: d.revenue||0, turnover: d.turnover||0,
-      buyout_pct: d.buyout_pct||0, profit_pct: d.profit_pct||0,
-      commission: d.commission||0, warehouse_stats: w,
-      currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency]};
-    const r = await fetch('/warehouse-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-    const data = await r.json();
-    results.warehouse = data.raw || data;
-    setStep('s3', '✅ готово', '#22c55e');
-  } catch(e) { setStep('s3', '❌ ошибка', '#ef4444'); }
-
-  // ШАГ 4: Документы
-  setStep('s4', '⚙️ анализируем...', '#a78bfa');
-  try {
-    const payload = {niche_name: d.name, display_name: d.display_name||d.name,
-      avg_price: d.avg_price||0, currency: currentCurrency,
-      rate: rates[currentCurrency], symbol: symbols[currentCurrency]};
-    const r = await fetch('/docs-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-    const data = await r.json();
-    results.docs = data.raw || data;
-    setStep('s4', '✅ готово', '#22c55e');
-  } catch(e) { setStep('s4', '❌ ошибка', '#ef4444'); }
-
-  // ШАГ 5: Контент
-  setStep('s5', '⚙️ анализируем...', '#a78bfa');
-  try {
-    const params = new URLSearchParams({niche_name: d.name,
-      display_name: d.display_name||d.name, avg_price: d.avg_price||0,
-      currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency]});
-    const r = await fetch('/content-agent?' + params);
-    const data = await r.json();
-    results.content = data.raw || data;
-    setStep('s5', '✅ готово', '#22c55e');
-  } catch(e) { setStep('s5', '❌ ошибка', '#ef4444'); }
-
-  // ШАГ 6: Финальный сводный вывод
+  // ШАГ 6: Финальный сводный вывод — один запрос
   setStep('s6', '⚙️ формируем вывод...', '#a78bfa');
   try {
     const payload = {
@@ -3876,14 +3814,20 @@ async function runMasterAgent() {
       profit_pct: d.profit_pct||0, buyout_pct: d.buyout_pct||0,
       turnover: d.turnover||0, sellers: d.sellers||0,
       sellers_with_sales: d.sellers_with_sales||0,
+      commission: d.commission||0,
       currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency],
-      results: results
+      warehouse_stats: window._warehouseStats || {},
+      chart_data: window._chartData || {},
+      deep_raw: results.deep || {}
     };
     const r = await fetch('/master-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
     const data = await r.json();
+    clearInterval(animInterval);
+    steps_anim.forEach(s => setStep(s, '✅ готово', '#22c55e'));
     setStep('s6', '✅ готово', '#22c55e');
     document.getElementById('master-result').innerHTML = data.html || '';
   } catch(e) {
+    clearInterval(animInterval);
     setStep('s6', '❌ ошибка', '#ef4444');
     document.getElementById('master-result').innerHTML = '<div style="color:#ef4444;padding:12px;">Ошибка финального анализа: ' + e.message + '</div>';
   }
@@ -6386,63 +6330,24 @@ class Handler(BaseHTTPRequestHandler):
 
                 client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY',''))
 
-                # Собираем реальные данные от агентов прямо на бэкенде
-                import urllib.request as urlreq
-
-                def call_agent_get(path):
-                    try:
-                        req = urlreq.Request(f'http://localhost:8080{path}')
-                        with urlreq.urlopen(req, timeout=30) as r:
-                            return json.loads(r.read().decode('utf-8'))
-                    except: return {}
-
-                def call_agent_post(path, data):
-                    try:
-                        payload = json.dumps(data, ensure_ascii=False).encode('utf-8')
-                        req = urlreq.Request(f'http://localhost:8080{path}', data=payload,
-                            headers={'Content-Type': 'application/json'})
-                        with urlreq.urlopen(req, timeout=30) as r:
-                            return json.loads(r.read().decode('utf-8'))
-                    except: return {}
-
-                from urllib.parse import urlencode
-                deep_params = urlencode({'name': niche_name, 'revenue': revenue,
-                    'avg_price': avg_price, 'commission': body.get('commission',0),
-                    'buyout_pct': buyout_pct, 'profit_pct': profit_pct,
-                    'turnover': turnover, 'sellers': sellers,
-                    'sellers_with_sales': sellers_with_sales,
-                    'currency': body.get('currency','rub'),
-                    'rate': body.get('rate',1), 'symbol': sym})
-                deep_data = call_agent_get(f'/deep-analysis?{deep_params}')
-
-                wh_stats = body.get('warehouse_stats') or results.get('warehouse', {})
-                wh_data = call_agent_post('/warehouse-analysis', {
-                    'niche_name': niche_name, 'avg_price': avg_price,
-                    'revenue': revenue, 'turnover': turnover,
-                    'buyout_pct': buyout_pct, 'profit_pct': profit_pct,
-                    'commission': body.get('commission',0),
-                    'warehouse_stats': wh_stats,
-                    'currency': body.get('currency','rub'),
-                    'rate': body.get('rate',1), 'symbol': sym})
-
-                chart_data = body.get('chart_data', {})
-                ad_data = call_agent_post('/ad-analysis', {
-                    'niche_name': niche_name,
-                    'avg_cpm': chart_data.get('avg_cpm', 0),
-                    'ad_pct': chart_data.get('ad_pct', 0),
-                    'cpm_status': chart_data.get('cpm_status', ''),
-                    'ad_verdict': chart_data.get('ad_verdict', ''),
-                    'avg_price': avg_price, 'revenue': revenue,
-                    'currency': body.get('currency','rub'),
-                    'rate': body.get('rate',1), 'symbol': sym})
-
-                # Извлекаем raw данные
-                deep_raw = deep_data.get('raw', {})
-                wh_raw = wh_data.get('analysis', wh_data)
-                ad_raw = ad_data.get('analysis', ad_data)
-
+                # Используем данные напрямую из body — без доп запросов к агентам
+                wh_stats = body.get('warehouse_stats', {}) or {}
+                chart_data = body.get('chart_data', {}) or {}
+                deep_raw = body.get('deep_raw', {}) or {}
                 activity_pct = round(sellers_with_sales/sellers*100) if sellers > 0 else 0
                 avg_rev_seller = round(revenue/sellers_with_sales) if sellers_with_sales > 0 else 0
+                ad_raw = {
+                    'avg_cpm': chart_data.get('avg_cpm', 0),
+                    'ad_pct': chart_data.get('ad_pct', 0),
+                    'verdict': chart_data.get('ad_verdict', '')
+                }
+                wh_raw = {
+                    'fbs_pct': wh_stats.get('fbs_pct', 0),
+                    'fbo_pct': wh_stats.get('fbo_pct', 0),
+                    'avg_turnover': wh_stats.get('avg_turnover', 0),
+                    'frozen_pct': wh_stats.get('frozen_pct', 0),
+                    'avg_wh_leaders': wh_stats.get('avg_wh_leaders', 0)
+                }
 
                 prompt = f"""Ты старший аналитик по торговле на Wildberries. Сделай ПОЛНЫЙ профессиональный анализ ниши на основе всех собранных данных.
 

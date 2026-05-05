@@ -3996,12 +3996,35 @@ async function runMasterAgent() {
       chart_data: window._chartData || {},
       deep_raw: results.deep || {}
     };
-    const r = await fetch('/master-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-    const data = await r.json();
-    clearInterval(animInterval);
-    steps_anim.forEach(s => setStep(s, '✅ готово', '#22c55e'));
-    setStep('s6', '✅ готово', '#22c55e');
-    document.getElementById('master-result').innerHTML = data.html || '';
+    const r = await fetch('/master-stream', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    const resultEl = document.getElementById('master-result');
+    resultEl.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует...</div>';
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream:true});
+      const parts = buf.split('\\n\\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        const raw = part.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.type === 'progress') {
+            resultEl.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует... ' + msg.chars + ' симв.</div>';
+          } else if (msg.type === 'html') {
+            clearInterval(animInterval);
+            steps_anim.forEach(s => setStep(s, '✅ готово', '#22c55e'));
+            setStep('s6', '✅ готово', '#22c55e');
+            resultEl.innerHTML = msg.html || '';
+          } else if (msg.type === 'error') { throw new Error(msg.error); }
+        } catch(pe) {}
+      }
+    }
   } catch(e) {
     clearInterval(animInterval);
     setStep('s6', '❌ ошибка', '#ef4444');
@@ -6698,6 +6721,11 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
 
+        elif self.path == '/master-stream':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length))
+            handle_master_stream(self, body)
+            return
         elif self.path == '/master-analysis':
             try:
                 import anthropic
@@ -7024,6 +7052,172 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
         else:
             self.send_response(404)
             self.end_headers()
+
+
+
+
+def handle_master_stream(handler, body):
+    import anthropic as _anthropic
+    niche_name = body.get('niche_name', '')
+    display_name = body.get('display_name', niche_name)
+    avg_price = body.get('avg_price', 0)
+    revenue = body.get('revenue', 0)
+    profit_pct = body.get('profit_pct', 0)
+    buyout_pct = body.get('buyout_pct', 0)
+    turnover = body.get('turnover', 0)
+    sellers = body.get('sellers', 0)
+    sellers_with_sales = body.get('sellers_with_sales', 0)
+    sym = body.get('symbol', '₽')
+    chart_data = body.get('chart_data', {}) or {}
+    deep_raw = body.get('deep_raw', {}) or {}
+    activity_pct = round(sellers_with_sales/sellers*100) if sellers > 0 else 0
+    avg_rev_seller = round(revenue/sellers_with_sales) if sellers_with_sales > 0 else 0
+
+    prompt = (
+        f"Ты старший аналитик по торговле на Wildberries. Сделай ПОЛНЫЙ анализ ниши.\n\n"
+        f"НИША: {display_name}\n"
+        f"Выручка: {revenue:,.0f} руб/мес | Средняя цена: {avg_price:,.0f} руб\n"
+        f"Маржинальность: {profit_pct*100:.0f}% | Выкуп: {buyout_pct*100:.0f}%\n"
+        f"Оборачиваемость: {turnover} дней | Продавцов: {sellers} (активных: {sellers_with_sales}, {activity_pct}%)\n"
+        f"Средняя выручка на продавца: {avg_rev_seller:,.0f} руб/мес\n"
+        f"Вердикт глубокого анализа: {deep_raw.get('verdict','нет данных')}\n"
+        f"Сезон пик: {deep_raw.get('season_peak_months','нет данных')}\n\n"
+        "Составь отчёт в JSON:\n"
+        "{\n"
+        '  "final_verdict": "ВХОДИТЬ" или "ТЕСТИРОВАТЬ" или "НЕ ВХОДИТЬ",\n'
+        '  "verdict_color": "#22c55e" или "#eab308" или "#ef4444",\n'
+        '  "confidence": "высокая/средняя/низкая",\n'
+        '  "market_analysis": "анализ рынка 3-4 предложения",\n'
+        '  "competitive_landscape": "анализ конкурентов",\n'
+        '  "entry_strategy": "стратегия входа",\n'
+        '  "financial_model": {"test_batch_units": 0, "test_batch_cost": 0, "monthly_ad_budget": 0, "breakeven_units": 0, "roi_3months": "X%", "payback_months": 0},\n'
+        '  "seasonal_plan": {"peak": "месяцы", "low": "месяцы", "buy_date": "дата", "ad_date": "дата"},\n'
+        '  "action_plan": [{"step":1,"what":"действие","when":"срок","cost":0,"result":"результат"}],\n'
+        '  "risks": [{"risk":"риск","probability":"средняя","mitigation":"решение"}],\n'
+        '  "opportunities": ["возможность 1", "возможность 2"],\n'
+        '  "final_recommendation": "рекомендация"\n'
+        "}\n"
+        f"Только JSON без markdown. Все суммы в {sym}."
+    )
+
+    client = _anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY',''))
+    handler.send_response(200)
+    handler.send_header('Content-type', 'text/event-stream; charset=utf-8')
+    handler.send_header('Cache-Control', 'no-cache')
+    handler.end_headers()
+
+    full_text = ''
+    try:
+        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=3000, messages=[{'role':'user','content':prompt}]) as stream:
+            for text in stream.text_stream:
+                full_text += text
+                chunk = json.dumps({'type':'progress','chars':len(full_text)}, ensure_ascii=False)
+                handler.wfile.write(('data: ' + chunk + '\n\n').encode('utf-8'))
+                handler.wfile.flush()
+
+        ai = json.loads(full_text.strip().replace('```json','').replace('```','').strip())
+        fm = ai.get('financial_model', {})
+        vc = ai.get('verdict_color', '#eab308')
+
+        action_html = ''
+        for s in ai.get('action_plan', []):
+            try:
+                cost_fmt = f"{float(s.get('cost',0)):,.0f}"
+            except:
+                cost_fmt = str(s.get('cost',0))
+            action_html += (
+                '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;'
+                'padding:10px;background:#1e2433;border-radius:8px;">'
+                '<div style="background:#3b82f6;color:#fff;border-radius:50%;width:26px;height:26px;'
+                'display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">'
+                + str(s.get('step','')) + '</div>'
+                '<div style="flex:1;">'
+                '<div style="font-size:13px;color:#e2e8f0;margin-bottom:4px;">' + str(s.get('what','')) + '</div>'
+                '<div style="display:flex;gap:12px;font-size:11px;color:#64748b;">'
+                '<span>⏱ ' + str(s.get('when','')) + '</span>'
+                '<span>💰 ' + cost_fmt + ' ' + sym + '</span>'
+                '<span style="color:#34d399;">→ ' + str(s.get('result','')) + '</span>'
+                '</div></div></div>'
+            )
+
+        risks_html = ''
+        for r in ai.get('risks', []):
+            risks_html += (
+                '<div style="margin-bottom:8px;padding:8px;background:#0f0a0a;border-radius:6px;">'
+                '<div style="font-size:12px;color:#e2e8f0;margin-bottom:2px;">' + str(r.get('risk','')) + '</div>'
+                '<div style="font-size:11px;color:#64748b;">Вероятность: ' + str(r.get('probability','')) + ' · ' + str(r.get('mitigation','')) + '</div>'
+                '</div>'
+            )
+
+        opps_html = ''
+        for o in ai.get('opportunities', []):
+            opps_html += '<div style="font-size:12px;color:#aaa;padding:5px 0;border-bottom:1px solid #1a2a1a;">• ' + str(o) + '</div>'
+
+        html = (
+            '<div style="border-top:1px solid #3b82f633;padding-top:20px;margin-top:8px;">'
+            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">'
+            '<div style="background:#0f1117;border-radius:10px;padding:14px;text-align:center;border:1px solid ' + vc + '44;">'
+            '<div style="font-size:10px;color:#555;margin-bottom:4px;">ВЕРДИКТ</div>'
+            '<div style="font-size:20px;font-weight:700;color:' + vc + ';">' + str(ai.get('final_verdict','—')) + '</div>'
+            '<div style="font-size:10px;color:#555;margin-top:3px;">' + str(ai.get('confidence','—')) + '</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:10px;padding:14px;text-align:center;">'
+            '<div style="font-size:10px;color:#555;margin-bottom:4px;">ТЕСТ ПАРТИЯ</div>'
+            '<div style="font-size:16px;font-weight:700;color:#fff;">' + str(fm.get('test_batch_units',0)) + ' шт</div>'
+            '<div style="font-size:11px;color:#64748b;">' + f"{fm.get('test_batch_cost',0):,.0f}" + ' ' + sym + '</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:10px;padding:14px;text-align:center;">'
+            '<div style="font-size:10px;color:#555;margin-bottom:4px;">ОКУПАЕМОСТЬ</div>'
+            '<div style="font-size:16px;font-weight:700;color:#93c5fd;">' + str(fm.get('payback_months','?')) + ' мес</div>'
+            '<div style="font-size:11px;color:#64748b;">ROI ' + str(fm.get('roi_3months','?')) + '</div>'
+            '</div>'
+            '</div>'
+            '<div style="background:#1a2035;border-radius:10px;padding:16px;margin-bottom:12px;">'
+            '<div style="font-size:13px;font-weight:600;color:#93c5fd;margin-bottom:8px;">📊 Анализ рынка</div>'
+            '<div style="font-size:13px;color:#e2e8f0;line-height:1.7;">' + str(ai.get('market_analysis','')) + '</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">'
+            '<div style="font-size:13px;font-weight:600;color:#38bdf8;margin-bottom:8px;">🏆 Конкурентный ландшафт</div>'
+            '<div style="font-size:13px;color:#e2e8f0;line-height:1.7;">' + str(ai.get('competitive_landscape','')) + '</div>'
+            '</div>'
+            '<div style="background:#0f1a2e;border:1px solid #22c55e33;border-radius:10px;padding:16px;margin-bottom:12px;">'
+            '<div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:8px;">🎯 Стратегия входа</div>'
+            '<div style="font-size:13px;color:#e2e8f0;line-height:1.7;">' + str(ai.get('entry_strategy','')) + '</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">'
+            '<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:12px;">🗓 План действий</div>'
+            + action_html +
+            '</div>'
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">'
+            '<div style="background:#1a1f2e;border:1px solid #ef444433;border-radius:10px;padding:16px;">'
+            '<div style="font-size:13px;font-weight:600;color:#ef4444;margin-bottom:10px;">⚠️ Риски</div>'
+            + risks_html +
+            '</div>'
+            '<div style="background:#0f1a1f;border:1px solid #22c55e33;border-radius:10px;padding:16px;">'
+            '<div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:10px;">✨ Возможности</div>'
+            + opps_html +
+            '</div>'
+            '</div>'
+            '<div style="background:linear-gradient(135deg,#1a2035,#0f1a1f);border:1px solid #3b82f644;border-radius:10px;padding:16px;">'
+            '<div style="font-size:13px;font-weight:600;color:#93c5fd;margin-bottom:8px;">🧠 Финальная рекомендация</div>'
+            '<div style="font-size:13px;color:#e2e8f0;line-height:1.7;">' + str(ai.get('final_recommendation','')) + '</div>'
+            '</div>'
+            '</div>'
+        )
+
+        event = json.dumps({'type':'html','html':html}, ensure_ascii=False)
+        handler.wfile.write(('data: ' + event + '\n\n').encode('utf-8'))
+        handler.wfile.write(b'data: [DONE]\n\n')
+        handler.wfile.flush()
+    except Exception as e:
+        import traceback
+        print('STREAM ERROR:', traceback.format_exc())
+        try:
+            ev = json.dumps({'type':'error','error':str(e)}, ensure_ascii=False)
+            handler.wfile.write(('data: ' + ev + '\n\n').encode('utf-8'))
+            handler.wfile.flush()
+        except:
+            pass
 
 
 if __name__ == '__main__':

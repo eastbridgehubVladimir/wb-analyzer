@@ -281,6 +281,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   #sticky-agents { left: 0 !important; }
 }
 @media (min-width: 769px) { .hamburger { display: none !important; } .mobile-overlay { display: none !important; } }
+@media (max-width: 768px) { .mobile-hide { display: none !important; } .header { padding: 12px 16px !important; } }
 .logo { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
 .logo span { color: #3b82f6; }
 .tagline { color: #666; font-size: 13px; }
@@ -419,7 +420,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </button>
   <div>
     <div class="logo" onclick="goHome()" style="cursor:pointer;">WB<span>Analyzer</span></div>
-    <div class="tagline">AI-платформа анализа товарных ниш</div>
+    <div class="tagline mobile-hide">AI-платформа анализа товарных ниш</div>
   </div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
     <button id="gcur-rub" onclick="setGlobalCurrency('rub')" style="background:#3b82f622;border:1px solid #3b82f6;border-radius:6px;color:#3b82f6;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">₽</button>

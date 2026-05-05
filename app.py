@@ -270,7 +270,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .sidebar-item:hover { background: #1e2433; color: #ddd; }
 .sidebar-item.active { background: #3b82f622; color: #3b82f6; }
 .content-area { flex: 1; overflow-y: auto; }
-@media (max-width: 768px) { .sidebar { display: none; } }
+@media (max-width: 768px) {
+  .sidebar { display: none; position: fixed; top: 0; left: 0; height: 100vh; width: 260px; z-index: 1000; transform: translateX(-100%); transition: transform 0.3s ease; }
+  .sidebar.mobile-open { display: flex !important; flex-direction: column; transform: translateX(0); }
+  .mobile-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 999; }
+  .mobile-overlay.active { display: block; }
+  .hamburger { display: flex !important; }
+  .main { padding: 16px !important; }
+  .sticky-agents-inner { gap: 4px !important; overflow-x: auto; }
+  #sticky-agents { left: 0 !important; }
+}
+@media (min-width: 769px) { .hamburger { display: none !important; } .mobile-overlay { display: none !important; } }
 .logo { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -0.5px; }
 .logo span { color: #3b82f6; }
 .tagline { color: #666; font-size: 13px; }
@@ -400,7 +410,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 </head>
 <body>
+<div class="mobile-overlay" id="mobile-overlay" onclick="closeMobileMenu()"></div>
 <div class="header">
+  <button class="hamburger" onclick="toggleMobileMenu()" style="display:none;background:none;border:none;cursor:pointer;padding:4px;margin-right:8px;flex-direction:column;gap:5px;">
+    <span style="display:block;width:22px;height:2px;background:#e2e8f0;border-radius:2px;"></span>
+    <span style="display:block;width:22px;height:2px;background:#e2e8f0;border-radius:2px;"></span>
+    <span style="display:block;width:22px;height:2px;background:#e2e8f0;border-radius:2px;"></span>
+  </button>
   <div>
     <div class="logo" onclick="goHome()" style="cursor:pointer;">WB<span>Analyzer</span></div>
     <div class="tagline">AI-платформа анализа товарных ниш</div>
@@ -3114,6 +3130,24 @@ function showPortfolioStub() {
   renderPortfolioSection();
 }
 
+function toggleMobileMenu() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('mobile-overlay');
+  sidebar.classList.toggle('mobile-open');
+  overlay.classList.toggle('active');
+}
+function closeMobileMenu() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('mobile-overlay');
+  sidebar.classList.remove('mobile-open');
+  overlay.classList.remove('active');
+}
+// Закрываем меню при выборе пункта
+document.addEventListener('click', function(e) {
+  if (e.target.closest('.sidebar-item') && window.innerWidth <= 768) {
+    closeMobileMenu();
+  }
+});
 function getCompanySettings() {
   try {
     const s = JSON.parse(localStorage.getItem('company_settings') || 'null');

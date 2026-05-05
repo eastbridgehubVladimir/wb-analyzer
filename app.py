@@ -279,6 +279,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   .main { padding: 16px !important; }
   .sticky-agents-inner { gap: 4px !important; overflow-x: auto; }
   #sticky-agents { left: 0 !important; }
+  .mobile-single-col { grid-template-columns: 1fr !important; }
+  .mob-hide { display: none !important; }
 }
 @media (min-width: 769px) { .hamburger { display: none !important; } .mobile-overlay { display: none !important; } }
 @media (max-width: 768px) { .mobile-hide { display: none !important; } .header { padding: 12px 16px !important; } }
@@ -1769,27 +1771,30 @@ async function loadCharts(name) {
       html += '<div id="custom-photo-preview" style="margin-top:6px;"></div>';
       html += '</div>';
       html += '<div style="font-size:10px;color:#555;margin-bottom:6px;">&#128204; ШАГ 2: Нажмите "&#128269; Найти" у нужного товара в таблице</div>';
-      html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
+      html += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">';
       html += '<tr style="color:#555;border-bottom:1px solid #2d3748;">';
       html += '<th style="text-align:left;padding:6px 8px;">#</th>';
       html += '<th style="text-align:left;padding:6px 8px;">Товар</th>';
-      html += '<th style="text-align:left;padding:6px 8px;">Продавец</th>';
+      html += '<th style="text-align:left;padding:6px 8px;" class="mob-hide">Продавец</th>';
       html += '<th style="text-align:right;padding:6px 8px;">Цена</th>';
-      html += '<th style="text-align:right;padding:6px 8px;">Выручка</th>';
-      html += '<th style="text-align:right;padding:6px 8px;">Продажи</th>';
-      html += '<th style="text-align:right;padding:6px 8px;">Рейтинг</th>';
-      html += '<th style="text-align:center;padding:6px 8px;">Артикул WB</th>';
+      html += '<th style="text-align:right;padding:6px 8px;">Выр.</th>';
+      html += '<th style="text-align:right;padding:6px 8px;" class="mob-hide">Продажи</th>';
+      html += '<th style="text-align:right;padding:6px 8px;" class="mob-hide">Рейтинг</th>';
+      html += '<th style="text-align:center;padding:6px 8px;" class="mob-hide">Артикул WB</th>';
       html += '</tr>';
       data.top_items.forEach((item, i) => {
         html += `<tr style="border-bottom:1px solid #1e2433;cursor:pointer;" onmouseover="this.style.background='#1e2433'" onmouseout="this.style.background=''">`; 
         html += `<td style="padding:8px;color:#555;">${i+1}</td>`;
         html += `<td style="padding:8px;color:#ddd;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.name}</td>`;
-        html += `<td style="padding:8px;color:#888;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.seller}</td>`;
-        html += `<td style="padding:8px;color:#fff;text-align:right;">${fmtCurrency(item.price)}</td>`;
-        html += `<td style="padding:8px;color:#38bdf8;text-align:right;">${fmtCurrency(item.revenue * 1000)}</td>`;
-        html += `<td style="padding:8px;color:#4ade80;text-align:right;">${item.sales.toLocaleString('ru')}</td>`;
-        html += `<td style="padding:8px;color:#fbbf24;text-align:right;">${item.rating > 0 ? '★ ' + item.rating : '—'}</td>`;
-        html += `<td style="padding:8px;text-align:center;">${item.url ? '<a href="' + item.url + '" target="_blank" style="color:#3b82f6;text-decoration:none;font-size:11px;">' + item.id + '</a>' : '—'}</td>`;
+        html += `<td style="padding:8px;color:#888;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" class="mob-hide">${item.seller}</td>`;
+        const _sym = symbols[currentCurrency];
+        const priceStr = item.price >= 1000 ? (item.price/1000).toFixed(0)+'к'+_sym : item.price+_sym;
+        const revStr = item.revenue >= 1000 ? (item.revenue/1000).toFixed(1)+'млн' : item.revenue.toFixed(1)+'тыс';
+        html += `<td style="padding:8px;color:#fff;text-align:right;white-space:nowrap;">${priceStr}</td>`;
+        html += `<td style="padding:8px;color:#38bdf8;text-align:right;white-space:nowrap;">${revStr}</td>`;
+        html += `<td style="padding:8px;color:#4ade80;text-align:right;" class="mob-hide">${item.sales.toLocaleString('ru')}</td>`;
+        html += `<td style="padding:8px;color:#fbbf24;text-align:right;" class="mob-hide">${item.rating > 0 ? '★ ' + item.rating : '—'}</td>`;
+        html += `<td style="padding:8px;text-align:center;" class="mob-hide">${item.url ? '<a href="' + item.url + '" target="_blank" style="color:#3b82f6;text-decoration:none;font-size:11px;">' + item.id + '</a>' : '—'}</td>`;
 
         html += '</tr>';
       });
@@ -2409,7 +2414,7 @@ function renderResult(d) {
     </div>
 
     <!-- ЗОНА 4: Два графика в ряд -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;" class="mobile-single-col">
       <div class="chart-card" style="height:320px;" onclick="openChartModal('📦 Сезонность заказов', 'line', window._chartData.labels, window._chartData.sales, '#4ade80', false)">
         <div class="chart-title">📦 Сезонность заказов <span style="font-size:10px;color:#555;">(шт)</span> <span style="font-size:10px;color:#555;">🔍</span></div>
         <canvas id="salesChart" height="140"></canvas>
@@ -2431,7 +2436,7 @@ function renderResult(d) {
     </div>
 
     <!-- ЗОНА 4б: Распределение цен + Тренд -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;" class="mobile-single-col">
       <div class="chart-card" style="height:320px;" onclick="openChartModal('💰 Распределение цен', 'price', window._chartData.price_labels, window._chartData.price_data, '#fbbf24', false)">
         <div class="chart-title">💰 Распределение цен <span style="font-size:10px;color:#555;">(% товаров по цене) 🔍</span></div>
         <canvas id="priceChart" height="110"></canvas>
@@ -2443,7 +2448,7 @@ function renderResult(d) {
     </div>
 
     <!-- ЗОНА 4в+4г: Топ продавцы + Прогноз -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch;" class="mobile-single-col">
     <div class="chart-card" style="display:flex;flex-direction:column;height:320px;" onclick="openChartModal('🏆 Топ продавцы ниши', 'doughnut', window._chartData.seller_labels, window._chartData.seller_pct || window._chartData.seller_data, '#06b6d4', false)">
       <div class="chart-title">🏆 Топ продавцы ниши (доля рынка) <span style="font-size:10px;color:#555;">🔍</span></div>
       <div style="display:flex;gap:8px;align-items:center;height:260px;">

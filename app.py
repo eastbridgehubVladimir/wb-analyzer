@@ -4511,11 +4511,31 @@ async function runWarehouseAnalysis() {
       rate: rates[currentCurrency],
       symbol: symbols[currentCurrency]
     };
-    const resp = await fetch('/warehouse-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-    if (!resp.ok) throw new Error('Ошибка сервера: ' + resp.status);
-    const result = await resp.json();
-    if (result.error) throw new Error(result.error);
-    renderWarehouseStrategy(result.analysis, symbols[currentCurrency], rates[currentCurrency]);
+    const resp = await fetch('/warehouse-stream', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    container.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует...</div>';
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream:true});
+      const parts = buf.split('\\n\\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        const raw = part.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.type === 'progress') {
+            container.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует... ' + msg.chars + ' симв.</div>';
+          } else if (msg.type === 'done') {
+            renderWarehouseStrategy(msg.analysis, symbols[currentCurrency], rates[currentCurrency]);
+          } else if (msg.type === 'error') { throw new Error(msg.error); }
+        } catch(pe) {}
+      }
+    }
     btn.textContent = '🔄 Обновить анализ';
     btn.style.opacity = '1';
     btn.disabled = false;
@@ -6970,6 +6990,11 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
 
+        elif self.path == '/warehouse-stream':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length))
+            handle_warehouse_stream(self, body)
+            return
         elif self.path == '/warehouse-analysis':
             try:
                 import anthropic
@@ -7054,6 +7079,75 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
             self.end_headers()
 
 
+
+
+
+def handle_warehouse_stream(handler, body):
+    import anthropic as _anthropic
+    niche_name = body.get('niche_name', '')
+    avg_price = body.get('avg_price', 0)
+    revenue = body.get('revenue', 0)
+    turnover = body.get('turnover', 0)
+    buyout_pct = body.get('buyout_pct', 0)
+    profit_pct = body.get('profit_pct', 0)
+    commission = body.get('commission', 0)
+    w = body.get('warehouse_stats', {})
+
+    prompt = (
+        "Ты эксперт по логистике и поставкам на Wildberries. Проанализируй данные топ-30 SKU ниши.\n\n"
+        "ВАЖНЫЙ КОНТЕКСТ: Компания из Беларуси (Минск). Приоритет складам: Смоленск, Коледино, Подольск, Электросталь, Шушары.\n\n"
+        f"НИША: {niche_name}\n"
+        f"Средняя цена: {avg_price} руб | Выручка: {revenue:,.0f} руб\n"
+        f"Оборачиваемость: {turnover} дней | Выкуп: {buyout_pct*100:.1f}%\n"
+        f"Маржинальность: {profit_pct*100:.1f}% | Комиссия WB: {commission*100:.1f}%\n\n"
+        f"ДАННЫЕ ТОП-30 SKU:\n"
+        f"FBS товаров: {w.get('fbs_count',0)} ({w.get('fbs_pct',0)}%)\n"
+        f"FBO товаров: {w.get('fbo_count',0)} ({w.get('fbo_pct',0)}%)\n"
+        f"Среднее складов у лидеров: {w.get('avg_wh_leaders',0)}\n"
+        f"Средняя оборачиваемость: {w.get('avg_turnover',0)} дней\n"
+        f"Товаров с заморозкой >10%: {w.get('frozen_pct',0)}%\n"
+        f"Средний остаток FBO: {w.get('avg_balance',0)} шт\n\n"
+        "Верни ТОЛЬКО валидный JSON без markdown:\n"
+        "{\n"
+        '  "model": "FBS / FBO / Смешанная FBS+FBO",\n'
+        '  "model_color": "fbs|fbo|mixed",\n'
+        '  "model_detail": "объяснение 3-4 предложения с цифрами",\n'
+        '  "warehouse_tips": ["совет 1", "совет 2", "совет 3", "совет 4"],\n'
+        '  "stock": {"min_units": 0, "opt_units": 0, "min_rub": 0, "opt_rub": 0, "days_covered": 0, "comment": "логика расчёта"},\n'
+        '  "risks": ["риск 1", "риск 2", "риск 3"]\n'
+        "}\n"
+        "Все суммы в рублях."
+    )
+
+    client = _anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
+    handler.send_response(200)
+    handler.send_header('Content-type', 'text/event-stream; charset=utf-8')
+    handler.send_header('Cache-Control', 'no-cache')
+    handler.end_headers()
+
+    full_text = ''
+    try:
+        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=2000, messages=[{'role':'user','content':prompt}]) as stream:
+            for text in stream.text_stream:
+                full_text += text
+                chunk = json.dumps({'type':'progress','chars':len(full_text)}, ensure_ascii=False)
+                handler.wfile.write(('data: ' + chunk + '\n\n').encode('utf-8'))
+                handler.wfile.flush()
+
+        analysis = json.loads(full_text.strip().replace('```json','').replace('```','').strip())
+        event = json.dumps({'type':'done','analysis':analysis}, ensure_ascii=False)
+        handler.wfile.write(('data: ' + event + '\n\n').encode('utf-8'))
+        handler.wfile.write(b'data: [DONE]\n\n')
+        handler.wfile.flush()
+    except Exception as e:
+        import traceback
+        print('WAREHOUSE STREAM ERROR:', traceback.format_exc())
+        try:
+            ev = json.dumps({'type':'error','error':str(e)}, ensure_ascii=False)
+            handler.wfile.write(('data: ' + ev + '\n\n').encode('utf-8'))
+            handler.wfile.flush()
+        except:
+            pass
 
 
 def handle_master_stream(handler, body):

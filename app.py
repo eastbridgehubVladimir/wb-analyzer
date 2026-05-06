@@ -866,26 +866,40 @@ async function deepAnalysis(d) {
   block.scrollIntoView({behavior: 'smooth', block: 'start'});
   
   try {
-    const params = new URLSearchParams({
-      name: d.full || d.name,
-      revenue: d.revenue,
-      avg_price: d.avg_price,
-      commission: d.commission,
-      buyout_pct: d.buyout_pct,
-      profit_pct: d.profit_pct,
-      turnover: d.turnover,
-      sellers: d.sellers,
-      sellers_with_sales: d.sellers_with_sales,
+    const r = await fetch('/deep-stream', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+      name: d.full || d.name, revenue: d.revenue, avg_price: d.avg_price,
+      commission: d.commission, buyout_pct: d.buyout_pct, profit_pct: d.profit_pct,
+      turnover: d.turnover, sellers: d.sellers, sellers_with_sales: d.sellers_with_sales,
       currency: currentCurrency
-    });
-    const r = await fetch('/deep-analysis?' + params);
-    const data = await r.json();
+    })});
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
     loading.style.display = 'none';
-    if (data.error) {
-      content.innerHTML = '<div style="color:#f87171;padding:16px;">' + data.error + '</div>';
-      return;
+    content.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует...</div>';
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream:true});
+      const parts = buf.split('\\n\\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        const raw = part.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.type === 'progress') {
+            content.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует... ' + msg.chars + ' симв.</div>';
+          } else if (msg.type === 'html') {
+            content.innerHTML = msg.html;
+            if (msg.raw) window._deepRaw = msg.raw;
+          } else if (msg.type === 'error') {
+            content.innerHTML = '<div style="color:#f87171;padding:16px;">' + msg.error + '</div>';
+          }
+        } catch(pe) {}
+      }
     }
-    content.innerHTML = data.html;
   } catch(e) {
     loading.style.display = 'none';
     content.innerHTML = '<div style="color:#f87171;padding:16px;">Ошибка соединения</div>';
@@ -6990,6 +7004,11 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
 
+        elif self.path == '/deep-stream':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length))
+            handle_deep_stream(self, body)
+            return
         elif self.path == '/warehouse-stream':
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
@@ -7080,6 +7099,165 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
 
 
 
+
+
+
+def handle_deep_stream(handler, body):
+    import anthropic as _anthropic
+    from urllib.parse import unquote
+    name = body.get('name', '')
+    revenue = float(body.get('revenue', 0))
+    avg_price = float(body.get('avg_price', 0))
+    commission = float(body.get('commission', 0))
+    buyout_pct = float(body.get('buyout_pct', 0))
+    profit_pct = float(body.get('profit_pct', 0))
+    turnover = float(body.get('turnover', 0))
+    sellers = int(body.get('sellers', 0))
+    sellers_with_sales = int(body.get('sellers_with_sales', 0))
+    currency = body.get('currency', 'rub')
+    rates = {'rub': 1, 'usd': 0.011, 'eur': 0.010, 'byn': 0.036}
+    symbols = {'rub': '\u20bd', 'usd': '$', 'eur': '\u20ac', 'byn': 'Br'}
+    rate = rates.get(currency, 1)
+    sym = symbols.get(currency, '\u20bd')
+    real_turnover = round(turnover / buyout_pct) if buyout_pct > 0 else round(turnover)
+    avg_rev_per_seller = revenue / sellers_with_sales if sellers_with_sales > 0 else 0
+
+    prompt = (
+        f"Ты эксперт по торговле на Wildberries. Сделай глубокий анализ ниши для селлера.\n\n"
+        f"Ниша: {name}\nВалюта: {sym}\nКурс к рублю: {rate}\n\n"
+        f"ДАННЫЕ НИШИ:\n"
+        f"Выручка за период: {revenue:,.0f} руб\n"
+        f"Продавцов всего: {sellers}, с продажами: {sellers_with_sales} ({round(sellers_with_sales/sellers*100) if sellers > 0 else 0}%)\n"
+        f"Средняя цена: {avg_price:,.0f} руб | Комиссия WB: {commission:.0f}%\n"
+        f"Выкуп: {buyout_pct*100:.0f}% | Оборачиваемость: {real_turnover} дней\n"
+        f"Маржинальность: {profit_pct*100:.0f}% | Средняя выручка продавца: {avg_rev_per_seller:,.0f} руб/мес\n\n"
+        f"Дай анализ в формате JSON (суммы в {sym}, умножай рубли на {rate}):\n"
+        "{{\n"
+        '  "verdict": "ВХОДИТЬ" или "ТЕСТИРОВАТЬ" или "НЕ ВХОДИТЬ",\n'
+        '  "verdict_color": "#22c55e" или "#eab308" или "#ef4444",\n'
+        '  "verdict_desc": "краткое обоснование 1 предложение",\n'
+        '  "entry_budget": число,\n'
+        '  "ad_budget": число,\n'
+        '  "breakeven": число,\n'
+        '  "roi_forecast": "X-Y%",\n'
+        '  "financial_plan": "2-3 предложения",\n'
+        '  "competitive_analysis": "2-3 предложения",\n'
+        '  "free_segments": "свободные сегменты",\n'
+        '  "recommendation": "2-3 предложения",\n'
+        '  "season_peak_months": "месяцы пика",\n'
+        '  "season_low_months": "месяцы спада",\n'
+        '  "purchase_months": "когда закупать",\n'
+        '  "ad_launch_months": "когда реклама",\n'
+        '  "season_risk": "низкий/средний/высокий",\n'
+        '  "season_tip": "совет по сезонности"\n'
+        "}}\nТолько JSON без markdown."
+    )
+
+    client = _anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
+    handler.send_response(200)
+    handler.send_header('Content-type', 'text/event-stream; charset=utf-8')
+    handler.send_header('Cache-Control', 'no-cache')
+    handler.end_headers()
+
+    full_text = ''
+    try:
+        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=1000, messages=[{'role':'user','content':prompt}]) as stream:
+            for text in stream.text_stream:
+                full_text += text
+                chunk = json.dumps({'type':'progress','chars':len(full_text)}, ensure_ascii=False)
+                handler.wfile.write(('data: ' + chunk + '\n\n').encode('utf-8'))
+                handler.wfile.flush()
+
+        ai = json.loads(full_text.strip().replace('```json','').replace('```','').strip())
+
+        season_risk = ai.get('season_risk','')
+        risk_color = '#22c55e' if season_risk == '\u043d\u0438\u0437\u043a\u0438\u0439' else '#f59e0b' if season_risk == '\u0441\u0440\u0435\u0434\u043d\u0438\u0439' else '#ef4444'
+
+        html = (
+            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;">'
+            '<div style="background:#0f1117;border-radius:10px;padding:16px;text-align:center;">'
+            '<div style="font-size:11px;color:#555;margin-bottom:8px;">ВЕРДИКТ</div>'
+            '<div style="font-size:22px;font-weight:700;color:' + ai.get('verdict_color','#eab308') + ';">' + ai.get('verdict','—') + '</div>'
+            '<div style="font-size:11px;color:#555;margin-top:6px;">' + ai.get('verdict_desc','') + '</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:10px;padding:16px;text-align:center;">'
+            '<div style="font-size:11px;color:#555;margin-bottom:8px;">БЮДЖЕТ НА ВХОД</div>'
+            '<div style="font-size:22px;font-weight:700;color:#fff;">' + f"{ai.get('entry_budget',0):,.0f}" + ' ' + sym + '</div>'
+            '<div style="font-size:11px;color:#555;margin-top:6px;">минимальная партия 30 шт</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:10px;padding:16px;text-align:center;">'
+            '<div style="font-size:11px;color:#555;margin-bottom:8px;">БЮДЖЕТ НА РЕКЛАМУ</div>'
+            '<div style="font-size:22px;font-weight:700;color:#fff;">' + f"{ai.get('ad_budget',0):,.0f}" + ' ' + sym + '</div>'
+            '<div style="font-size:11px;color:#555;margin-top:6px;">первый месяц</div>'
+            '</div>'
+            '</div>'
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">'
+            '<div style="background:#0f1117;border-radius:10px;padding:16px;">'
+            '<div style="font-size:11px;color:#555;margin-bottom:4px;">ТОЧКА БЕЗУБЫТОЧНОСТИ</div>'
+            '<div style="font-size:18px;font-weight:700;color:#fff;">' + f"{ai.get('breakeven',0):,.0f}" + ' ' + sym + '</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:10px;padding:16px;">'
+            '<div style="font-size:11px;color:#555;margin-bottom:4px;">ПРОГНОЗ ROI (3 мес)</div>'
+            '<div style="font-size:18px;font-weight:700;color:#22c55e;">' + ai.get('roi_forecast','—') + '</div>'
+            '</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">'
+            '<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">\U0001f4b0 Финансовый план</div>'
+            '<div style="font-size:12px;color:#aaa;line-height:1.6;">' + ai.get('financial_plan','') + '</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">'
+            '<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">\U0001f3c6 Конкурентный анализ</div>'
+            '<div style="font-size:12px;color:#aaa;line-height:1.6;">' + ai.get('competitive_analysis','') + '</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:10px;padding:16px;margin-bottom:12px;">'
+            '<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:8px;">\U0001f3af Свободные сегменты</div>'
+            '<div style="font-size:12px;color:#aaa;line-height:1.6;">' + ai.get('free_segments','') + '</div>'
+            '</div>'
+            '<div style="background:#22c55e11;border:1px solid #22c55e33;border-radius:10px;padding:16px;margin-bottom:12px;">'
+            '<div style="font-size:13px;font-weight:600;color:#22c55e;margin-bottom:8px;">\u2705 Рекомендация</div>'
+            '<div style="font-size:12px;color:#aaa;line-height:1.6;">' + ai.get('recommendation','') + '</div>'
+            '</div>'
+            '<div style="background:#1a2010;border:1px solid #f59e0b33;border-radius:10px;padding:16px;">'
+            '<div style="font-size:13px;font-weight:600;color:#f59e0b;margin-bottom:12px;">\U0001f4c5 Сезонное планирование</div>'
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">'
+            '<div style="background:#0f1117;border-radius:8px;padding:12px;">'
+            '<div style="font-size:10px;color:#555;margin-bottom:4px;">ПИК ПРОДАЖ</div>'
+            '<div style="font-size:13px;color:#22c55e;font-weight:600;">' + ai.get('season_peak_months','—') + '</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:8px;padding:12px;">'
+            '<div style="font-size:10px;color:#555;margin-bottom:4px;">СПАД ПРОДАЖ</div>'
+            '<div style="font-size:13px;color:#ef4444;font-weight:600;">' + ai.get('season_low_months','—') + '</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:8px;padding:12px;">'
+            '<div style="font-size:10px;color:#555;margin-bottom:4px;">КОГДА ЗАКУПАТЬ</div>'
+            '<div style="font-size:13px;color:#f59e0b;font-weight:600;">' + ai.get('purchase_months','—') + '</div>'
+            '</div>'
+            '<div style="background:#0f1117;border-radius:8px;padding:12px;">'
+            '<div style="font-size:10px;color:#555;margin-bottom:4px;">ЗАПУСК РЕКЛАМЫ</div>'
+            '<div style="font-size:13px;color:#93c5fd;font-weight:600;">' + ai.get('ad_launch_months','—') + '</div>'
+            '</div>'
+            '</div>'
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+            '<div style="font-size:11px;color:#555;">Сезонный риск:</div>'
+            '<div style="font-size:12px;font-weight:700;color:' + risk_color + ';">' + season_risk.upper() + '</div>'
+            '</div>'
+            '<div style="font-size:12px;color:#aaa;line-height:1.6;">' + ai.get('season_tip','') + '</div>'
+            '</div>'
+        )
+
+        event = json.dumps({'type':'html','html':html,'raw':ai}, ensure_ascii=False)
+        handler.wfile.write(('data: ' + event + '\n\n').encode('utf-8'))
+        handler.wfile.write(b'data: [DONE]\n\n')
+        handler.wfile.flush()
+    except Exception as e:
+        import traceback
+        print('DEEP STREAM ERROR:', traceback.format_exc())
+        try:
+            ev = json.dumps({'type':'error','error':str(e)}, ensure_ascii=False)
+            handler.wfile.write(('data: ' + ev + '\n\n').encode('utf-8'))
+            handler.wfile.flush()
+        except:
+            pass
 
 
 def handle_warehouse_stream(handler, body):

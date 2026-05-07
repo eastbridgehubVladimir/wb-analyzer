@@ -1181,7 +1181,7 @@ async function runTrendsFinder() {
   trendsBlock.scrollIntoView({behavior:'smooth'});
 
   try {
-    const r = await fetch('/trends-finder', {method:'POST',
+    const r = await fetch('/trends-stream', {method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         currency: currentCurrency,
@@ -1189,8 +1189,33 @@ async function runTrendsFinder() {
         symbol: symbols[currentCurrency]
       })
     });
-    const data = await r.json();
-    document.getElementById('trends-result').innerHTML = data.html || '<div style="color:#ef4444;">Ошибка</div>';
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    const trendsEl = document.getElementById('trends-result');
+    trendsEl.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude ищет тренды...</div>';
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream:true});
+      const parts = buf.split('\\n\\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        const raw = part.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.type === 'progress') {
+            trendsEl.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude ищет тренды... ' + msg.chars + ' симв.</div>';
+          } else if (msg.type === 'html') {
+            trendsEl.innerHTML = msg.html;
+          } else if (msg.type === 'error') {
+            trendsEl.innerHTML = '<div style="color:#ef4444;">' + msg.error + '</div>';
+          }
+        } catch(pe) {}
+      }
+    }
   } catch(e) {
     document.getElementById('trends-result').innerHTML = '<div style="color:#ef4444;">Ошибка: ' + e.message + '</div>';
   }
@@ -7101,6 +7126,11 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
             body = json.loads(self.rfile.read(length))
             handle_deep_stream(self, body)
             return
+        elif self.path == '/trends-stream':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length))
+            handle_trends_stream(self, body)
+            return
         elif self.path == '/monitor-stream':
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
@@ -7216,6 +7246,112 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
 
 
 
+
+
+
+def handle_trends_stream(handler, body):
+    import anthropic as _anthropic
+    sym = body.get('symbol', '\u20bd')
+
+    conn = psycopg2.connect(DB)
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT name, COALESCE(display_name,name), revenue, profit_pct,
+               buyout_pct, turnover, sellers, sellers_with_sales
+        FROM niches
+        WHERE revenue > 5000000
+        AND profit_pct > 0.15
+        AND buyout_pct > 0.6
+        AND turnover < 60
+        AND sellers_with_sales > 5
+        ORDER BY (profit_pct * buyout_pct / NULLIF(turnover,0)) DESC NULLS LAST
+        LIMIT 50
+    """)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    niches_text = ''
+    for r in rows[:30]:
+        activity = round(r[7]/r[6]*100) if r[6] > 0 else 0
+        niches_text += f'\n- {r[1]}: \u0432\u044b\u0440\u0443\u0447\u043a\u0430 {float(r[2])/1e6:.1f}\u043c\u043b\u043d\u20bd, \u043c\u0430\u0440\u0436\u0430 {float(r[3])*100:.0f}%, \u0432\u044b\u043a\u0443\u043f {float(r[4])*100:.0f}%, \u043e\u0431\u043e\u0440\u043e\u0442 {r[5]}\u0434\u043d, \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c {activity}%'
+
+    prompt = (
+        "\u0422\u044b \u044d\u043a\u0441\u043f\u0435\u0440\u0442 \u043f\u043e \u0442\u0440\u0435\u043d\u0434\u0430\u043c Wildberries. \u041f\u0440\u043e\u0430\u043d\u0430\u043b\u0438\u0437\u0438\u0440\u0443\u0439 \u043d\u0438\u0448\u0438 \u0438 \u0432\u044b\u044f\u0432\u0438 \u0442\u0440\u0435\u043d\u0434\u044b.\n\n"
+        f"\u041d\u0418\u0428\u0418:\n{niches_text}\n\n"
+        "\u0412\u0435\u0440\u043d\u0438 JSON:\n"
+        "{{\n"
+        '  "trend_summary": "2-3 \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u044f \u043e \u0442\u0440\u0435\u043d\u0434\u0430\u0445",\n'
+        '  "hot_trends": [{{"category": "\u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435", "why_trending": "\u043f\u043e\u0447\u0435\u043c\u0443", "opportunity": "\u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e\u0441\u0442\u044c", "urgency": "\u0432\u044b\u0441\u043e\u043a\u0430\u044f/\u0441\u0440\u0435\u0434\u043d\u044f\u044f/\u043d\u0438\u0437\u043a\u0430\u044f"}}],\n'
+        '  "hidden_gems": [{{"name": "\u043d\u0438\u0448\u0430", "why_undervalued": "\u043f\u043e\u0447\u0435\u043c\u0443", "potential": "\u043f\u043e\u0442\u0435\u043d\u0446\u0438\u0430\u043b"}}],\n'
+        '  "act_now": ["\u043d\u0438\u0448\u0430 1", "\u043d\u0438\u0448\u0430 2", "\u043d\u0438\u0448\u0430 3"],\n'
+        '  "market_insight": "\u0438\u043d\u0441\u0430\u0439\u0442 1-2 \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u044f"\n'
+        "}}\n"
+        "\u0422\u043e\u043b\u044c\u043a\u043e JSON \u0431\u0435\u0437 markdown."
+    )
+
+    client = _anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
+    handler.send_response(200)
+    handler.send_header('Content-type', 'text/event-stream; charset=utf-8')
+    handler.send_header('Cache-Control', 'no-cache')
+    handler.end_headers()
+
+    full_text = ''
+    try:
+        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=2000, messages=[{'role':'user','content':prompt}]) as stream:
+            for text in stream.text_stream:
+                full_text += text
+                chunk = json.dumps({'type':'progress','chars':len(full_text)}, ensure_ascii=False)
+                handler.wfile.write(('data: ' + chunk + '\n\n').encode('utf-8'))
+                handler.wfile.flush()
+
+        ai = json.loads(full_text.strip().replace('```json','').replace('```','').strip())
+
+        html = '<div style="font-size:13px;color:#aaa;line-height:1.6;margin-bottom:14px;">' + ai.get('trend_summary','') + '</div>'
+        html += '<div style="font-size:13px;font-weight:600;color:#f59e0b;margin-bottom:10px;">\U0001f525 \u0413\u043e\u0440\u044f\u0447\u0438\u0435 \u0442\u0440\u0435\u043d\u0434\u044b</div>'
+
+        for t in ai.get('hot_trends', []):
+            uc = '#ef4444' if t.get('urgency')=='\u0432\u044b\u0441\u043e\u043a\u0430\u044f' else '#f59e0b' if t.get('urgency')=='\u0441\u0440\u0435\u0434\u043d\u044f\u044f' else '#34d399'
+            html += (
+                '<div style="background:#1e2433;border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid ' + uc + ';">'
+                '<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
+                '<div style="font-size:13px;font-weight:600;color:#e2e8f0;">' + t.get('category','') + '</div>'
+                '<span style="font-size:10px;color:' + uc + ';background:' + uc + '22;border-radius:4px;padding:2px 6px;">' + t.get('urgency','') + '</span>'
+                '</div>'
+                '<div style="font-size:12px;color:#94a3b8;margin-bottom:3px;">\U0001f4ca ' + t.get('why_trending','') + '</div>'
+                '<div style="font-size:12px;color:#34d399;">\u2192 ' + t.get('opportunity','') + '</div>'
+                '</div>'
+            )
+
+        html += '<div style="font-size:13px;font-weight:600;color:#93c5fd;margin:14px 0 10px;">\U0001f48e \u041d\u0435\u0434\u043e\u043e\u0446\u0435\u043d\u0451\u043d\u043d\u044b\u0435 \u043d\u0438\u0448\u0438</div>'
+        for g in ai.get('hidden_gems', []):
+            html += (
+                '<div style="background:#1a2035;border-radius:8px;padding:10px;margin-bottom:8px;">'
+                '<div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:4px;">' + g.get('name','') + '</div>'
+                '<div style="font-size:12px;color:#94a3b8;margin-bottom:2px;">' + g.get('why_undervalued','') + '</div>'
+                '<div style="font-size:12px;color:#93c5fd;">\u041f\u043e\u0442\u0435\u043d\u0446\u0438\u0430\u043b: ' + g.get('potential','') + '</div>'
+                '</div>'
+            )
+
+        act_now = ai.get('act_now', [])
+        if act_now:
+            html += '<div style="background:#0f1a1f;border:1px solid #22c55e33;border-radius:8px;padding:12px;margin-top:4px;">'
+            html += '<div style="font-size:12px;font-weight:600;color:#22c55e;margin-bottom:6px;">\u26a1 \u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0432 \u0440\u0430\u0431\u043e\u0442\u0443 \u043f\u0440\u044f\u043c\u043e \u0441\u0435\u0439\u0447\u0430\u0441:</div>'
+            html += ''.join(['<span style="display:inline-block;background:#22c55e22;color:#22c55e;border-radius:4px;padding:3px 8px;font-size:12px;margin:2px;">' + n + '</span>' for n in act_now])
+            html += '<div style="font-size:12px;color:#555;margin-top:8px;">' + ai.get('market_insight','') + '</div></div>'
+
+        event = json.dumps({'type':'html','html':html}, ensure_ascii=False)
+        handler.wfile.write(('data: ' + event + '\n\n').encode('utf-8'))
+        handler.wfile.write(b'data: [DONE]\n\n')
+        handler.wfile.flush()
+    except Exception as e:
+        import traceback
+        print('TRENDS STREAM ERROR:', traceback.format_exc())
+        try:
+            ev = json.dumps({'type':'error','error':str(e)}, ensure_ascii=False)
+            handler.wfile.write(('data: ' + ev + '\n\n').encode('utf-8'))
+            handler.wfile.flush()
+        except: pass
 
 
 def handle_monitor_stream(handler, body):

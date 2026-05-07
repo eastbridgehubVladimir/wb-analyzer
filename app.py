@@ -722,13 +722,38 @@ async function runWatchlistMonitor() {
       symbol: symbols[currentCurrency]
     };
 
-    const r = await fetch('/watchlist-monitor', {
+    const r = await fetch('/monitor-stream', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
-    const data = await r.json();
-    document.getElementById('wl-monitor-result').innerHTML = data.html || '<div style="color:#ef4444;">Ошибка анализа</div>';
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    const monRes = document.getElementById('wl-monitor-result');
+    monRes.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует...</div>';
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream:true});
+      const parts = buf.split('\\n\\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        const raw = part.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.type === 'progress') {
+            monRes.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует... ' + msg.chars + ' симв.</div>';
+          } else if (msg.type === 'html') {
+            monRes.innerHTML = msg.html;
+          } else if (msg.type === 'error') {
+            monRes.innerHTML = '<div style="color:#ef4444;">' + msg.error + '</div>';
+          }
+        } catch(pe) {}
+      }
+    }
   } catch(e) {
     document.getElementById('wl-monitor-result').innerHTML = '<div style="color:#ef4444;">Ошибка: ' + e.message + '</div>';
   }
@@ -7076,6 +7101,11 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
             body = json.loads(self.rfile.read(length))
             handle_deep_stream(self, body)
             return
+        elif self.path == '/monitor-stream':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length))
+            handle_monitor_stream(self, body)
+            return
         elif self.path == '/content-stream':
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
@@ -7185,6 +7215,103 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
 
 
 
+
+
+
+def handle_monitor_stream(handler, body):
+    import anthropic as _anthropic
+    niches = body.get('niches', [])
+    sym = body.get('symbol', '\u20bd')
+    rate = body.get('rate', 1)
+
+    niches_text = ''
+    for n in niches:
+        activity = round(n.get('sellers_with_sales',0)/n.get('sellers',1)*100) if n.get('sellers',0) > 0 else 0
+        niches_text += (
+            f"\n- {n.get('display_name', n.get('name',''))}:\n"
+            f"  \u0412\u044b\u0440\u0443\u0447\u043a\u0430: {n.get('revenue',0):,.0f} \u20bd/\u043c\u0435\u0441 | \u0426\u0435\u043d\u0430: {n.get('avg_price',0):,.0f} \u20bd\n"
+            f"  \u041c\u0430\u0440\u0436\u0430: {n.get('profit_pct',0)*100:.0f}% | \u0412\u044b\u043a\u0443\u043f: {n.get('buyout_pct',0)*100:.0f}%\n"
+            f"  \u041e\u0431\u043e\u0440\u0430\u0447\u0438\u0432\u0430\u0435\u043c\u043e\u0441\u0442\u044c: {n.get('turnover',0)} \u0434\u043d | \u0410\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c: {activity}%\n"
+            f"  Score: {n.get('score',0)}/100"
+        )
+
+    prompt = (
+        "\u0422\u044b \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u043a \u043f\u043e \u0442\u043e\u0440\u0433\u043e\u0432\u043b\u0435 \u043d\u0430 Wildberries. \u041f\u0440\u043e\u0430\u043d\u0430\u043b\u0438\u0437\u0438\u0440\u0443\u0439 \u043f\u043e\u0440\u0442\u0444\u0435\u043b\u044c.\n\n"
+        f"\u041d\u0418\u0428\u0418 \u0412 \u0420\u0410\u0411\u041e\u0422\u0415:\n{niches_text}\n\n"
+        "\u0412\u0435\u0440\u043d\u0438 JSON:\n"
+        "{{\n"
+        '  "portfolio_status": "\u043e\u0442\u043b\u0438\u0447\u043d\u044b\u0439/\u0445\u043e\u0440\u043e\u0448\u0438\u0439/\u0442\u0440\u0435\u0431\u0443\u0435\u0442 \u0432\u043d\u0438\u043c\u0430\u043d\u0438\u044f/\u043a\u0440\u0438\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0439",\n'
+        '  "portfolio_color": "#22c55e",\n'
+        '  "portfolio_summary": "2-3 \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u044f",\n'
+        '  "niches_analysis": [{{"name": "\u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435", "status": "\u0440\u0430\u0441\u0442\u0451\u0442/\u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u0430/\u043f\u043e\u0434 \u0434\u0430\u0432\u043b\u0435\u043d\u0438\u0435\u043c/\u043f\u0430\u0434\u0430\u0435\u0442", "status_color": "#22c55e", "priority": "\u0441\u0440\u043e\u0447\u043d\u043e/\u043f\u043b\u0430\u043d\u043e\u0432\u043e/\u0436\u0434\u0430\u0442\u044c", "priority_color": "#ef4444", "key_insight": "\u043d\u0430\u0431\u043b\u044e\u0434\u0435\u043d\u0438\u0435", "action": "\u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435"}}],\n'
+        '  "top_priority": "\u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435",\n'
+        '  "portfolio_recommendation": "2-3 \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u044f"\n'
+        "}}\n"
+        "\u0422\u043e\u043b\u044c\u043a\u043e JSON \u0431\u0435\u0437 markdown."
+    )
+
+    client = _anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
+    handler.send_response(200)
+    handler.send_header('Content-type', 'text/event-stream; charset=utf-8')
+    handler.send_header('Cache-Control', 'no-cache')
+    handler.end_headers()
+
+    full_text = ''
+    try:
+        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=2000, messages=[{'role':'user','content':prompt}]) as stream:
+            for text in stream.text_stream:
+                full_text += text
+                chunk = json.dumps({'type':'progress','chars':len(full_text)}, ensure_ascii=False)
+                handler.wfile.write(('data: ' + chunk + '\n\n').encode('utf-8'))
+                handler.wfile.flush()
+
+        ai = json.loads(full_text.strip().replace('```json','').replace('```','').strip())
+        pc = ai.get('portfolio_color','#f59e0b')
+
+        html = (
+            '<div style="background:#0f1117;border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid ' + pc + '33;">'
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+            '<div style="font-size:13px;font-weight:600;color:' + pc + ';">\u041f\u043e\u0440\u0442\u0444\u0435\u043b\u044c: ' + ai.get('portfolio_status','—').upper() + '</div>'
+            '</div>'
+            '<div style="font-size:12px;color:#aaa;line-height:1.6;">' + ai.get('portfolio_summary','') + '</div>'
+            '</div>'
+        )
+
+        for na in ai.get('niches_analysis', []):
+            sc = na.get('status_color','#f59e0b')
+            pc2 = na.get('priority_color','#f59e0b')
+            html += (
+                '<div style="background:#1e2433;border-radius:10px;padding:12px;margin-bottom:10px;border-left:3px solid ' + sc + ';">'
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+                '<div style="font-size:13px;font-weight:600;color:#e2e8f0;">' + na.get('name','') + '</div>'
+                '<div style="display:flex;gap:6px;">'
+                '<span style="font-size:10px;color:' + sc + ';background:' + sc + '22;border-radius:4px;padding:2px 6px;">' + na.get('status','') + '</span>'
+                '<span style="font-size:10px;color:' + pc2 + ';background:' + pc2 + '22;border-radius:4px;padding:2px 6px;">' + na.get('priority','') + '</span>'
+                '</div></div>'
+                '<div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">\U0001f4a1 ' + na.get('key_insight','') + '</div>'
+                '<div style="font-size:12px;color:#34d399;">\u2192 ' + na.get('action','') + '</div>'
+                '</div>'
+            )
+
+        html += (
+            '<div style="background:#1a2010;border:1px solid #f59e0b33;border-radius:10px;padding:14px;margin-top:4px;">'
+            '<div style="font-size:12px;font-weight:600;color:#f59e0b;margin-bottom:6px;">\U0001f3af \u041f\u0440\u0438\u043e\u0440\u0438\u0442\u0435\u0442: ' + ai.get('top_priority','') + '</div>'
+            '<div style="font-size:12px;color:#aaa;line-height:1.6;">' + ai.get('portfolio_recommendation','') + '</div>'
+            '</div>'
+        )
+
+        event = json.dumps({'type':'html','html':html}, ensure_ascii=False)
+        handler.wfile.write(('data: ' + event + '\n\n').encode('utf-8'))
+        handler.wfile.write(b'data: [DONE]\n\n')
+        handler.wfile.flush()
+    except Exception as e:
+        import traceback
+        print('MONITOR STREAM ERROR:', traceback.format_exc())
+        try:
+            ev = json.dumps({'type':'error','error':str(e)}, ensure_ascii=False)
+            handler.wfile.write(('data: ' + ev + '\n\n').encode('utf-8'))
+            handler.wfile.flush()
+        except: pass
 
 
 def handle_content_stream(handler, body):

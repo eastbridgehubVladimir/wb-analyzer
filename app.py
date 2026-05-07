@@ -4064,14 +4064,39 @@ async function runContentAgent() {
       rate: rates[currentCurrency],
       symbol: symbols[currentCurrency]
     });
-    const r = await fetch('/content-agent?' + params);
-    const data = await r.json();
+    const r = await fetch('/content-stream', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+      niche_name: d.full || d.name,
+      display_name: d.display_name || d.name,
+      avg_price: d.avg_price || 0,
+      symbol: symbols[currentCurrency]
+    })});
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
     if (loading) loading.style.display = 'none';
-    if (data.error) {
-      container.innerHTML = '<div style="color:#ef4444;padding:12px;">' + data.error + '</div>';
-      return;
+    container.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude генерирует контент...</div>';
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream:true});
+      const parts = buf.split('\\n\\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        const raw = part.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.type === 'progress') {
+            container.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude генерирует... ' + msg.chars + ' симв.</div>';
+          } else if (msg.type === 'html') {
+            container.innerHTML = msg.html;
+          } else if (msg.type === 'error') {
+            container.innerHTML = '<div style="color:#ef4444;padding:12px;">' + msg.error + '</div>';
+          }
+        } catch(pe) {}
+      }
     }
-    container.innerHTML = data.html || '<div style="color:#555;">Нет данных</div>';
   } catch(e) {
     if (loading) loading.style.display = 'none';
     container.innerHTML = '<div style="color:#ef4444;padding:12px;">Ошибка: ' + e.message + '</div>';
@@ -7051,6 +7076,11 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
             body = json.loads(self.rfile.read(length))
             handle_deep_stream(self, body)
             return
+        elif self.path == '/content-stream':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length))
+            handle_content_stream(self, body)
+            return
         elif self.path == '/ad-stream':
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
@@ -7154,6 +7184,70 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
 
 
 
+
+
+
+def handle_content_stream(handler, body):
+    import anthropic as _anthropic
+    niche_name = body.get('niche_name', '')
+    display_name = body.get('display_name', niche_name)
+    avg_price = float(body.get('avg_price', 0))
+    symbol = body.get('symbol', '\u20bd')
+
+    prompt = (
+        f"\u0422\u044b \u044d\u043a\u0441\u043f\u0435\u0440\u0442 \u043f\u043e \u043a\u043e\u043d\u0442\u0435\u043d\u0442\u0443 \u0434\u043b\u044f Wildberries. \u0421\u043e\u0437\u0434\u0430\u0439 \u043a\u043e\u043d\u0442\u0435\u043d\u0442 \u0434\u043b\u044f \u043a\u0430\u0440\u0442\u043e\u0447\u043a\u0438 \u0432 \u043d\u0438\u0448\u0435 \"{display_name}\".\n"
+        f"\u0421\u0440\u0435\u0434\u043d\u044f\u044f \u0446\u0435\u043d\u0430: {avg_price:.0f} {symbol}\n\n"
+        "1. SEO \u0417\u0410\u0413\u041e\u041b\u041e\u0412\u041e\u041a (\u0434\u043e 100 \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432)\n"
+        "2. \u041e\u041f\u0418\u0421\u0410\u041d\u0418\u0415 \u0422\u041e\u0412\u0410\u0420\u0410 (500-600 \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432)\n"
+        "3. \u0411\u0423\u041b\u041b\u0415\u0422\u042b \u2014 5-6 \u043f\u0440\u0435\u0438\u043c\u0443\u0449\u0435\u0441\u0442\u0432 \u0441 \u044d\u043c\u043e\u0434\u0436\u0438\n"
+        "4. \u041a\u041b\u042e\u0427\u0415\u0412\u042b\u0415 \u0425\u0410\u0420\u0410\u041a\u0422\u0415\u0420\u0418\u0421\u0422\u0418\u041a\u0418 \u2014 5-7 \u043f\u043e\u043b\u0435\u0439\n"
+        "5. \u0420\u0415\u041a\u041e\u041c\u0415\u041d\u0414\u0410\u0426\u0418\u0418 \u041f\u041e \u0424\u041e\u0422\u041e\n"
+        "6. \u0421\u041e\u0412\u0415\u0422 \u041f\u041e \u0412\u0418\u0414\u0415\u041e\n\n"
+        "\u041e\u0442\u0432\u0435\u0447\u0430\u0439 \u0441\u0442\u0440\u0443\u043a\u0442\u0443\u0440\u0438\u0440\u043e\u0432\u0430\u043d\u043d\u043e, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439 \u044d\u043c\u043e\u0434\u0436\u0438. \u041f\u0438\u0448\u0438 \u043d\u0430 \u0440\u0443\u0441\u0441\u043a\u043e\u043c."
+    )
+
+    client = _anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
+    handler.send_response(200)
+    handler.send_header('Content-type', 'text/event-stream; charset=utf-8')
+    handler.send_header('Cache-Control', 'no-cache')
+    handler.end_headers()
+
+    full_text = ''
+    try:
+        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=2000, messages=[{'role':'user','content':prompt}]) as stream:
+            for text in stream.text_stream:
+                full_text += text
+                chunk = json.dumps({'type':'progress','chars':len(full_text)}, ensure_ascii=False)
+                handler.wfile.write(('data: ' + chunk + '\n\n').encode('utf-8'))
+                handler.wfile.flush()
+
+        html = '<div style="font-size:13px;line-height:1.7;color:#e2e8f0;">'
+        for line in full_text.split('\n'):
+            line = line.strip()
+            if not line:
+                html += '<br>'
+            elif line[0].isdigit() and len(line) > 2 and line[1] == '.':
+                html += '<div style="color:#ec4899;font-weight:700;font-size:14px;margin:16px 0 8px;">' + line + '</div>'
+            elif line.startswith('-') or line.startswith('\u2022'):
+                html += '<div style="padding:3px 0 3px 12px;border-left:2px solid #ec489944;margin:3px 0;">' + line + '</div>'
+            else:
+                html += '<div style="margin:3px 0;">' + line + '</div>'
+        html += '</div>'
+        html += '<div style="margin-top:16px;"><button onclick="navigator.clipboard.writeText(document.getElementById(\'content-raw\').innerText);this.textContent=\'\u2705 \u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u043e!\'" style="background:#ec489922;border:1px solid #ec489944;border-radius:8px;padding:8px 16px;color:#ec4899;font-size:12px;cursor:pointer;">\U0001f4cb \u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c</button></div>'
+        html += '<div id="content-raw" style="display:none;">' + full_text.replace('<','&lt;').replace('>','&gt;') + '</div>'
+
+        event = json.dumps({'type':'html','html':html}, ensure_ascii=False)
+        handler.wfile.write(('data: ' + event + '\n\n').encode('utf-8'))
+        handler.wfile.write(b'data: [DONE]\n\n')
+        handler.wfile.flush()
+    except Exception as e:
+        import traceback
+        print('CONTENT STREAM ERROR:', traceback.format_exc())
+        try:
+            ev = json.dumps({'type':'error','error':str(e)}, ensure_ascii=False)
+            handler.wfile.write(('data: ' + ev + '\n\n').encode('utf-8'))
+            handler.wfile.flush()
+        except: pass
 
 
 def handle_ad_stream(handler, body):

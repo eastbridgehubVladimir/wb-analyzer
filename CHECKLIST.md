@@ -58,3 +58,7 @@
 - d0f2ee1 — feat: streaming content agent
 - d086ffe — feat: streaming ad-analysis agent
 - 05036f3 — feat: streaming unit-economy agent
+
+### Не охвачены стримингом
+- [ ] 📋 Документы (/docs-analysis) — стриминг
+- [ ] 🏭 Поставщики (/supplier-analysis) — стриминг

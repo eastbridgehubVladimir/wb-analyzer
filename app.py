@@ -4659,15 +4659,36 @@ async function runAdAnalysis() {
       buyout_pct: d.buyout_pct || 0, turnover: d.turnover || 0,
       commission: d.commission || 0, currency: currentCurrency, rate: rate, symbol: sym
     };
-    const resp = await fetch('/ad-analysis', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-    if (!resp.ok) throw new Error('Ошибка сервера: ' + resp.status);
-    const result = await resp.json();
-    if (result.error) throw new Error(result.error);
-    window._adForecastId = result.forecast_id;
-    renderAdStrategy(result, sym, rate);
-    btn.textContent = '🔄 Обновить анализ';
-    btn.style.opacity = '1';
-    btn.disabled = false;
+    const resp = await fetch('/ad-stream', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    const adContent = document.getElementById('adContent');
+    adContent.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует...</div>';
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream:true});
+      const parts = buf.split('\\n\\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        const raw = part.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.type === 'progress') {
+            adContent.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует... ' + msg.chars + ' симв.</div>';
+          } else if (msg.type === 'done') {
+            window._adForecastId = msg.forecast_id;
+            renderAdStrategy(msg, sym, rate);
+            btn.textContent = '🔄 Обновить анализ';
+            btn.style.opacity = '1';
+            btn.disabled = false;
+          } else if (msg.type === 'error') { throw new Error(msg.error); }
+        } catch(pe) {}
+      }
+    }
   } catch(e) {
     container.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;font-size:13px;">❌ Ошибка: ' + e.message + '</div>';
     btn.textContent = '🎯 Получить стратегию';
@@ -7030,6 +7051,11 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
             body = json.loads(self.rfile.read(length))
             handle_deep_stream(self, body)
             return
+        elif self.path == '/ad-stream':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length))
+            handle_ad_stream(self, body)
+            return
         elif self.path == '/unit-stream':
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
@@ -7127,6 +7153,88 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
 
 
 
+
+
+
+def handle_ad_stream(handler, body):
+    import anthropic as _anthropic
+    niche_name = body.get('niche_name', '')
+    avg_cpm = body.get('avg_cpm', 0)
+    ad_pct = body.get('ad_pct', 0)
+    cpm_status = body.get('cpm_status', 'yellow')
+    ad_verdict = body.get('ad_verdict', '')
+    top_ad_sellers = body.get('top_ad_sellers', [])
+    avg_price = body.get('avg_price', 0)
+    revenue = body.get('revenue', 0)
+    sellers_with_sales = body.get('sellers_with_sales', 0)
+    profit_pct = body.get('profit_pct', 0)
+    buyout_pct = body.get('buyout_pct', 0)
+    turnover = body.get('turnover', 0)
+    commission = body.get('commission', 0)
+    top_sellers_str = ', '.join([f"{s['name']} ({s['count']} \u0442\u043e\u0432.)" for s in top_ad_sellers[:5]]) if top_ad_sellers else '\u043d\u0435\u0442 \u0434\u0430\u043d\u043d\u044b\u0445'
+
+    prompt = (
+        f"\u0422\u044b \u043f\u0440\u043e\u0444\u0435\u0441\u0441\u0438\u043e\u043d\u0430\u043b\u044c\u043d\u044b\u0439 \u0440\u0435\u043a\u043b\u0430\u043c\u043d\u044b\u0439 \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u043a Wildberries. \u041f\u0440\u043e\u0432\u0435\u0434\u0438 \u0430\u043d\u0430\u043b\u0438\u0437 \u0438 \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u0430\u0439 \u0441\u0442\u0440\u0430\u0442\u0435\u0433\u0438\u044e.\n\n"
+        f"\u0414\u0410\u041d\u041d\u042b\u0415 \u041d\u0418\u0428\u0418: {niche_name}\n"
+        f"\u0421\u0440\u0435\u0434\u043d\u0438\u0439 CPM: {avg_cpm} \u0440\u0443\u0431 | \u0422\u043e\u0432\u0430\u0440\u043e\u0432 \u0441 \u0440\u0435\u043a\u043b\u0430\u043c\u043e\u0439: {ad_pct}%\n"
+        f"\u0412\u0435\u0440\u0434\u0438\u043a\u0442: {ad_verdict} | \u0422\u043e\u043f: {top_sellers_str}\n"
+        f"\u0421\u0440\u0435\u0434\u043d\u044f\u044f \u0446\u0435\u043d\u0430: {avg_price} \u0440\u0443\u0431 | \u0412\u044b\u0440\u0443\u0447\u043a\u0430: {revenue:,.0f} \u0440\u0443\u0431\n"
+        f"\u041c\u0430\u0440\u0436\u0438\u043d\u0430\u043b\u044c\u043d\u043e\u0441\u0442\u044c: {profit_pct*100:.1f}% | \u0412\u044b\u043a\u0443\u043f: {buyout_pct*100:.1f}% | \u041a\u043e\u043c\u0438\u0441\u0441\u0438\u044f WB: {commission*100:.1f}%\n\n"
+        "\u0412\u0435\u0440\u043d\u0438 ONLY JSON \u0431\u0435\u0437 markdown:\n"
+        "{{\n"
+        '  "load_level": "low|medium|high",\n'
+        '  "load_analysis": "\u0430\u043d\u0430\u043b\u0438\u0437 3-4 \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u044f",\n'
+        '  "strategy_type": "\u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0441\u0442\u0440\u0430\u0442\u0435\u0433\u0438\u0438",\n'
+        '  "strategy_detail": "\u043e\u0431\u044a\u044f\u0441\u043d\u0435\u043d\u0438\u0435 3-4 \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u044f",\n'
+        '  "strategy_steps": ["\u0428\u0430\u0433 1","\u0428\u0430\u0433 2","\u0428\u0430\u0433 3","\u0428\u0430\u0433 4","\u0428\u0430\u0433 5"],\n'
+        '  "budget": {{"start_rub": 0, "growth_rub": 0, "sustain_rub": 0, "comment": "\u043b\u043e\u0433\u0438\u043a\u0430"}},\n'
+        '  "cpm_forecast": {{"start_rub": 0, "month2_rub": 0, "comment": "\u043f\u043e\u0447\u0435\u043c\u0443 \u0442\u0430\u043a\u043e\u0439 CPM"}},\n'
+        '  "forecast": {{"month1": {{"metrics": ["CTR: X%","CR: X%","DRR: X%","Pos: X","Orders: X"]}}, "month2": {{"metrics": ["CTR: X%","CR: X%","DRR: X%","Pos: X","Orders: X"]}}}}\n'
+        "}}\n"
+        f"\u0411\u044e\u0434\u0436\u0435\u0442\u044b \u0432 \u0440\u0443\u0431\u043b\u044f\u0445. \u0414\u0420\u0420 \u043d\u0435 \u0434\u043e\u043b\u0436\u0435\u043d \u043f\u0440\u0435\u0432\u044b\u0448\u0430\u0442\u044c \u043c\u0430\u0440\u0436\u0438\u043d\u0430\u043b\u044c\u043d\u043e\u0441\u0442\u044c."
+    )
+
+    client = _anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
+    handler.send_response(200)
+    handler.send_header('Content-type', 'text/event-stream; charset=utf-8')
+    handler.send_header('Cache-Control', 'no-cache')
+    handler.end_headers()
+
+    full_text = ''
+    try:
+        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=2000, messages=[{'role':'user','content':prompt}]) as stream:
+            for text in stream.text_stream:
+                full_text += text
+                chunk = json.dumps({'type':'progress','chars':len(full_text)}, ensure_ascii=False)
+                handler.wfile.write(('data: ' + chunk + '\n\n').encode('utf-8'))
+                handler.wfile.flush()
+
+        analysis = json.loads(full_text.strip().replace('```json','').replace('```','').strip())
+
+        # Сохраняем в БД
+        forecast_id = None
+        try:
+            conn2 = psycopg2.connect(DB)
+            cur2 = conn2.cursor()
+            cur2.execute("INSERT INTO ad_forecasts (niche_name,avg_cpm,ad_pct,avg_price,revenue,sellers_with_sales,profit_pct,forecast_data) VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
+                (niche_name,avg_cpm,ad_pct,avg_price,revenue,sellers_with_sales,profit_pct,json.dumps(analysis,ensure_ascii=False)))
+            forecast_id = cur2.fetchone()[0]
+            conn2.commit(); cur2.close(); conn2.close()
+        except Exception as db_e:
+            print('AD STREAM DB ERROR:', db_e)
+
+        event = json.dumps({'type':'done','analysis':analysis,'forecast_id':forecast_id}, ensure_ascii=False)
+        handler.wfile.write(('data: ' + event + '\n\n').encode('utf-8'))
+        handler.wfile.write(b'data: [DONE]\n\n')
+        handler.wfile.flush()
+    except Exception as e:
+        import traceback
+        print('AD STREAM ERROR:', traceback.format_exc())
+        try:
+            ev = json.dumps({'type':'error','error':str(e)}, ensure_ascii=False)
+            handler.wfile.write(('data: ' + ev + '\n\n').encode('utf-8'))
+            handler.wfile.flush()
+        except: pass
 
 
 def handle_unit_stream(handler, body):

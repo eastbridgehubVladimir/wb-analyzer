@@ -4388,15 +4388,36 @@ async function runUnitEconomy() {
   };
 
   try {
-    const resp = await fetch('/unit-economy', {
+    const resp = await fetch('/unit-stream', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
-    const result = await resp.json();
-    if (result.error) throw new Error(result.error);
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
     if (loading) loading.style.display = 'none';
-    renderUnitEconomy(result, symbols[currentCurrency], rates[currentCurrency]);
+    resultBlock.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует...</div>';
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream:true});
+      const parts = buf.split('\\n\\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        const raw = part.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.type === 'progress') {
+            resultBlock.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует... ' + msg.chars + ' симв.</div>';
+          } else if (msg.type === 'done') {
+            renderUnitEconomy(msg.data, symbols[currentCurrency], rates[currentCurrency]);
+          } else if (msg.type === 'error') { throw new Error(msg.error); }
+        } catch(pe) {}
+      }
+    }
   } catch(e) {
     if (loading) loading.style.display = 'none';
     resultBlock.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;font-size:13px;">❌ ' + e.message + '</div>';
@@ -7009,6 +7030,11 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
             body = json.loads(self.rfile.read(length))
             handle_deep_stream(self, body)
             return
+        elif self.path == '/unit-stream':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length))
+            handle_unit_stream(self, body)
+            return
         elif self.path == '/warehouse-stream':
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
@@ -7100,6 +7126,139 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
 
 
 
+
+
+
+def handle_unit_stream(handler, body):
+    import anthropic as _anthropic
+
+    niche_name = body.get('niche_name', '')
+    price_rub = body.get('price_rub', 0)
+    cost_rub = body.get('cost_rub', 0)
+    cost_local = body.get('cost_local', 0)
+    cost_currency = body.get('cost_currency', 'cny')
+    commission_pct = body.get('commission_pct', 15)
+    buyout_pct = body.get('buyout_pct', 70)
+    length_cm = body.get('length_cm', 20)
+    width_cm = body.get('width_cm', 15)
+    height_cm = body.get('height_cm', 10)
+    weight_kg = body.get('weight_kg', 0.5)
+    units_per_box = body.get('units_per_box', 10)
+    delivery_mode = body.get('delivery_mode', 'sea')
+    customs_pct = body.get('customs_pct', 10)
+    vat_pct = body.get('vat_pct', 20)
+    tax_pct = body.get('tax_pct', 6)
+    sym = body.get('symbol', '\u20bd')
+
+    volume_unit_m3 = (length_cm * width_cm * height_cm) / 1000000
+    weight_unit_kg = weight_kg
+    delivery_rates = {
+        'sea': {'usd_per_kg': 2.0, 'days': '45-60', 'name': '\u041c\u043e\u0440\u0435'},
+        'rail': {'usd_per_kg': 2.8, 'days': '18-25', 'name': '\u0416\u0414'},
+        'truck': {'usd_per_kg': 4.0, 'days': '20-30', 'name': '\u0410\u0432\u0442\u043e'}
+    }
+    del_rate = delivery_rates.get(delivery_mode, delivery_rates['sea'])
+    usd_rate = 90
+    volumetric_weight = volume_unit_m3 * 250
+    chargeable_weight = max(weight_unit_kg, volumetric_weight)
+    delivery_cost_rub = del_rate['usd_per_kg'] * chargeable_weight * usd_rate
+    customs_rub = cost_rub * (customs_pct / 100)
+    vat_rub = (cost_rub + customs_rub) * (vat_pct / 100)
+    volume_dm3 = volume_unit_m3 * 1000
+    if volume_dm3 <= 1: wb_logistics = 75
+    elif volume_dm3 <= 5: wb_logistics = 120
+    elif volume_dm3 <= 20: wb_logistics = 200
+    else: wb_logistics = 350
+    wb_commission = price_rub * (commission_pct / 100)
+    tax_rub = price_rub * (tax_pct / 100)
+    return_cost = wb_logistics * (1 - buyout_pct/100) * 0.5
+    storage_fbo = price_rub * 0.02
+    warehouse_rent = price_rub * 0.015
+    packing_cost = 30
+    wb_logistics_fbs = wb_logistics * 1.3
+    delivery_cost_rub_rf = delivery_cost_rub * 1.15
+
+    s1_total_cost = cost_rub + delivery_cost_rub + customs_rub + vat_rub + storage_fbo
+    s1_wb_cost = wb_commission + wb_logistics + return_cost + tax_rub
+    s1_profit = price_rub - s1_total_cost - s1_wb_cost
+    s1_roi = round(s1_profit / s1_total_cost * 100, 1) if s1_total_cost > 0 else 0
+    s1_margin = round(s1_profit / price_rub * 100, 1) if price_rub > 0 else 0
+
+    s2_total_cost = cost_rub + delivery_cost_rub + customs_rub + vat_rub + warehouse_rent + packing_cost
+    s2_wb_cost = wb_commission + wb_logistics_fbs + return_cost * 0.7 + tax_rub
+    s2_profit = price_rub - s2_total_cost - s2_wb_cost
+    s2_roi = round(s2_profit / s2_total_cost * 100, 1) if s2_total_cost > 0 else 0
+    s2_margin = round(s2_profit / price_rub * 100, 1) if price_rub > 0 else 0
+
+    customs_rub_rf = cost_rub * (customs_pct / 100)
+    vat_rub_rf = (cost_rub + customs_rub_rf) * 0.20
+    s3_total_cost = cost_rub + delivery_cost_rub_rf + customs_rub_rf + vat_rub_rf + storage_fbo
+    s3_wb_cost = wb_commission + wb_logistics + return_cost + tax_rub
+    s3_profit = price_rub - s3_total_cost - s3_wb_cost
+    s3_roi = round(s3_profit / s3_total_cost * 100, 1) if s3_total_cost > 0 else 0
+    s3_margin = round(s3_profit / price_rub * 100, 1) if price_rub > 0 else 0
+
+    def get_verdict(profit):
+        if profit > price_rub * 0.15: return 'profit'
+        if profit > 0: return 'marginal'
+        return 'loss'
+
+    scenarios = {
+        's1': {'title': '\U0001f1e7\U0001f1fe \u041a\u0438\u0442\u0430\u0439 \u2192 WB \u0411\u0435\u043b\u0430\u0440\u0443\u0441\u044c (FBO)', 'total_cost_rub': round(s1_total_cost), 'wb_commission_rub': round(wb_commission), 'wb_logistics_rub': round(wb_logistics), 'profit_per_unit_rub': round(s1_profit), 'roi_pct': s1_roi, 'margin_pct': s1_margin, 'verdict': get_verdict(s1_profit), 'comment': f'\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430 {del_rate["name"]} {del_rate["days"]} \u0434\u043d\u0435\u0439'},
+        's2': {'title': '\U0001f3ed \u041a\u0438\u0442\u0430\u0439 \u2192 \u0441\u043a\u043b\u0430\u0434 \u0420\u0411 \u2192 WB (FBS)', 'total_cost_rub': round(s2_total_cost), 'wb_commission_rub': round(wb_commission), 'wb_logistics_rub': round(wb_logistics_fbs), 'profit_per_unit_rub': round(s2_profit), 'roi_pct': s2_roi, 'margin_pct': s2_margin, 'verdict': get_verdict(s2_profit), 'comment': '\u0410\u0440\u0435\u043d\u0434\u0430 \u0441\u043a\u043b\u0430\u0434\u0430 + \u0443\u043f\u0430\u043a\u043e\u0432\u043a\u0430'},
+        's3': {'title': '\U0001f1f7\U0001f1fa \u041a\u0438\u0442\u0430\u0439 \u2192 WB \u0420\u043e\u0441\u0441\u0438\u044f (FBO)', 'total_cost_rub': round(s3_total_cost), 'wb_commission_rub': round(wb_commission), 'wb_logistics_rub': round(wb_logistics), 'profit_per_unit_rub': round(s3_profit), 'roi_pct': s3_roi, 'margin_pct': s3_margin, 'verdict': get_verdict(s3_profit), 'comment': '\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430 \u0432 \u0420\u0424 +15%'}
+    }
+    calc_details = [
+        {'label': '\u0426\u0435\u043d\u0430 \u043f\u0440\u043e\u0434\u0430\u0436\u0438', 'value': f'{round(price_rub):,} \u20bd'},
+        {'label': f'\u0417\u0430\u043a\u0443\u043f\u043a\u0430 ({cost_currency.upper()})', 'value': f'{cost_local} \u2192 {round(cost_rub):,} \u20bd'},
+        {'label': f'\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430 ({del_rate["name"]})', 'value': f'{round(delivery_cost_rub):,} \u20bd/\u0435\u0434'},
+        {'label': f'\u0422\u0430\u043c\u043e\u0436\u043d\u044f {customs_pct}%', 'value': f'{round(customs_rub):,} \u20bd'},
+        {'label': f'\u041d\u0414\u0421 {vat_pct}%', 'value': f'{round(vat_rub):,} \u20bd'},
+        {'label': f'\u041a\u043e\u043c\u0438\u0441\u0441\u0438\u044f WB {commission_pct}%', 'value': f'{round(wb_commission):,} \u20bd'},
+        {'label': '\u041b\u043e\u0433\u0438\u0441\u0442\u0438\u043a\u0430 WB', 'value': f'{round(wb_logistics):,} \u20bd'},
+        {'label': f'\u041d\u0430\u043b\u043e\u0433 \u0423\u0421\u041d {tax_pct}%', 'value': f'{round(tax_rub):,} \u20bd'},
+    ]
+
+    prompt = (
+        f"\u0422\u044b \u044d\u043a\u0441\u043f\u0435\u0440\u0442 \u043f\u043e \u044e\u043d\u0438\u0442-\u044d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0435 Wildberries.\n\n"
+        f"\u041d\u0418\u0428\u0410: {niche_name}\n"
+        f"\u0426\u0415\u041d\u0410: {price_rub} \u0440\u0443\u0431 | \u0417\u0410\u041a\u0423\u041f\u041a\u0410: {cost_local} {cost_currency.upper()} = {round(cost_rub)} \u0440\u0443\u0431\n\n"
+        f"1. \u041a\u0438\u0442\u0430\u0439\u2192WB \u0411\u0435\u043b\u0430\u0440\u0443\u0441\u044c (FBO): \u043f\u0440\u0438\u0431\u044b\u043b\u044c {round(s1_profit)} \u0440\u0443\u0431, ROI {s1_roi}%, \u043c\u0430\u0440\u0436\u0430 {s1_margin}%\n"
+        f"2. \u041a\u0438\u0442\u0430\u0439\u2192\u0441\u043a\u043b\u0430\u0434 \u0420\u0411\u2192WB (FBS): \u043f\u0440\u0438\u0431\u044b\u043b\u044c {round(s2_profit)} \u0440\u0443\u0431, ROI {s2_roi}%, \u043c\u0430\u0440\u0436\u0430 {s2_margin}%\n"
+        f"3. \u041a\u0438\u0442\u0430\u0439\u2192WB \u0420\u043e\u0441\u0441\u0438\u044f (FBO): \u043f\u0440\u0438\u0431\u044b\u043b\u044c {round(s3_profit)} \u0440\u0443\u0431, ROI {s3_roi}%, \u043c\u0430\u0440\u0436\u0430 {s3_margin}%\n\n"
+        "\u0412\u0435\u0440\u043d\u0438 ONLY JSON:\n"
+        '{{"title": "\u0421\u0446\u0435\u043d\u0430\u0440\u0438\u0439 X \u2014 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435", "detail": "3-4 \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u044f \u0441 \u0446\u0438\u0444\u0440\u0430\u043c\u0438"}}'
+    )
+
+    client = _anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
+    handler.send_response(200)
+    handler.send_header('Content-type', 'text/event-stream; charset=utf-8')
+    handler.send_header('Cache-Control', 'no-cache')
+    handler.end_headers()
+
+    full_text = ''
+    try:
+        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=500, messages=[{'role':'user','content':prompt}]) as stream:
+            for text in stream.text_stream:
+                full_text += text
+                chunk = json.dumps({'type':'progress','chars':len(full_text)}, ensure_ascii=False)
+                handler.wfile.write(('data: ' + chunk + '\n\n').encode('utf-8'))
+                handler.wfile.flush()
+
+        recommendation = json.loads(full_text.strip().replace('```json','').replace('```','').strip())
+        data = {'scenarios': scenarios, 'calc_details': calc_details, 'recommendation': recommendation}
+        event = json.dumps({'type':'done','data':data}, ensure_ascii=False)
+        handler.wfile.write(('data: ' + event + '\n\n').encode('utf-8'))
+        handler.wfile.write(b'data: [DONE]\n\n')
+        handler.wfile.flush()
+    except Exception as e:
+        import traceback
+        print('UNIT STREAM ERROR:', traceback.format_exc())
+        try:
+            ev = json.dumps({'type':'error','error':str(e)}, ensure_ascii=False)
+            handler.wfile.write(('data: ' + ev + '\n\n').encode('utf-8'))
+            handler.wfile.flush()
+        except: pass
 
 
 def handle_deep_stream(handler, body):

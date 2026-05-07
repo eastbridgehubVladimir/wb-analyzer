@@ -6233,7 +6233,7 @@ class Handler(BaseHTTPRequestHandler):
                 s1_total_cost = cost_rub + delivery_cost_rub + customs_rub + vat_rub + storage_fbo
                 s1_wb_cost = wb_commission + wb_logistics + return_cost + tax_rub
                 s1_profit = price_rub - s1_total_cost - s1_wb_cost
-                s1_roi = round(s1_profit / s1_total_cost * 100, 1) if s1_total_cost > 0 else 0
+                s1_roi = round(s1_profit / cost_rub * 100, 1) if cost_rub > 0 else 0
                 s1_margin = round(s1_profit / price_rub * 100, 1) if price_rub > 0 else 0
 
                 # СЦЕНАРИЙ 2: Китай → свой склад РБ → WB (FBS)
@@ -6244,7 +6244,7 @@ class Handler(BaseHTTPRequestHandler):
                 s2_total_cost = cost_rub + delivery_cost_rub + customs_rub + vat_rub + warehouse_rent + packing_cost
                 s2_wb_cost = wb_commission + wb_logistics_fbs + return_cost * 0.7 + tax_rub
                 s2_profit = price_rub - s2_total_cost - s2_wb_cost
-                s2_roi = round(s2_profit / s2_total_cost * 100, 1) if s2_total_cost > 0 else 0
+                s2_roi = round(s2_profit / cost_rub * 100, 1) if cost_rub > 0 else 0
                 s2_margin = round(s2_profit / price_rub * 100, 1) if price_rub > 0 else 0
 
                 # СЦЕНАРИЙ 3: Китай → WB Россия (FBO РФ)
@@ -6255,7 +6255,7 @@ class Handler(BaseHTTPRequestHandler):
                 s3_total_cost = cost_rub + delivery_cost_rub_rf + customs_rub_rf + vat_rub_rf + storage_fbo
                 s3_wb_cost = wb_commission + wb_logistics + return_cost + tax_rub
                 s3_profit = price_rub - s3_total_cost - s3_wb_cost
-                s3_roi = round(s3_profit / s3_total_cost * 100, 1) if s3_total_cost > 0 else 0
+                s3_roi = round(s3_profit / cost_rub * 100, 1) if cost_rub > 0 else 0
                 s3_margin = round(s3_profit / price_rub * 100, 1) if price_rub > 0 else 0
 
                 def get_verdict(profit):
@@ -7181,13 +7181,13 @@ def handle_unit_stream(handler, body):
     s1_total_cost = cost_rub + delivery_cost_rub + customs_rub + vat_rub + storage_fbo
     s1_wb_cost = wb_commission + wb_logistics + return_cost + tax_rub
     s1_profit = price_rub - s1_total_cost - s1_wb_cost
-    s1_roi = round(s1_profit / s1_total_cost * 100, 1) if s1_total_cost > 0 else 0
+    s1_roi = round(s1_profit / cost_rub * 100, 1) if cost_rub > 0 else 0
     s1_margin = round(s1_profit / price_rub * 100, 1) if price_rub > 0 else 0
 
     s2_total_cost = cost_rub + delivery_cost_rub + customs_rub + vat_rub + warehouse_rent + packing_cost
     s2_wb_cost = wb_commission + wb_logistics_fbs + return_cost * 0.7 + tax_rub
     s2_profit = price_rub - s2_total_cost - s2_wb_cost
-    s2_roi = round(s2_profit / s2_total_cost * 100, 1) if s2_total_cost > 0 else 0
+    s2_roi = round(s2_profit / cost_rub * 100, 1) if cost_rub > 0 else 0
     s2_margin = round(s2_profit / price_rub * 100, 1) if price_rub > 0 else 0
 
     customs_rub_rf = cost_rub * (customs_pct / 100)
@@ -7195,7 +7195,7 @@ def handle_unit_stream(handler, body):
     s3_total_cost = cost_rub + delivery_cost_rub_rf + customs_rub_rf + vat_rub_rf + storage_fbo
     s3_wb_cost = wb_commission + wb_logistics + return_cost + tax_rub
     s3_profit = price_rub - s3_total_cost - s3_wb_cost
-    s3_roi = round(s3_profit / s3_total_cost * 100, 1) if s3_total_cost > 0 else 0
+    s3_roi = round(s3_profit / cost_rub * 100, 1) if cost_rub > 0 else 0
     s3_margin = round(s3_profit / price_rub * 100, 1) if price_rub > 0 else 0
 
     def get_verdict(profit):

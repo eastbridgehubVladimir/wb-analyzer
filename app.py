@@ -476,7 +476,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     </div>
   </div>
   <div id="top-niches" style="display:none;margin-top:24px;"></div>
-  <div id="portfolio" style="display:none;margin-top:24px;"></div>
+  <div id="portfolio" style="display:none;margin-top:24px;"></div><div id="portfolio-picker" style="display:none;margin-top:24px;"></div>
   <div id="company" style="display:none;margin-top:24px;"></div>
   <div id="watchlist" style="display:none;margin-top:24px;"></div><div id="catalog" style="display:none;margin-top:24px;">
     <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
@@ -637,23 +637,11 @@ function renderWatchlist() {
   var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">';
   html += '<div style="font-size:20px;font-weight:700;color:#fff;">&#128204; В работе <span style="font-size:14px;color:#555;font-weight:400;">(' + list.length + ' ниш)</span></div>';
   html += '<div style="display:flex;gap:8px;">';
-  html += '<button onclick="calcContainerFromWatchlist()" title="Рассчитать объём контейнера для выбранных ниш" style="background:#34d399;border:none;border-radius:8px;padding:8px 16px;color:#000;font-size:12px;font-weight:700;cursor:pointer;">&#128230; Контейнер</button>';
   html += '<button onclick="runWatchlistMonitor()" title="Проверить изменения метрик по всем нишам в работе и получить AI-анализ что изменилось" style="background:#3b82f622;border:1px solid #3b82f644;border-radius:8px;padding:8px 16px;color:#93c5fd;font-size:12px;font-weight:600;cursor:pointer;">&#128276; Проверить изменения</button>';
   html += '</div>';
   html += '</div>';
 
-  // Индикатор контейнера
-  html += '<div id="wl-container-indicator" style="display:none;background:#0f1117;border-radius:10px;padding:16px;margin-bottom:16px;">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
-  html += '<div style="font-size:11px;color:#555;">НАПОЛНЕНИЕ КОНТЕЙНЕРА</div>';
-  html += '<div id="wl-container-type" style="font-size:11px;color:#34d399;"></div>';
-  html += '</div>';
-  html += '<div style="background:#1e2433;border-radius:6px;height:12px;margin-bottom:6px;">';
-  html += '<div id="wl-container-bar" style="height:100%;border-radius:6px;background:linear-gradient(90deg,#34d399,#4ade80);transition:width 0.3s;" width="0%"></div>';
-  html += '</div>';
-  html += '<div style="display:flex;justify-content:space-between;font-size:10px;color:#555;">';
-  html += '<span id="wl-vol-used">0 м³ занято</span><span id="wl-vol-free">свободно: —</span>';
-  html += '</div></div>';
+
 
   // Карточки ниш с чекбоксами
   html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;" id="wl-grid">';
@@ -1258,7 +1246,7 @@ function calcUnit() {
   `;
 }
 function hideAll() {
-  ['catalog','calculator','result','top-niches','watchlist','history','portfolio','company'].forEach(id => {
+  ['catalog','calculator','result','top-niches','watchlist','history','portfolio','portfolio-picker','company'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
@@ -1351,7 +1339,7 @@ var portfolioParams = null;
 async function showPortfolio() {
   hideAll();
   setActiveMenu(event.target);
-  const div = document.getElementById('portfolio');
+  const div = document.getElementById('portfolio-picker');
   div.style.display = 'block';
   renderPortfolioQuestionnaire(div);
 }
@@ -4001,6 +3989,16 @@ function savePortfolioItems(items) {
   localStorage.setItem('portfolio', JSON.stringify(items));
 }
 
+function setDelivMode(mode) {
+  window._portfolioDelivMode = mode;
+  renderPortfolioSection();
+}
+
+function updatePortfolioQty(idx, qty) {
+  var items = getPortfolioItems();
+  if (items[idx]) { items[idx].qty = parseInt(qty) || 100; savePortfolioItems(items); renderPortfolioSection(); }
+}
+
 function renderPortfolioSection() {
   var div = document.getElementById('portfolio');
   var items = getPortfolioItems();
@@ -4041,6 +4039,55 @@ function renderPortfolioSection() {
   html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ДАТА ОБНОВЛЕНИЯ</div><div style="font-size:12px;font-weight:700;color:#555;">' + new Date().toLocaleDateString('ru-RU') + '</div></div>';
   html += '</div>';
 
+  // Индикатор контейнера
+  var orderedItems = items.filter(function(i){ return i.status === "ordered"; });
+  if (orderedItems.length > 0) {
+    var totalVol = 0, totalWeight = 0;
+    orderedItems.forEach(function(item) {
+      var qty = item.qty || 100;
+      var price = item.sell_price_rub || item.avg_price || 1000;
+      var wkg = price < 500 ? 0.1 : price < 1500 ? 0.3 : price < 5000 ? 0.8 : price < 15000 ? 2.0 : 5.0;
+      totalVol += qty * wkg * 2.5 / 1000;
+      totalWeight += qty * wkg;
+    });
+    var dm = window._portfolioDelivMode || "auto";
+    var c20=28, c40=60, cargo=Math.round(totalWeight*4);
+    var tVol, cName, dCost, dNote;
+    if(dm==="cargo"){tVol=totalVol;cName="Карго";dCost="$"+cargo;dNote=Math.round(totalWeight)+"кг";}
+    else if(dm==="20ft"){tVol=c20;cName="20ft";dCost="~$2800";dNote="28м³";}
+    else if(dm==="40ft"){tVol=c40;cName="40ft";dCost="~$4500";dNote="60м³";}
+    else{if(totalVol<2){tVol=totalVol;cName="Карго";dCost="$"+cargo;dNote="выгоднее карго";}
+    else if(totalVol<=c20){tVol=c20;cName="20ft";dCost="~$2800";dNote="28м³";}
+    else{tVol=c40;cName="40ft";dCost="~$4500";dNote="60м³";}}
+    var pp=dm==="cargo"?100:Math.min(100,Math.round(totalVol/tVol*100));
+    var fv=dm==="cargo"?0:Math.max(0,tVol-totalVol).toFixed(1);
+    var bc=pp<60?"#34d399":pp<85?"#fbbf24":"#ef4444";
+    html += '<div style="background:#0f1117;border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid #2d3748;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+    html += '<div style="font-size:12px;font-weight:600;color:#34d399;">📦 ' + cName + ' · ' + dCost + ' · ' + dNote + ' · ' + totalVol.toFixed(1) + 'м³</div>';
+    html += '<div style="display:flex;gap:4px;">';
+    var dmLabels = {auto:'🤖Авто', cargo:'🚛Карго'};
+    dmLabels['20ft'] = '20ft'; dmLabels['40ft'] = '40ft';
+    var dmColors = {auto:'#34d399', cargo:'#38bdf8'};
+    dmColors['20ft'] = '#fbbf24'; dmColors['40ft'] = '#f59e0b';
+    ['auto','cargo','20ft','40ft'].forEach(function(m) {
+      var active = dm===m;
+      var col = active ? dmColors[m] : '#555';
+      var bg = active ? dmColors[m]+'22' : 'transparent';
+      var border = active ? dmColors[m] : '#2d3748';
+      html += '<button onclick="setDelivMode(' + String.fromCharCode(39) + m + String.fromCharCode(39) + ')" style="font-size:10px;padding:3px 7px;border-radius:4px;border:1px solid '+border+';background:'+bg+';color:'+col+';cursor:pointer;">'+dmLabels[m]+'</button>';
+    });
+    html += '</div></div>';
+    if(dm!=="cargo"){
+      html += '<div style="background:#1e2433;border-radius:6px;height:12px;margin-bottom:6px;">';
+      html += '<div style="height:100%;border-radius:6px;background:'+bc+';width:'+pp+'%;transition:width 0.3s;"></div></div>';
+      html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:#555;">';
+      html += '<span>'+totalVol.toFixed(1)+'м³ занято · '+pp+'% · '+orderedItems.length+' товаров</span>';
+      html += '<span>свободно: '+fv+'м³</span></div>';
+    }
+    html += '</div>';
+  }
+
   // Карточки товаров
   html += '<div style="display:flex;flex-direction:column;gap:10px;">';
   items.forEach(function(item, idx) {
@@ -4058,8 +4105,8 @@ function renderPortfolioSection() {
     html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЦЕНА ЗАКУПКИ</div>';
     html += '<div style="font-size:13px;font-weight:700;color:#fff;">' + (item.buy_price_usd ? '$' + item.buy_price_usd : '—') + '</div></div>';
     // Количество
-    html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">КОЛ-ВО</div>';
-    html += '<div style="font-size:13px;font-weight:700;color:#fff;">' + (item.qty || '—') + ' шт</div></div>';
+    html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">КОЛ-ВО (шт)</div>';
+    html += '<input type="number" value="' + (item.qty||100) + '" min="1" onchange="updatePortfolioQty(' + idx + ',this.value)" style="width:70px;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px 6px;color:#fff;font-size:13px;font-weight:700;text-align:center;"></div>';
     // Маржа
     html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">МАРЖА</div>';
     var marginColor = (item.margin_pct||0) >= 30 ? '#4ade80' : (item.margin_pct||0) >= 15 ? '#fbbf24' : '#ef4444';

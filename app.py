@@ -881,6 +881,7 @@ function moveToPortfolio(idx) {
   // Создаём модальное окно
   var modal = document.createElement('div');
   modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.id = 'portfolio-modal';
   modal.innerHTML = `
     <div style="background:#1e2433;border-radius:16px;padding:24px;width:420px;max-width:90vw;border:1px solid #2d3748;">
       <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px;">📦 Перевести в Портфель</div>
@@ -891,7 +892,7 @@ function moveToPortfolio(idx) {
           <input id="pm-buy-cny" type="number" placeholder="например: 85" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
         <div>
-          <div style="font-size:10px;color:#555;margin-bottom:4px;">ЦЕНА ПРОДАЖИ WB (₽)</div>
+          <div style="font-size:10px;color:#555;margin-bottom:4px;">ОЖИД. ЦЕНА ПРОДАЖИ (₽)</div>
           <input id="pm-sell-rub" type="number" placeholder="${Math.round(n.avg_price||0)}" value="${Math.round(n.avg_price||0)}" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
         <div>
@@ -899,12 +900,11 @@ function moveToPortfolio(idx) {
           <input id="pm-qty" type="number" placeholder="100" value="${n.qty||100}" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
         <div>
-          <div style="font-size:10px;color:#555;margin-bottom:4px;">СТАТУС</div>
-          <select id="pm-status" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:8px;color:#fff;font-size:13px;">
-            <option value="ordered">📦 Заказан поставщику</option>
-            <option value="planning">📋 Планируется</option>
-            <option value="shipping">🚢 В пути из Китая</option>
-          </select>
+          <div style="font-size:10px;color:#555;margin-bottom:4px;">ВАЛЮТА ЗАКУПКИ</div>
+          <div style="display:flex;gap:6px;">
+            <button id="pm-cur-cny" onclick="setPmCur('cny')" style="flex:1;background:#3b82f6;border:none;border-radius:8px;padding:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">CNY ¥</button>
+            <button id="pm-cur-usd" onclick="setPmCur('usd')" style="flex:1;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:8px;color:#555;font-size:13px;cursor:pointer;">USD $</button>
+          </div>
         </div>
       </div>
       <div style="margin-bottom:16px;">
@@ -917,13 +917,23 @@ function moveToPortfolio(idx) {
       </div>
       <div style="display:flex;gap:10px;">
         <button onclick="confirmMoveToPortfolio(${idx})" style="flex:1;background:#34d399;border:none;border-radius:8px;padding:12px;color:#000;font-size:13px;font-weight:700;cursor:pointer;">✓ Перевести в Портфель</button>
-        <button onclick="this.closest('[style*=fixed]').remove()" style="background:#1e2433;border:1px solid #2d3748;border-radius:8px;padding:12px 16px;color:#555;font-size:13px;cursor:pointer;">Отмена</button>
+        <button onclick="document.getElementById('portfolio-modal').remove()" style="background:#1e2433;border:1px solid #2d3748;border-radius:8px;padding:12px 16px;color:#555;font-size:13px;cursor:pointer;">Отмена</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
   window._pendingPortfolioIdx = idx;
 }
 
+var _pmCur = 'cny';
+function setPmCur(cur) {
+  _pmCur = cur;
+  document.getElementById('pm-cur-cny').style.background = cur==='cny' ? '#3b82f6' : '#0f1117';
+  document.getElementById('pm-cur-cny').style.color = cur==='cny' ? '#fff' : '#555';
+  document.getElementById('pm-cur-usd').style.background = cur==='usd' ? '#3b82f6' : '#0f1117';
+  document.getElementById('pm-cur-usd').style.color = cur==='usd' ? '#fff' : '#555';
+  var label = document.querySelector('#pm-buy-cny').previousElementSibling;
+  if (label) label.textContent = cur==='cny' ? 'ЦЕНА ЗАКУПКИ (CNY ¥)' : 'ЦЕНА ЗАКУПКИ (USD $)';
+}
 function confirmMoveToPortfolio(idx) {
   var list = window._wlList || [];
   var n = list[idx];
@@ -932,12 +942,12 @@ function confirmMoveToPortfolio(idx) {
   var buyCny = parseFloat(document.getElementById('pm-buy-cny').value) || 0;
   var sellRub = parseFloat(document.getElementById('pm-sell-rub').value) || 0;
   var qty = parseInt(document.getElementById('pm-qty').value) || 100;
-  var status = document.getElementById('pm-status').value;
+  var status = 'ordered';
   var orderDate = document.getElementById('pm-order-date').value;
   var note = document.getElementById('pm-note').value;
 
   // Считаем маржу
-  var buyRub = buyCny * 12.5;
+  var buyRub = _pmCur === 'usd' ? buyCny * 90 : buyCny * 12.5;
   var commission = (n.commission || 0.25) * sellRub;
   var logistics = 150;
   var profit = sellRub - buyRub - commission - logistics;
@@ -956,6 +966,7 @@ function confirmMoveToPortfolio(idx) {
       added: new Date().toISOString(),
       status: status,
       buy_price_cny: buyCny,
+      buy_currency: _pmCur,
       buy_price_rub: Math.round(buyRub),
       sell_price_rub: sellRub,
       qty: qty,
@@ -968,8 +979,9 @@ function confirmMoveToPortfolio(idx) {
   }
 
   // Закрываем модал
-  var modal = document.querySelector('[style*="position:fixed"][style*="z-index:9999"]');
+  var modal = document.getElementById('portfolio-modal');
   if (modal) modal.remove();
+  _pmCur = 'cny';
 
   removeFromWatchlist(n.full);
   renderWatchlist();
@@ -3315,7 +3327,7 @@ function resetPortfolioForm() {
 function showPortfolioStub() {
   hideAll();
   setActiveMenu(event.target);
-  document.getElementById('catalog').style.display = 'block';
+  document.getElementById('portfolio').style.display = 'block';
   renderPortfolioSection();
 }
 
@@ -3990,7 +4002,7 @@ function savePortfolioItems(items) {
 }
 
 function renderPortfolioSection() {
-  var div = document.getElementById('catalog');
+  var div = document.getElementById('portfolio');
   var items = getPortfolioItems();
   var sym = symbols[currentCurrency];
   var rate = rates[currentCurrency];
@@ -4002,17 +4014,7 @@ function renderPortfolioSection() {
   html += '<div><div style="font-size:20px;font-weight:700;color:#fff;">📦 Товарный портфель <span style="font-size:14px;color:#555;font-weight:400;">(' + items.length + ' товаров)</span></div>';
   html += '<div style="font-size:12px;color:#555;margin-top:4px;">Товары которые вы закупаете и продаёте на WB</div></div>';
   html += '</div>';
-  // Roadmap блок
-  html += '<div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:16px;margin-bottom:20px;">';
-  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
-  html += '<div style="font-size:13px;font-weight:600;color:#93c5fd;">🚀 Полная версия Портфеля — в разработке</div>';
-  html += '<div style="background:#3b82f622;color:#93c5fd;font-size:10px;border-radius:4px;padding:2px 8px;border:1px solid #3b82f644;">Coming Soon</div>';
-  html += '</div>';
-  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">';
-  html += '<div style="background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:11px;color:#93c5fd;margin-bottom:4px;">📊 Финансы</div><div style="font-size:11px;color:#555;">Цена закупки/продажи, маржа план vs факт, ROI по каждому товару</div></div>';
-  html += '<div style="background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:11px;color:#38bdf8;margin-bottom:4px;">🚢 Логистика</div><div style="font-size:11px;color:#555;">Даты заказа/отправки/прибытия, остатки по складам WB</div></div>';
-  html += '<div style="background:#1e2433;border-radius:8px;padding:10px;"><div style="font-size:11px;color:#34d399;margin-bottom:4px;">🔗 Интеграции</div><div style="font-size:11px;color:#555;">WB API, складская программа, бухгалтерия, раздел Компания</div></div>';
-  html += '</div></div>';
+
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div></div>';
   // кнопка В работе убрана из заголовка
   html += '</div>';

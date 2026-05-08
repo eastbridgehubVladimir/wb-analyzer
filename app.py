@@ -4163,7 +4163,7 @@ async function runDocsAnalysis() {
   if (loading) loading.style.display = 'block';
   container.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">&#128203; Claude анализирует требования к документам...</div>';
   try {
-    const resp = await fetch('/docs-analysis', {
+    const resp = await fetch('/docs-stream', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -4173,10 +4173,33 @@ async function runDocsAnalysis() {
         commission: d.commission || 0
       })
     });
-    const result = await resp.json();
-    if (result.error) throw new Error(result.error);
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
     if (loading) loading.style.display = 'none';
-    renderDocsResult(result);
+    container.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude готовит документы...</div>';
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream:true});
+      const parts = buf.split('\\n\\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        const raw = part.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.type === 'progress') {
+            container.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude готовит документы... ' + msg.chars + ' симв.</div>';
+          } else if (msg.type === 'done') {
+            renderDocsResult(msg.data);
+          } else if (msg.type === 'error') {
+            container.innerHTML = '<div style="color:#ef4444;padding:12px;">' + msg.error + '</div>';
+          }
+        } catch(pe) {}
+      }
+    }
   } catch(e) {
     if (loading) loading.style.display = 'none';
     container.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;">❌ ' + e.message + '</div>';
@@ -7126,6 +7149,11 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
             body = json.loads(self.rfile.read(length))
             handle_deep_stream(self, body)
             return
+        elif self.path == '/docs-stream':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length))
+            handle_docs_stream(self, body)
+            return
         elif self.path == '/trends-stream':
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
@@ -7247,6 +7275,67 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
 
 
 
+
+
+
+def handle_docs_stream(handler, body):
+    import anthropic as _anthropic
+    niche_name = body.get('niche_name', '')
+    display_name = body.get('display_name', niche_name)
+    avg_price = body.get('avg_price', 0)
+
+    prompt = (
+        f"\u0422\u044b \u044d\u043a\u0441\u043f\u0435\u0440\u0442 \u043f\u043e \u0441\u0435\u0440\u0442\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u0438 \u0434\u043b\u044f WB. \u041a\u043e\u043c\u043f\u0430\u043d\u0438\u044f \u0438\u0437 \u0420\u0435\u0441\u043f\u0443\u0431\u043b\u0438\u043a\u0438 \u0411\u0435\u043b\u0430\u0440\u0443\u0441\u044c, \u0437\u0430\u043a\u0443\u043f\u0430\u0435\u0442 \u0432 \u041a\u0438\u0442\u0430\u0435.\n\n"
+        f"\u041d\u0418\u0428\u0410: {display_name}\n"
+        f"\u0421\u0440\u0435\u0434\u043d\u044f\u044f \u0446\u0435\u043d\u0430: {avg_price} \u0440\u0443\u0431\n\n"
+        "\u0414\u0430\u0439 \u0430\u043d\u0430\u043b\u0438\u0437 \u043f\u043e 5 \u0431\u043b\u043e\u043a\u0430\u043c:\n"
+        "1. \u0414\u041e\u041a\u0423\u041c\u0415\u041d\u0422\u042b \u0414\u041b\u042f WB\n"
+        "2. \u0421\u0415\u0420\u0422\u0418\u0424\u0418\u041a\u0410\u0426\u0418\u042f \u0412 \u0415\u0410\u042d\u0421\n"
+        "3. \u0413\u0414\u0415 \u041f\u041e\u041b\u0423\u0427\u0410\u0422\u042c (\u0411\u0435\u043b\u0413\u0418\u0421\u0421, \u0411\u0413\u0426\u0410, \u0420\u043e\u0441\u0442\u0435\u0441\u0442)\n"
+        "4. \u0427\u0422\u041e \u0417\u0410\u041f\u0420\u041e\u0421\u0418\u0422\u042c \u0423 \u041a\u0418\u0422\u0410\u0419\u0421\u041a\u041e\u0413\u041e \u041f\u041e\u0421\u0422\u0410\u0412\u0429\u0418\u041a\u0410\n"
+        "5. \u0422\u0410\u041c\u041e\u0416\u041d\u042f \u0420\u0411 \u2014 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b \u0434\u043b\u044f \u0432\u0432\u043e\u0437\u0430\n\n"
+        "\u0412\u0435\u0440\u043d\u0438 ONLY \u0432\u0430\u043b\u0438\u0434\u043d\u044b\u0439 JSON \u0431\u0435\u0437 markdown:\n"
+        "{{\n"
+        '  "complexity": "low|medium|high",\n'
+        '  "summary": "3-4 \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u044f",\n'
+        '  "wb_docs": [{{"name": "\u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435", "required": true, "description": "\u043e\u043f\u0438\u0441\u0430\u043d\u0438\u0435", "cost": "\u0446\u0435\u043d\u0430", "duration": "\u0441\u0440\u043e\u043a", "where_rb": "\u0433\u0434\u0435 \u0432 \u0420\u0411", "where_rf": "\u0433\u0434\u0435 \u0432 \u0420\u0424", "better_in": "\u0420\u0411 \u0438\u043b\u0438 \u0420\u0424"}}],\n'
+        '  "supplier_docs": [{{"name": "\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442", "description": "\u0447\u0442\u043e \u0434\u0430\u0451\u0442", "accepted_in_eaes": true}}],\n'
+        '  "customs_docs": ["\u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u0435"],\n'
+        '  "risks": ["\u0440\u0438\u0441\u043a"],\n'
+        '  "total_cost": "\u0441\u0442\u043e\u0438\u043c\u043e\u0441\u0442\u044c",\n'
+        '  "total_cost_byn": "\u0441\u0442\u043e\u0438\u043c\u043e\u0441\u0442\u044c \u0432 BYN",\n'
+        '  "total_duration": "\u0441\u0440\u043e\u043a"\n'
+        "}}"
+    )
+
+    client = _anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
+    handler.send_response(200)
+    handler.send_header('Content-type', 'text/event-stream; charset=utf-8')
+    handler.send_header('Cache-Control', 'no-cache')
+    handler.end_headers()
+
+    full_text = ''
+    try:
+        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=4000, messages=[{'role':'user','content':prompt}]) as stream:
+            for text in stream.text_stream:
+                full_text += text
+                chunk = json.dumps({'type':'progress','chars':len(full_text)}, ensure_ascii=False)
+                handler.wfile.write(('data: ' + chunk + '\n\n').encode('utf-8'))
+                handler.wfile.flush()
+
+        result = json.loads(full_text.strip().replace('```json','').replace('```','').strip())
+        event = json.dumps({'type':'done','data':result}, ensure_ascii=False)
+        handler.wfile.write(('data: ' + event + '\n\n').encode('utf-8'))
+        handler.wfile.write(b'data: [DONE]\n\n')
+        handler.wfile.flush()
+    except Exception as e:
+        import traceback
+        print('DOCS STREAM ERROR:', traceback.format_exc())
+        try:
+            ev = json.dumps({'type':'error','error':str(e)}, ensure_ascii=False)
+            handler.wfile.write(('data: ' + ev + '\n\n').encode('utf-8'))
+            handler.wfile.flush()
+        except: pass
 
 
 def handle_trends_stream(handler, body):

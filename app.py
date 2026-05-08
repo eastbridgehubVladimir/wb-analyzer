@@ -2661,15 +2661,38 @@ async function runSupplierAnalysis() {
   if (loading) loading.style.display = 'block';
   container.innerHTML = '<div style="padding:20px;text-align:center;color:#555;font-size:13px;">&#127981; Ищем поставщиков на Alibaba, 1688, Taobao...</div>';
   try {
-    const resp = await fetch('/supplier-analysis', {
+    const resp = await fetch('/supplier-stream', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({niche_name: d.name, display_name: d.display_name||d.name, avg_price: d.avg_price||0, currency: currentCurrency, rate: rates[currentCurrency], symbol: symbols[currentCurrency]})
     });
-    const result = await resp.json();
-    if (result.error) throw new Error(result.error);
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
     if (loading) loading.style.display = 'none';
-    renderSupplierResult(result);
+    container.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude ищет поставщиков...</div>';
+    let buf = '';
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream:true});
+      const parts = buf.split('\\n\\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        if (!part.startsWith('data: ')) continue;
+        const raw = part.slice(6).trim();
+        if (raw === '[DONE]') break;
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.type === 'progress') {
+            container.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude ищет поставщиков... ' + msg.chars + ' симв.</div>';
+          } else if (msg.type === 'done') {
+            renderSupplierResult(msg.data);
+          } else if (msg.type === 'error') {
+            container.innerHTML = '<div style="color:#ef4444;padding:12px;">' + msg.error + '</div>';
+          }
+        } catch(pe) {}
+      }
+    }
   } catch(e) {
     if (loading) loading.style.display = 'none';
     container.innerHTML = '<div style="color:#ef4444;padding:12px;background:#1a0a0a;border-radius:8px;">&#10060; ' + e.message + '</div>';
@@ -7149,6 +7172,11 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
             body = json.loads(self.rfile.read(length))
             handle_deep_stream(self, body)
             return
+        elif self.path == '/supplier-stream':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length))
+            handle_supplier_stream(self, body)
+            return
         elif self.path == '/docs-stream':
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
@@ -7276,6 +7304,63 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
 
 
 
+
+
+
+def handle_supplier_stream(handler, body):
+    import anthropic as _anthropic
+    niche_name = body.get('niche_name', '')
+    display_name = body.get('display_name', niche_name)
+    avg_price = float(body.get('avg_price', 0))
+    avg_price_usd = round(avg_price / 90, 1)
+    top_items = body.get('top_items', [])
+
+    top_str = ''
+    for i, item in enumerate(top_items[:3]):
+        top_str += str(i+1) + '. ' + str(item.get('name','')) + ' | ' + str(item.get('price',0)) + ' \u0440\u0443\u0431 | ' + str(item.get('sales',0)) + ' \u043f\u0440\u043e\u0434/\u043c\u0435\u0441\n'
+
+    p = []
+    p.append('\u0422\u044b \u044d\u043a\u0441\u043f\u0435\u0440\u0442 \u043f\u043e \u0437\u0430\u043a\u0443\u043f\u043a\u0430\u043c \u0432 \u041a\u0438\u0442\u0430\u0435. \u041d\u0430\u0439\u0434\u0438 \u0437\u0430\u043a\u0443\u043f\u043e\u0447\u043d\u044b\u0435 \u0446\u0435\u043d\u044b \u0434\u043b\u044f \u043a\u043e\u043d\u043a\u0440\u0435\u0442\u043d\u044b\u0445 \u0442\u043e\u0432\u0430\u0440\u043e\u0432.')
+    p.append('\u041d\u0418\u0428\u0410: ' + display_name)
+    p.append('\u0421\u0440\u0435\u0434\u043d\u044f\u044f \u0446\u0435\u043d\u0430 WB: ' + str(avg_price) + ' \u0440\u0443\u0431 ($' + str(avg_price_usd) + ')')
+    if top_str:
+        p.append('\u0422\u041e\u041f \u0422\u041e\u0412\u0410\u0420\u042b \u041d\u0410 WB:')
+        p.append(top_str)
+    p.append('\u0417\u0430\u0434\u0430\u0447\u0430: \u043d\u0430\u0439\u0442\u0438 \u0430\u043d\u0430\u043b\u043e\u0433\u0438 \u043d\u0430 Taobao/1688/Alibaba \u0438 \u0443\u043a\u0430\u0437\u0430\u0442\u044c \u0440\u0435\u0430\u043b\u044c\u043d\u044b\u0435 \u0446\u0435\u043d\u044b.')
+    p.append('\u0423\u0447\u0442\u0438 WB \u043a\u043e\u043c\u0438\u0441\u0441\u0438\u044e ~25%, \u043b\u043e\u0433\u0438\u0441\u0442\u0438\u043a\u0443 ~120 \u0440\u0443\u0431/\u0448\u0442.')
+    p.append('')
+    p.append('\u0412\u0435\u0440\u043d\u0438 ONLY JSON \u0431\u0435\u0437 markdown:')
+    p.append('{"price_taobao_usd": 0, "price_alibaba_usd": 0, "moq": 0, "summary": "\u0442\u0435\u043a\u0441\u0442", "search_links": [{"platform": "Alibaba", "url": "https://www.alibaba.com/trade/search?SearchText=QUERY_EN", "icon": "\U0001f310", "description": "\u043e\u043f\u0442"}, {"platform": "AliExpress", "url": "https://www.aliexpress.com/wholesale?SearchText=QUERY_EN", "icon": "\U0001f6cd", "description": "\u0440\u043e\u0437\u043d\u0438\u0446\u0430"}, {"platform": "1688", "url": "https://s.1688.com/selloffer/offer_search.htm?keywords=QUERY_CN", "icon": "\U0001f1e8\U0001f1f3", "description": "\u0434\u0435\u0448\u0435\u0432\u043b\u0435"}], "real_margin_pct": 0, "roi_pct": 0, "profit_per_unit_rub": 0}')
+    prompt = '\n'.join(p)
+
+    client = _anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
+    handler.send_response(200)
+    handler.send_header('Content-type', 'text/event-stream; charset=utf-8')
+    handler.send_header('Cache-Control', 'no-cache')
+    handler.end_headers()
+
+    full_text = ''
+    try:
+        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=2000, messages=[{'role':'user','content':prompt}]) as stream:
+            for text in stream.text_stream:
+                full_text += text
+                chunk = json.dumps({'type':'progress','chars':len(full_text)}, ensure_ascii=False)
+                handler.wfile.write(('data: ' + chunk + '\n\n').encode('utf-8'))
+                handler.wfile.flush()
+
+        result = json.loads(full_text.strip().replace('```json','').replace('```','').strip())
+        event = json.dumps({'type':'done','data':result}, ensure_ascii=False)
+        handler.wfile.write(('data: ' + event + '\n\n').encode('utf-8'))
+        handler.wfile.write(b'data: [DONE]\n\n')
+        handler.wfile.flush()
+    except Exception as e:
+        import traceback
+        print('SUPPLIER STREAM ERROR:', traceback.format_exc())
+        try:
+            ev = json.dumps({'type':'error','error':str(e)}, ensure_ascii=False)
+            handler.wfile.write(('data: ' + ev + '\n\n').encode('utf-8'))
+            handler.wfile.flush()
+        except: pass
 
 
 def handle_docs_stream(handler, body):

@@ -876,15 +876,103 @@ function moveToPortfolio(idx) {
   var list = window._wlList || [];
   var n = list[idx];
   if (!n) return;
+  var sn = n.name.includes(' / ') ? n.name.split(' / ').pop() : n.name;
+
+  // Создаём модальное окно
+  var modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = `
+    <div style="background:#1e2433;border-radius:16px;padding:24px;width:420px;max-width:90vw;border:1px solid #2d3748;">
+      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px;">📦 Перевести в Портфель</div>
+      <div style="font-size:12px;color:#555;margin-bottom:20px;">${sn}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div>
+          <div style="font-size:10px;color:#555;margin-bottom:4px;">ЦЕНА ЗАКУПКИ (CNY)</div>
+          <input id="pm-buy-cny" type="number" placeholder="например: 85" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#555;margin-bottom:4px;">ЦЕНА ПРОДАЖИ WB (₽)</div>
+          <input id="pm-sell-rub" type="number" placeholder="${Math.round(n.avg_price||0)}" value="${Math.round(n.avg_price||0)}" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#555;margin-bottom:4px;">КОЛИЧЕСТВО (шт)</div>
+          <input id="pm-qty" type="number" placeholder="100" value="${n.qty||100}" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:#555;margin-bottom:4px;">СТАТУС</div>
+          <select id="pm-status" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:8px;color:#fff;font-size:13px;">
+            <option value="ordered">📦 Заказан поставщику</option>
+            <option value="planning">📋 Планируется</option>
+            <option value="shipping">🚢 В пути из Китая</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:10px;color:#555;margin-bottom:4px;">ДАТА ЗАКАЗА ПОСТАВЩИКУ</div>
+        <input id="pm-order-date" type="date" value="${new Date().toISOString().split('T')[0]}" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:20px;">
+        <div style="font-size:10px;color:#555;margin-bottom:4px;">ЗАМЕТКА (необязательно)</div>
+        <input id="pm-note" type="text" placeholder="например: поставщик Alibaba, арт. 123456" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="confirmMoveToPortfolio(${idx})" style="flex:1;background:#34d399;border:none;border-radius:8px;padding:12px;color:#000;font-size:13px;font-weight:700;cursor:pointer;">✓ Перевести в Портфель</button>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="background:#1e2433;border:1px solid #2d3748;border-radius:8px;padding:12px 16px;color:#555;font-size:13px;cursor:pointer;">Отмена</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  window._pendingPortfolioIdx = idx;
+}
+
+function confirmMoveToPortfolio(idx) {
+  var list = window._wlList || [];
+  var n = list[idx];
+  if (!n) return;
+
+  var buyCny = parseFloat(document.getElementById('pm-buy-cny').value) || 0;
+  var sellRub = parseFloat(document.getElementById('pm-sell-rub').value) || 0;
+  var qty = parseInt(document.getElementById('pm-qty').value) || 100;
+  var status = document.getElementById('pm-status').value;
+  var orderDate = document.getElementById('pm-order-date').value;
+  var note = document.getElementById('pm-note').value;
+
+  // Считаем маржу
+  var buyRub = buyCny * 12.5;
+  var commission = (n.commission || 0.25) * sellRub;
+  var logistics = 150;
+  var profit = sellRub - buyRub - commission - logistics;
+  var marginPct = sellRub > 0 ? Math.round(profit / sellRub * 100) : 0;
+
   var portfolio = JSON.parse(localStorage.getItem('portfolio') || '[]');
   var exists = portfolio.find(function(p){ return p.full === n.full; });
   if (!exists) {
-    portfolio.push({full: n.full, name: n.name, revenue: n.revenue, score: n.score, added: new Date().toISOString(), status: 'planning'});
+    portfolio.push({
+      full: n.full,
+      name: n.name,
+      revenue: n.revenue,
+      score: n.score,
+      avg_price: n.avg_price,
+      commission: n.commission,
+      added: new Date().toISOString(),
+      status: status,
+      buy_price_cny: buyCny,
+      buy_price_rub: Math.round(buyRub),
+      sell_price_rub: sellRub,
+      qty: qty,
+      margin_pct: marginPct,
+      profit_per_unit: Math.round(profit),
+      order_date: orderDate,
+      note: note
+    });
     localStorage.setItem('portfolio', JSON.stringify(portfolio));
   }
+
+  // Закрываем модал
+  var modal = document.querySelector('[style*="position:fixed"][style*="z-index:9999"]');
+  if (modal) modal.remove();
+
   removeFromWatchlist(n.full);
   renderWatchlist();
-  alert(n.name.split(' / ').pop() + ' перемещён в Портфель!');
 }
 
 let suggestTimer = null;

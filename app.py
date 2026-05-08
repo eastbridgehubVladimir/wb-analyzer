@@ -930,7 +930,7 @@ function confirmMoveToPortfolio(idx) {
   var buyCny = parseFloat(document.getElementById('pm-buy-cny').value) || 0;
   var sellRub = parseFloat(document.getElementById('pm-sell-rub').value) || 0;
   var qty = parseInt(document.getElementById('pm-qty').value) || 100;
-  var status = 'ordered';
+  var status = 'draft';
   var orderDate = document.getElementById('pm-order-date').value;
   var note = document.getElementById('pm-note').value;
 
@@ -4005,8 +4005,8 @@ function renderPortfolioSection() {
   var sym = symbols[currentCurrency];
   var rate = rates[currentCurrency];
 
-  var statusColors = {planning:'#3b82f6', ordered:'#fbbf24', shipping:'#38bdf8', customs:'#f59e0b', wb_stock:'#93c5fd', selling:'#4ade80', paused:'#ef4444'};
-  var statusLabels = {planning:'📋 Планируется', ordered:'📦 Заказан', shipping:'🚢 В пути', customs:'🏛 Таможня', wb_stock:'🏭 На складе WB', selling:'💰 Продаётся', paused:'⏸ Приостановлен'};
+  var statusColors = {draft:'#6366f1', ordered:'#fbbf24', shipping:'#38bdf8', customs:'#f59e0b', wb_stock:'#93c5fd', selling:'#4ade80', paused:'#ef4444'};
+  var statusLabels = {draft:'📋 Лист заказа', ordered:'📦 Заказан поставщику', shipping:'🚢 В пути из Китая', customs:'🏛 Растаможка', wb_stock:'🏭 На складе WB', selling:'💰 Продаётся', paused:'⏸ Приостановлен'};
 
   var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">';
   html += '<div><div style="font-size:20px;font-weight:700;color:#fff;">📦 Товарный портфель <span style="font-size:14px;color:#555;font-weight:400;">(' + items.length + ' товаров)</span></div>';
@@ -4030,17 +4030,19 @@ function renderPortfolioSection() {
 
   // Сводка портфеля
   var totalItems = items.length;
-  var selling = items.filter(function(i){return i.status==='selling';}).length;
-  var inTransit = items.filter(function(i){return i.status==='shipping'||i.status==='ordered';}).length;
+  var inDraft = items.filter(function(i){return i.status==='draft';}).length;
+  var inOrdered = items.filter(function(i){return i.status==='ordered';}).length;
+  var inTransit = items.filter(function(i){return i.status==='shipping'||i.status==='customs';}).length;
+  var inSelling = items.filter(function(i){return i.status==='selling';}).length;
   html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">';
-  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ВСЕГО ПОЗИЦИЙ</div><div style="font-size:20px;font-weight:700;color:#93c5fd;">' + totalItems + '</div></div>';
-  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ПРОДАЁТСЯ</div><div style="font-size:20px;font-weight:700;color:#4ade80;">' + selling + '</div></div>';
-  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">В ПУТИ/ЗАКАЗАНО</div><div style="font-size:20px;font-weight:700;color:#38bdf8;">' + inTransit + '</div></div>';
-  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ДАТА ОБНОВЛЕНИЯ</div><div style="font-size:12px;font-weight:700;color:#555;">' + new Date().toLocaleDateString('ru-RU') + '</div></div>';
+  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;border-top:2px solid #6366f1;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ЛИСТ ЗАКАЗА</div><div style="font-size:20px;font-weight:700;color:#6366f1;">' + inDraft + '</div></div>';
+  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;border-top:2px solid #fbbf24;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ЗАКАЗАНО</div><div style="font-size:20px;font-weight:700;color:#fbbf24;">' + inOrdered + '</div></div>';
+  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;border-top:2px solid #38bdf8;"><div style="font-size:9px;color:#555;margin-bottom:4px;">В ПУТИ</div><div style="font-size:20px;font-weight:700;color:#38bdf8;">' + inTransit + '</div></div>';
+  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;border-top:2px solid #4ade80;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ПРОДАЁТСЯ</div><div style="font-size:20px;font-weight:700;color:#4ade80;">' + inSelling + '</div></div>';
   html += '</div>';
 
   // Индикатор контейнера
-  var orderedItems = items.filter(function(i){ return i.status === "ordered"; });
+  var orderedItems = items.filter(function(i){ return i.status === "draft" || i.status === "ordered"; });
   if (orderedItems.length > 0) {
     var totalVol = 0, totalWeight = 0;
     orderedItems.forEach(function(item) {
@@ -4050,15 +4052,12 @@ function renderPortfolioSection() {
       totalVol += qty * wkg * 2.5 / 1000;
       totalWeight += qty * wkg;
     });
-    var dm = window._portfolioDelivMode || "auto";
+    var dm = window._portfolioDelivMode || (totalVol < 5 ? "cargo" : "20ft");
     var c20=28, c40=60, cargo=Math.round(totalWeight*4);
     var tVol, cName, dCost, dNote;
-    if(dm==="cargo"){tVol=totalVol;cName="Карго";dCost="$"+cargo;dNote=Math.round(totalWeight)+"кг";}
-    else if(dm==="20ft"){tVol=c20;cName="20ft";dCost="~$2800";dNote="28м³";}
-    else if(dm==="40ft"){tVol=c40;cName="40ft";dCost="~$4500";dNote="60м³";}
-    else{if(totalVol<2){tVol=totalVol;cName="Карго";dCost="$"+cargo;dNote="выгоднее карго";}
-    else if(totalVol<=c20){tVol=c20;cName="20ft";dCost="~$2800";dNote="28м³";}
-    else{tVol=c40;cName="40ft";dCost="~$4500";dNote="60м³";}}
+    if(dm==="cargo"){tVol=totalVol;cName="Карго";dCost="$"+cargo;dNote=Math.round(totalWeight)+" кг · $3-5/кг";}
+    else if(dm==="20ft"){tVol=c20;cName="Контейнер 20ft";dCost="~$2800";dNote="вместимость 28м³";}
+    else{tVol=c40;cName="Контейнер 40ft";dCost="~$4500";dNote="вместимость 60м³";}
     var pp=dm==="cargo"?100:Math.min(100,Math.round(totalVol/tVol*100));
     var fv=dm==="cargo"?0:Math.max(0,tVol-totalVol).toFixed(1);
     var bc=pp<60?"#34d399":pp<85?"#fbbf24":"#ef4444";
@@ -4066,11 +4065,11 @@ function renderPortfolioSection() {
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
     html += '<div style="font-size:12px;font-weight:600;color:#34d399;">📦 ' + cName + ' · ' + dCost + ' · ' + dNote + ' · ' + totalVol.toFixed(1) + 'м³</div>';
     html += '<div style="display:flex;gap:4px;">';
-    var dmLabels = {auto:'🤖Авто', cargo:'🚛Карго'};
-    dmLabels['20ft'] = '20ft'; dmLabels['40ft'] = '40ft';
-    var dmColors = {auto:'#34d399', cargo:'#38bdf8'};
+    var dmLabels = {cargo:'🚛 Карго'};
+    dmLabels['20ft'] = '📦 20ft'; dmLabels['40ft'] = '📦 40ft';
+    var dmColors = {cargo:'#38bdf8'};
     dmColors['20ft'] = '#fbbf24'; dmColors['40ft'] = '#f59e0b';
-    ['auto','cargo','20ft','40ft'].forEach(function(m) {
+    ['cargo','20ft','40ft'].forEach(function(m) {
       var active = dm===m;
       var col = active ? dmColors[m] : '#555';
       var bg = active ? dmColors[m]+'22' : 'transparent';

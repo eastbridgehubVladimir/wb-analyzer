@@ -176,64 +176,8 @@ def get_verdict(score):
 
 
 def get_ai_insights(row):
-    name, products, products_with_sales, sellers, sellers_with_sales, \
-    revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders, \
-    buyout_pct, turnover, profit_pct, avg_rating, rank, commission, avg_price = row
-
-    avg_price_val = float(avg_price or 0) if avg_price else float(revenue or 0) / (orders or 1)
-    orders_per_day = float(orders or 0) / 30
-    real_turnover = round(float(turnover or 0) / float(buyout_pct or 1))
-
-    try:
-        import anthropic, os
-        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-        prompt = f"""Ты эксперт по торговле на Wildberries. Проанализируй нишу и дай конкретные инсайты.
-
-Ниша: {name}
-Выручка: {float(revenue or 0):,.0f} ₽/мес
-Заказов: {orders or 0} в месяц ({orders_per_day:.0f}/день)
-Продавцов всего: {sellers or 0}
-Продавцов с продажами: {sellers_with_sales or 0}
-Выкуп: {float(buyout_pct or 0)*100:.0f}%
-Оборачиваемость реальная: {real_turnover} дней
-Маржинальность: {float(profit_pct or 0)*100:.0f}%
-Средняя цена: {avg_price_val:,.0f} ₽
-Комиссия WB: {float(commission or 0):.0f}%
-Упущенная выручка: {float(lost_revenue_pct or 0)*100:.0f}%
-
-Дай ровно 3 коротких инсайта (каждый 1-2 предложения) и 2 гипотезы для проверки.
-Гипотезы пиши в формате действия: "Протестировать X, чтобы Y" или "Войти через Z, так как W".
-Отвечай в формате JSON:
-{{"insights": ["инсайт1", "инсайт2", "инсайт3"], "hypotheses": ["гипотеза1", "гипотеза2"], "analysis": "краткий вывод 1-2 предложения"}}
-Только JSON, никакого другого текста."""
-
-        message = client.messages.create(
-            model="claude-sonnet-4-5",
-            max_tokens=600,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        import json
-        text = message.content[0].text.strip()
-        text = text.replace("```json", "").replace("```", "").strip()
-        result = json.loads(text)
-        return result
-    except Exception as e:
-        print(f"AI Insights error: {e}")
-        # Fallback на шаблонные инсайты если API недоступен
-        insights = []
-        if sellers > 10000:
-            insights.append(f"Ниша насыщена: {sellers} продавцов. Вход без УТП рискован.")
-        elif sellers > 1000:
-            insights.append(f"Умеренная конкуренция: {sellers} продавцов. Есть место для новых игроков.")
-        else:
-            insights.append(f"Низкая конкуренция: {sellers} продавцов. Хорошая возможность для входа.")
-        insights.append(f"Спрос: {orders_per_day:.0f} заказов/день. Выручка {float(revenue or 0):,.0f} ₽/мес.")
-        insights.append(f"Выкуп {float(buyout_pct or 0)*100:.0f}%, оборачиваемость {real_turnover} дней.")
-        hypotheses = [
-            f"Протестировать вход с минимальной партией 30-50 единиц по цене {avg_price_val*0.95:,.0f}–{avg_price_val*1.05:,.0f} ₽.",
-            f"Проверить сезонность: сравнить заказы за последние 30 и 90 дней."
-        ]
-        return {"insights": insights, "hypotheses": hypotheses, "analysis": " ".join(insights)}
+    # Инсайты убраны - используйте Глубокий анализ или Полный анализ
+    return {"insights": [], "hypotheses": [], "analysis": ""}
 
 HTML = """<!DOCTYPE html>
 <html lang="ru">
@@ -2558,13 +2502,6 @@ function renderResult(d) {
       <div id="warehouseStrategy" style="margin-top:16px;"></div>
     </div>
 
-    <!-- ЗОНА 5: AI Инсайты -->
-    <div class="ai-card">
-      <div class="ai-header"><div class="ai-dot"></div><div class="ai-title">AI Инсайты</div></div>
-      <div class="section-title">Ключевые наблюдения</div>
-      ${insights}
-      ${hyps ? `<div class="section-title" style="margin-top:20px">Гипотезы для проверки</div>${hyps}` : ''}
-    </div>
     <!-- ЗОНА 6: Глубокий анализ -->
     <div id="deep-analysis-block" style="display:none;margin-top:24px;">
       <div class="ai-card">

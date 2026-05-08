@@ -32,6 +32,77 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 DB = os.getenv("DATABASE_URL", "postgresql://user@localhost:5432/wb_saas")
 MPSTATS_TOKEN = os.getenv("MPSTATS_TOKEN", "")
 
+# Кэш каталога (6 часов)
+import time
+_catalog_cache = None
+_catalog_cache_time = 0
+CATALOG_CACHE_TTL = 6 * 3600
+
+def get_catalog_cached():
+    global _catalog_cache, _catalog_cache_time
+    now = time.time()
+    if _catalog_cache is not None and (now - _catalog_cache_time) < CATALOG_CACHE_TTL:
+        return _catalog_cache
+    conn = psycopg2.connect(DB)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT name, revenue, orders, sellers, sellers_with_sales,
+               buyout_pct, profit_pct, turnover,
+               COALESCE(display_name, name) as display_name,
+               mpstats_path
+        FROM niches
+        WHERE revenue IS NOT NULL
+        ORDER BY revenue DESC
+    """)
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    niches = []
+    for r in rows:
+        niches.append({
+            'name': r[8],
+            'category': r[9].split('/')[0] if r[9] else 'Другое',
+            'full': r[0],
+            'revenue': float(r[1] or 0),
+            'orders': int(r[2] or 0),
+            'sellers': int(r[3] or 0),
+            'sellers_with_sales': int(r[4] or 0),
+            'buyout_pct': float(r[5] or 0),
+            'profit_pct': float(r[6] or 0),
+            'turnover': float(r[7] or 0),
+        })
+    _catalog_cache = niches
+    _catalog_cache_time = now
+    print(f"[CACHE] Каталог загружен из БД: {len(niches)} ниш")
+    return _catalog_cache
+
+# Кэш MPStats (24 часа)
+_mpstats_cache = {}
+MPSTATS_CACHE_TTL = 24 * 3600
+
+def get_mpstats_cached(path, d1, d2):
+    global _mpstats_cache
+    cache_key = f"{path}_{d1}_{d2}"
+    now = time.time()
+    if cache_key in _mpstats_cache:
+        data, ts = _mpstats_cache[cache_key]
+        if (now - ts) < MPSTATS_CACHE_TTL:
+            print(f"[CACHE] MPStats из кэша: {path}")
+            return data
+    headers = {'X-Mpstats-TOKEN': MPSTATS_TOKEN, 'Content-Type': 'application/json'}
+    r = mpstats_req.post(
+        'https://mpstats.io/api/wb/get/category',
+        headers=headers,
+        params={'d1': d1, 'd2': d2, 'path': path},
+        json={'startRow': 0, 'endRow': 100, 'sortModel': [{'colId': 'revenue', 'sort': 'desc'}]},
+        timeout=30
+    )
+    print(f'MPStats status: {r.status_code}, path: {path}')
+    data = r.json()
+    print(f'MPStats total: {data.get("total")}, items: {len(data.get("data", []))}')
+    _mpstats_cache[cache_key] = (data, now)
+    return data
+
 def clean_name(name):
     """Возвращает название ниши как есть."""
     if not name:
@@ -5032,34 +5103,7 @@ class Handler(BaseHTTPRequestHandler):
 
         elif self.path == '/catalog':
             try:
-                conn = psycopg2.connect(DB)
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT name, revenue, orders, sellers, sellers_with_sales,
-                           buyout_pct, profit_pct, turnover,
-                           COALESCE(display_name, name) as display_name,
-                           mpstats_path
-                    FROM niches
-                    WHERE revenue IS NOT NULL
-                    ORDER BY revenue DESC
-                """)
-                rows = cursor.fetchall()
-                cursor.close()
-                conn.close()
-                niches = []
-                for r in rows:
-                    niches.append({
-                        'name': r[8],
-                        'category': r[9].split('/')[0] if r[9] else 'Другое',
-                        'full': r[0],
-                        'revenue': float(r[1] or 0),
-                        'orders': int(r[2] or 0),
-                        'sellers': int(r[3] or 0),
-                        'sellers_with_sales': int(r[4] or 0),
-                        'buyout_pct': float(r[5] or 0),
-                        'profit_pct': float(r[6] or 0),
-                        'turnover': float(r[7] or 0),
-                    })
+                niches = get_catalog_cached()
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()
@@ -5318,17 +5362,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({'error': 'no_path'}).encode())
                 else:
                     mpstats_path = row[0]
-                    headers = {'X-Mpstats-TOKEN': MPSTATS_TOKEN, 'Content-Type': 'application/json'}
-                    r = mpstats_req.post(
-                        'https://mpstats.io/api/wb/get/category',
-                        headers=headers,
-                        params={'d1': '2024-04-01', 'd2': '2026-04-14', 'path': mpstats_path},
-                        json={'startRow': 0, 'endRow': 100, 'sortModel': [{'colId': 'revenue', 'sort': 'desc'}]},
-                        timeout=30
-                    )
-                    print(f'MPStats status: {r.status_code}, path: {mpstats_path}')
-                    data = r.json()
-                    print(f'MPStats total: {data.get("total")}, items: {len(data.get("data", []))}')
+                    data = get_mpstats_cached(mpstats_path, '2024-04-01', '2026-04-14')
                     items_raw = data.get('data', [])
 
                     # Фильтруем товары по ключевым словам из названия ниши

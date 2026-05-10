@@ -3650,7 +3650,17 @@ function renderCashflow() {
   const taxRate      = s.tax_mode === 'usn15' ? 0.15 : s.tax_mode === 'osn' ? 0.20 : 0.06;
 
   const reserve = Math.round(capital * 0.10);
-  const workingCapital = capital - reserve;
+  const phaseEnd0tmp = s.phase0_end || 1;
+  const phaseEnd1tmp = s.phase1_end || 3;
+  const prepMonths = phaseEnd0tmp + (phaseEnd1tmp - phaseEnd0tmp);
+  const monthlyExpCalc = (() => {
+    const sal = s.employees ? s.employees.reduce((a,e) => a + Number(e.salary), 0) : 0;
+    const wh = (s.warehouse_m2||0) * (s.warehouse_rate||8);
+    const oth = Array.isArray(s.other_expenses) ? s.other_expenses.reduce((a,e) => a + Number(e.amount), 0) : 0;
+    return Math.round(sal * 1.34) + wh + oth;
+  })();
+  const opReserve = monthlyExpCalc > 0 ? Math.round(monthlyExpCalc * prepMonths) : 0;
+  const workingCapital = capital - reserve - opReserve;
   const testBudget = s.test_budget || 12500;
   const batch1 = Math.round(workingCapital * 0.20);
   const batch2 = Math.round(workingCapital * 0.25);
@@ -3841,6 +3851,11 @@ function renderCashflow() {
         <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Резерв (10%)</div>
         <div style="color:#f97316;font-size:15px;font-weight:700;">${reserve.toLocaleString()} $</div>
         <div style="color:#64748b;font-size:10px;">${fmt(reserve)} ${sym}</div>
+      </div>
+      <div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;" title="Операционные расходы за период подготовки и тестов — до первых продаж">
+        <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Опер. расходы до продаж ℹ️</div>
+        <div style="color:#f97316;font-size:15px;font-weight:700;">${opReserve > 0 ? opReserve.toLocaleString()+' $' : 'не заданы'}</div>
+        <div style="color:#64748b;font-size:10px;">${opReserve > 0 ? prepMonths+' мес × '+monthlyExpCalc.toLocaleString()+'$' : 'заполните расходы'}</div>
       </div>
       <div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;" title="Период от оплаты закупки до получения денег с WB: цикл товара (${cycleDays}дн) + задержка выплат WB (${wbDelay}дн). Деньги заморожены в каждой поставке на этот срок.">
         <div style="color:#64748b;font-size:11px;margin-bottom:4px;">Заморозка / поставка ℹ️</div>

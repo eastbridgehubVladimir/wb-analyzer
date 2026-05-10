@@ -4048,8 +4048,8 @@ function renderPortfolioSection() {
     var subCol = active ? 'rgba(255,255,255,0.75)' : '#555';
     var border = active ? col : '#2d3748';
     html += '<button onclick="setPortfolioTab(&apos;' + tab + '&apos;)" style="padding:12px 8px;border-radius:10px;cursor:pointer;border:1.5px solid '+border+';background:'+bg+';display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;">';
-    html += '<div style="font-size:11px;color:'+subCol+';text-align:center;line-height:1.3;">'+statusLabels[tab]+'</div>';
-    html += '<div style="font-size:24px;font-weight:700;color:'+textCol+';line-height:1;">' + cnt + '</div>';
+    html += '<div style="font-size:13px;color:'+subCol+';text-align:center;line-height:1.3;">'+statusLabels[tab]+'</div>';
+    html += '<div style="font-size:30px;font-weight:700;color:'+textCol+';line-height:1;">' + cnt + '</div>';
     html += '</button>';
   });
   html += '</div>';

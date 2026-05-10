@@ -4125,7 +4125,52 @@ function renderPortfolioSection() {
     html += '</div>';
   }
 
+  if (activeTab === 'wb_stock') {
+    html += '<div style="background:#1a1f2e;border:1px dashed #6366f144;border-radius:10px;padding:14px;margin-bottom:14px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+    html += '<div style="font-size:13px;font-weight:600;color:#6366f1;">🔗 Интеграции складской программы</div>';
+    html += '<div style="background:#6366f122;color:#6366f1;font-size:10px;border-radius:4px;padding:2px 8px;border:1px solid #6366f144;">Скоро</div>';
+    html += '</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
+    html += '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;opacity:0.6;">';
+    html += '<div style="font-size:16px;margin-bottom:4px;">📦</div>';
+    html += '<div style="font-size:11px;color:#6366f1;font-weight:600;">МойСклад</div>';
+    html += '<div style="font-size:10px;color:#555;margin-top:2px;">Остатки и движение товара</div></div>';
+    html += '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;opacity:0.6;">';
+    html += '<div style="font-size:16px;margin-bottom:4px;">🧮</div>';
+    html += '<div style="font-size:11px;color:#6366f1;font-weight:600;">1С Бухгалтерия</div>';
+    html += '<div style="font-size:10px;color:#555;margin-top:2px;">Себестоимость и расходы</div></div>';
+    html += '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;opacity:0.6;">';
+    html += '<div style="font-size:16px;margin-bottom:4px;">🏭</div>';
+    html += '<div style="font-size:11px;color:#6366f1;font-weight:600;">Склад 15</div>';
+    html += '<div style="font-size:10px;color:#555;margin-top:2px;">Адресное хранение</div></div>';
+    html += '</div>';
+    html += '<div style="font-size:11px;color:#555;margin-top:8px;text-align:center;">После подключения — остатки, приёмка и отгрузка будут синхронизироваться автоматически</div>';
+    html += '</div>';
+  }
+
   if (activeTab === 'selling') {
+    html += '<div style="background:#0f1a1f;border:1px dashed #4ade8044;border-radius:10px;padding:14px;margin-bottom:14px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
+    html += '<div style="font-size:13px;font-weight:600;color:#4ade80;">🔗 Интеграция с магазином WB</div>';
+    html += '<div style="background:#4ade8022;color:#4ade80;font-size:10px;border-radius:4px;padding:2px 8px;border:1px solid #4ade8044;">Скоро</div>';
+    html += '</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
+    html += '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;opacity:0.6;">';
+    html += '<div style="font-size:16px;margin-bottom:4px;">📊</div>';
+    html += '<div style="font-size:11px;color:#4ade80;font-weight:600;">WB Statistics API</div>';
+    html += '<div style="font-size:10px;color:#555;margin-top:2px;">Продажи и заказы в реальном времени</div></div>';
+    html += '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;opacity:0.6;">';
+    html += '<div style="font-size:16px;margin-bottom:4px;">🏪</div>';
+    html += '<div style="font-size:11px;color:#4ade80;font-weight:600;">WB Seller API</div>';
+    html += '<div style="font-size:10px;color:#555;margin-top:2px;">Остатки, цены, карточки товаров</div></div>';
+    html += '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;opacity:0.6;">';
+    html += '<div style="font-size:16px;margin-bottom:4px;">↩️</div>';
+    html += '<div style="font-size:11px;color:#4ade80;font-weight:600;">Возвраты WB</div>';
+    html += '<div style="font-size:10px;color:#555;margin-top:2px;">Процент выкупа и причины возвратов</div></div>';
+    html += '</div>';
+    html += '<div style="font-size:11px;color:#555;margin-top:8px;text-align:center;">После подключения — продажи, остатки и аналитика будут обновляться автоматически из личного кабинета WB</div>';
+    html += '</div>';
     var totalRevenue = 0;
     filtered.forEach(function(i){ totalRevenue += (i.sell_price_rub||0) * (i.qty||0) / 30; });
     if (filtered.length > 0) {

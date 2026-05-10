@@ -509,8 +509,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <input class="calc-input" id="c-price" type="number" placeholder="цена продажи" oninput="calcUnit()"/>
       </div>
       <div class="calc-field">
-        <div class="calc-label" id="label-cost">Себестоимость, ₽</div>
-        <input class="calc-input" id="c-cost" type="number" placeholder="себестоимость" oninput="calcUnit()"/>
+        <div class="calc-label" id="label-cost">Цена закупки, ₽</div>
+        <input class="calc-input" id="c-cost" type="number" placeholder="цена закупки" oninput="calcUnit()"/>
       </div>
       <div class="calc-field">
         <div class="calc-label">Комиссия WB, %</div>

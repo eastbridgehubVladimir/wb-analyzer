@@ -1246,6 +1246,7 @@ function calcUnit() {
   `;
 }
 function hideAll() {
+  history.replaceState({}, '', '/');
   ['catalog','calculator','result','top-niches','watchlist','history','portfolio','portfolio-picker','company'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
@@ -3421,7 +3422,7 @@ function renderCompany() {
     <tr>
       <td style="padding:8px 12px;">${nameField}${deleteBtn}</td>
       <td style="padding:8px 12px;">
-        <input type="number" value="${emp.salary}" min="0" onchange="companyUpdateEmpSalary(${i},this.value)"
+        <input type="number" value="${emp.salary}" min="0" onfocus="if(this.value=='0'||this.value==0)this.value=''" onchange="companyUpdateEmpSalary(${i},this.value)"
           style="background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:4px 8px;color:#93c5fd;font-size:13px;width:100px;">
         <span style="color:#888;margin-left:4px;">$</span>
       </td>

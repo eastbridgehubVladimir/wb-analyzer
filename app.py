@@ -4035,25 +4035,22 @@ function renderPortfolioSection() {
   var inSelling = items.filter(function(i){return i.status==='selling';}).length;
   var counts = {draft:inDraft, ordered:inOrdered, shipping:inShipping, customs:inCustoms, wb_stock:inWbStock, selling:inSelling, paused:0};
 
-  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">';
-  html += '<div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;border-top:2px solid #6366f1;cursor:pointer;" onclick="setPortfolioTab(&apos;draft&apos;)">';
-  html += '<div style="font-size:9px;color:#555;margin-bottom:3px;">ЛИСТ ЗАКАЗА</div><div style="font-size:20px;font-weight:700;color:#6366f1;">' + inDraft + '</div></div>';
-  html += '<div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;border-top:2px solid #fbbf24;cursor:pointer;" onclick="setPortfolioTab(&apos;ordered&apos;)">';
-  html += '<div style="font-size:9px;color:#555;margin-bottom:3px;">ЗАКАЗАНО</div><div style="font-size:20px;font-weight:700;color:#fbbf24;">' + inOrdered + '</div></div>';
-  html += '<div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;border-top:2px solid #38bdf8;cursor:pointer;" onclick="setPortfolioTab(&apos;shipping&apos;)">';
-  html += '<div style="font-size:9px;color:#555;margin-bottom:3px;">В ПУТИ / ТАМОЖНЯ</div><div style="font-size:20px;font-weight:700;color:#38bdf8;">' + (inShipping+inCustoms) + '</div></div>';
-  html += '<div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;border-top:2px solid #4ade80;cursor:pointer;" onclick="setPortfolioTab(&apos;selling&apos;)">';
-  html += '<div style="font-size:9px;color:#555;margin-bottom:3px;">ПРОДАЁТСЯ</div><div style="font-size:20px;font-weight:700;color:#4ade80;">' + inSelling + '</div></div>';
-  html += '</div>';
-
-  // Вкладки
-  html += '<div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px;">';
+  // Вариант Б — крупные вкладки с иконкой и числом
+  var tabIcons = {draft:'📋', ordered:'📦', shipping:'🚢', customs:'🏛', wb_stock:'🏭', selling:'💰', paused:'⏸'};
+  var tabColors = {draft:'#7C3AED', ordered:'#d97706', shipping:'#0284c7', customs:'#b45309', wb_stock:'#6366f1', selling:'#16a34a', paused:'#dc2626'};
+  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:20px;">';
   tabOrder.forEach(function(tab) {
     var cnt = counts[tab] || 0;
     var active = activeTab === tab;
-    var col = statusColors[tab];
-    html += '<button onclick="setPortfolioTab(&apos;' + tab + '&apos;)" style="padding:6px 12px;border-radius:8px;font-size:12px;white-space:nowrap;cursor:pointer;border:' + (active?'1.5px solid '+col:'1px solid #2d3748') + ';background:' + (active?col+'22':'transparent') + ';color:' + (active?col:'#555') + ';">';
-    html += statusLabels[tab] + ' <span style="background:' + (active?col:'#2d3748') + ';color:' + (active?'#fff':'#555') + ';border-radius:10px;padding:1px 7px;font-size:10px;margin-left:2px;">' + cnt + '</span></button>';
+    var col = tabColors[tab];
+    var bg = active ? col : '#1e2433';
+    var textCol = active ? '#fff' : '#94a3b8';
+    var subCol = active ? 'rgba(255,255,255,0.75)' : '#555';
+    var border = active ? col : '#2d3748';
+    html += '<button onclick="setPortfolioTab(&apos;' + tab + '&apos;)" style="padding:12px 8px;border-radius:10px;cursor:pointer;border:1.5px solid '+border+';background:'+bg+';display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;">';
+    html += '<div style="font-size:11px;color:'+subCol+';text-align:center;line-height:1.3;">'+statusLabels[tab]+'</div>';
+    html += '<div style="font-size:24px;font-weight:700;color:'+textCol+';line-height:1;">' + cnt + '</div>';
+    html += '</button>';
   });
   html += '</div>';
 

@@ -3751,9 +3751,35 @@ function renderCashflow() {
   const freezeDays = cycleDays + wbDelay;
 
   // CONTROLS
+  // Получаем данные из Портфеля
+  const portfolioItems = getPortfolioItems();
+  const sellingItems = portfolioItems.filter(function(i){ return i.status === 'selling'; });
+  const portfolioRevDay = sellingItems.reduce(function(sum, i){ return sum + (i.sell_price_rub||0) * (i.qty||0) / 30; }, 0);
+  const portfolioRevMonth = Math.round(portfolioRevDay * 30);
+
   const controlsEl = document.getElementById('cashflow-controls');
   if (controlsEl) {
-    controlsEl.innerHTML = `
+    var pfBlock = '';
+    if (sellingItems.length > 0) {
+      pfBlock = '<div style="background:#0f1a1f;border:1px solid #4ade8033;border-radius:8px;padding:12px;margin-bottom:14px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+        '<div style="font-size:13px;font-weight:600;color:#4ade80;">📦 Данные из Портфеля</div>' +
+        '<div style="font-size:11px;color:#555;">' + sellingItems.length + ' товаров продаётся</div>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+        '<div style="background:#0f1117;border-radius:6px;padding:10px;text-align:center;">' +
+        '<div style="font-size:9px;color:#555;margin-bottom:3px;">ВЫРУЧКА/МЕСЯЦ (ПЛАН)</div>' +
+        '<div style="font-size:16px;font-weight:700;color:#4ade80;">' + portfolioRevMonth.toLocaleString('ru') + ' ₽</div></div>' +
+        '<div style="background:#0f1117;border-radius:6px;padding:10px;text-align:center;">' +
+        '<div style="font-size:9px;color:#555;margin-bottom:3px;">АКТИВНЫХ ПОЗИЦИЙ</div>' +
+        '<div style="font-size:16px;font-weight:700;color:#4ade80;">' + sellingItems.length + '</div></div>' +
+        '</div></div>';
+    } else {
+      pfBlock = '<div style="background:#1e2433;border:1px dashed #4ade8022;border-radius:8px;padding:10px;margin-bottom:14px;text-align:center;">' +
+        '<div style="font-size:12px;color:#555;">📦 Нет активных продаж в Портфеле — добавьте товары со статусом "Продаётся" для автоматического расчёта выручки</div>' +
+        '</div>';
+    }
+    controlsEl.innerHTML = pfBlock + `
       <div style="color:#e2e8f0;font-size:13px;font-weight:600;margin-bottom:10px;">⚙️ Параметры WB</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px;">
         ${[

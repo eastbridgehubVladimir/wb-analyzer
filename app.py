@@ -4004,129 +4004,278 @@ function renderPortfolioSection() {
   var items = getPortfolioItems();
   var sym = symbols[currentCurrency];
   var rate = rates[currentCurrency];
+  var activeTab = window._portfolioTab || 'draft';
 
   var statusColors = {draft:'#6366f1', ordered:'#fbbf24', shipping:'#38bdf8', customs:'#f59e0b', wb_stock:'#93c5fd', selling:'#4ade80', paused:'#ef4444'};
-  var statusLabels = {draft:'📋 Лист заказа', ordered:'📦 Заказан поставщику', shipping:'🚢 В пути из Китая', customs:'🏛 Растаможка', wb_stock:'🏭 На складе WB', selling:'💰 Продаётся', paused:'⏸ Приостановлен'};
+  var statusLabels = {draft:'📋 Лист заказа', ordered:'📦 Заказано', shipping:'🚢 В пути', customs:'🏛 Таможня', wb_stock:'🏭 Склад РБ', selling:'💰 Продаётся', paused:'⏸ Пауза'};
+  var tabOrder = ['draft','ordered','shipping','customs','wb_stock','selling','paused'];
 
-  var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">';
-  html += '<div><div style="font-size:20px;font-weight:700;color:#fff;">📦 Товарный портфель <span style="font-size:14px;color:#555;font-weight:400;">(' + items.length + ' товаров)</span></div>';
-  html += '<div style="font-size:12px;color:#555;margin-top:4px;">Товары которые вы закупаете и продаёте на WB</div></div>';
-  html += '</div>';
-
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;"><div></div>';
-  // кнопка В работе убрана из заголовка
+  var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">';
+  html += '<div style="font-size:20px;font-weight:700;color:#fff;">📦 Товарный портфель <span style="font-size:14px;color:#555;font-weight:400;">(' + items.length + ' товаров)</span></div>';
+  html += '<button onclick="addPortfolioItem()" style="background:#3b82f622;border:1px solid #3b82f644;border-radius:8px;padding:8px 14px;color:#93c5fd;font-size:12px;cursor:pointer;">+ Добавить</button>';
   html += '</div>';
 
   if (items.length === 0) {
     html += '<div style="background:#1e2433;border-radius:12px;padding:40px;text-align:center;">';
     html += '<div style="font-size:48px;margin-bottom:12px;">📦</div>';
     html += '<div style="font-size:16px;color:#fff;margin-bottom:8px;">Портфель пуст</div>';
-    html += '<div style="font-size:13px;color:#555;margin-bottom:20px;">Перемещайте товары из раздела "В работе" или добавляйте вручную</div>';
+    html += '<div style="font-size:13px;color:#555;margin-bottom:20px;">Перемещайте товары из раздела "В работе"</div>';
     html += '<button onclick="showWatchlist()" style="background:#3b82f622;border:1px solid #3b82f644;border-radius:8px;padding:10px 20px;color:#93c5fd;cursor:pointer;font-size:13px;">Перейти в "В работе"</button>';
     html += '</div>';
     div.innerHTML = html;
     return;
   }
 
-  // Сводка портфеля
-  var totalItems = items.length;
+  // Сводка
   var inDraft = items.filter(function(i){return i.status==='draft';}).length;
   var inOrdered = items.filter(function(i){return i.status==='ordered';}).length;
-  var inTransit = items.filter(function(i){return i.status==='shipping'||i.status==='customs';}).length;
+  var inShipping = items.filter(function(i){return i.status==='shipping';}).length;
+  var inCustoms = items.filter(function(i){return i.status==='customs';}).length;
+  var inWbStock = items.filter(function(i){return i.status==='wb_stock';}).length;
   var inSelling = items.filter(function(i){return i.status==='selling';}).length;
-  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">';
-  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;border-top:2px solid #6366f1;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ЛИСТ ЗАКАЗА</div><div style="font-size:20px;font-weight:700;color:#6366f1;">' + inDraft + '</div></div>';
-  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;border-top:2px solid #fbbf24;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ЗАКАЗАНО</div><div style="font-size:20px;font-weight:700;color:#fbbf24;">' + inOrdered + '</div></div>';
-  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;border-top:2px solid #38bdf8;"><div style="font-size:9px;color:#555;margin-bottom:4px;">В ПУТИ</div><div style="font-size:20px;font-weight:700;color:#38bdf8;">' + inTransit + '</div></div>';
-  html += '<div style="background:#1e2433;border-radius:10px;padding:14px;text-align:center;border-top:2px solid #4ade80;"><div style="font-size:9px;color:#555;margin-bottom:4px;">ПРОДАЁТСЯ</div><div style="font-size:20px;font-weight:700;color:#4ade80;">' + inSelling + '</div></div>';
+  var counts = {draft:inDraft, ordered:inOrdered, shipping:inShipping, customs:inCustoms, wb_stock:inWbStock, selling:inSelling, paused:0};
+
+  html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">';
+  html += '<div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;border-top:2px solid #6366f1;cursor:pointer;" onclick="setPortfolioTab(&apos;draft&apos;)">';
+  html += '<div style="font-size:9px;color:#555;margin-bottom:3px;">ЛИСТ ЗАКАЗА</div><div style="font-size:20px;font-weight:700;color:#6366f1;">' + inDraft + '</div></div>';
+  html += '<div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;border-top:2px solid #fbbf24;cursor:pointer;" onclick="setPortfolioTab(&apos;ordered&apos;)">';
+  html += '<div style="font-size:9px;color:#555;margin-bottom:3px;">ЗАКАЗАНО</div><div style="font-size:20px;font-weight:700;color:#fbbf24;">' + inOrdered + '</div></div>';
+  html += '<div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;border-top:2px solid #38bdf8;cursor:pointer;" onclick="setPortfolioTab(&apos;shipping&apos;)">';
+  html += '<div style="font-size:9px;color:#555;margin-bottom:3px;">В ПУТИ / ТАМОЖНЯ</div><div style="font-size:20px;font-weight:700;color:#38bdf8;">' + (inShipping+inCustoms) + '</div></div>';
+  html += '<div style="background:#1e2433;border-radius:10px;padding:12px;text-align:center;border-top:2px solid #4ade80;cursor:pointer;" onclick="setPortfolioTab(&apos;selling&apos;)">';
+  html += '<div style="font-size:9px;color:#555;margin-bottom:3px;">ПРОДАЁТСЯ</div><div style="font-size:20px;font-weight:700;color:#4ade80;">' + inSelling + '</div></div>';
   html += '</div>';
 
-  // Индикатор контейнера
-  var orderedItems = items.filter(function(i){ return i.status === "draft" || i.status === "ordered"; });
-  if (orderedItems.length > 0) {
-    var totalVol = 0, totalWeight = 0;
-    orderedItems.forEach(function(item) {
-      var qty = item.qty || 100;
-      var price = item.sell_price_rub || item.avg_price || 1000;
-      var wkg = price < 500 ? 0.1 : price < 1500 ? 0.3 : price < 5000 ? 0.8 : price < 15000 ? 2.0 : 5.0;
-      totalVol += qty * wkg * 2.5 / 1000;
-      totalWeight += qty * wkg;
-    });
-    var dm = window._portfolioDelivMode || (totalVol < 5 ? "cargo" : "20ft");
-    var c20=28, c40=60, cargo=Math.round(totalWeight*4);
-    var tVol, cName, dCost, dNote;
-    if(dm==="cargo"){tVol=totalVol;cName="Карго";dCost="$"+cargo;dNote=Math.round(totalWeight)+" кг · $3-5/кг";}
-    else if(dm==="20ft"){tVol=c20;cName="Контейнер 20ft";dCost="~$2800";dNote="вместимость 28м³";}
-    else{tVol=c40;cName="Контейнер 40ft";dCost="~$4500";dNote="вместимость 60м³";}
-    var pp=dm==="cargo"?100:Math.min(100,Math.round(totalVol/tVol*100));
-    var fv=dm==="cargo"?0:Math.max(0,tVol-totalVol).toFixed(1);
-    var bc=pp<60?"#34d399":pp<85?"#fbbf24":"#ef4444";
-    html += '<div style="background:#0f1117;border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid #2d3748;">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
-    html += '<div style="font-size:12px;font-weight:600;color:#34d399;">📦 ' + cName + ' · ' + dCost + ' · ' + dNote + ' · ' + totalVol.toFixed(1) + 'м³</div>';
-    html += '<div style="display:flex;gap:4px;">';
-    var dmLabels = {cargo:'🚛 Карго'};
-    dmLabels['20ft'] = '📦 20ft'; dmLabels['40ft'] = '📦 40ft';
-    var dmColors = {cargo:'#38bdf8'};
-    dmColors['20ft'] = '#fbbf24'; dmColors['40ft'] = '#f59e0b';
-    ['cargo','20ft','40ft'].forEach(function(m) {
-      var active = dm===m;
-      var col = active ? dmColors[m] : '#555';
-      var bg = active ? dmColors[m]+'22' : 'transparent';
-      var border = active ? dmColors[m] : '#2d3748';
-      html += '<button onclick="setDelivMode(' + String.fromCharCode(39) + m + String.fromCharCode(39) + ')" style="font-size:10px;padding:3px 7px;border-radius:4px;border:1px solid '+border+';background:'+bg+';color:'+col+';cursor:pointer;">'+dmLabels[m]+'</button>';
-    });
-    html += '</div></div>';
-    if(dm!=="cargo"){
-      html += '<div style="background:#1e2433;border-radius:6px;height:12px;margin-bottom:6px;">';
-      html += '<div style="height:100%;border-radius:6px;background:'+bc+';width:'+pp+'%;transition:width 0.3s;"></div></div>';
-      html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:#555;">';
-      html += '<span>'+totalVol.toFixed(1)+'м³ занято · '+pp+'% · '+orderedItems.length+' товаров</span>';
-      html += '<span>свободно: '+fv+'м³</span></div>';
-    }
-    html += '</div>';
-  }
-
-  // Карточки товаров
-  html += '<div style="display:flex;flex-direction:column;gap:10px;">';
-  items.forEach(function(item, idx) {
-    var sc = statusColors[item.status] || '#555';
-    var sl = statusLabels[item.status] || item.status;
-    var name = (item.full || item.name || '').split(' / ').pop();
-    html += '<div style="background:#1e2433;border-radius:12px;padding:16px;border-left:3px solid ' + sc + ';">';
-    html += '<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:12px;align-items:center;">';
-    // Название и статус
-    html += '<div><div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:4px;">' + name + '</div>';
-    html += '<div style="font-size:11px;color:' + sc + ';">' + sl + '</div>';
-    if (item.added) html += '<div style="font-size:10px;color:#444;margin-top:2px;">Добавлен: ' + new Date(item.added).toLocaleDateString('ru-RU') + '</div>';
-    html += '</div>';
-    // Цена закупки
-    html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЦЕНА ЗАКУПКИ</div>';
-    html += '<div style="font-size:13px;font-weight:700;color:#fff;">' + (item.buy_price_usd ? '$' + item.buy_price_usd : '—') + '</div></div>';
-    // Количество
-    html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">КОЛ-ВО (шт)</div>';
-    html += '<input type="number" value="' + (item.qty||100) + '" min="1" onchange="updatePortfolioQty(' + idx + ',this.value)" style="width:70px;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px 6px;color:#fff;font-size:13px;font-weight:700;text-align:center;"></div>';
-    // Маржа
-    html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">МАРЖА</div>';
-    var marginColor = (item.margin_pct||0) >= 30 ? '#4ade80' : (item.margin_pct||0) >= 15 ? '#fbbf24' : '#ef4444';
-    html += '<div style="font-size:13px;font-weight:700;color:' + marginColor + ';">' + (item.margin_pct ? item.margin_pct + '%' : '—') + '</div></div>';
-    // Следующий заказ
-    html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">СЛЕД. ЗАКАЗ</div>';
-    html += '<div style="font-size:11px;color:#fbbf24;">' + (item.next_order || '—') + '</div></div>';
-    // Кнопки управления
-    html += '<div style="display:flex;gap:6px;">';
-    html += '<select onchange="updatePortfolioStatus(' + idx + ',this.value)" style="background:#0f1117;border:1px solid #2d3748;border-radius:5px;color:#fff;padding:4px;font-size:10px;cursor:pointer;">';
-    Object.keys(statusLabels).forEach(function(s) {
-      html += '<option value="' + s + '"' + (item.status===s?' selected':'') + '>' + statusLabels[s] + '</option>';
-    });
-    html += '</select>';
-    html += '<button onclick="removePortfolioItem(' + idx + ')" style="background:#ef444422;border:1px solid #ef444444;border-radius:5px;color:#ef4444;padding:4px 8px;cursor:pointer;font-size:11px;">✕</button>';
-    html += '</div>';
-    html += '</div></div>';
+  // Вкладки
+  html += '<div style="display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px;">';
+  tabOrder.forEach(function(tab) {
+    var cnt = counts[tab] || 0;
+    var active = activeTab === tab;
+    var col = statusColors[tab];
+    html += '<button onclick="setPortfolioTab(&apos;' + tab + '&apos;)" style="padding:6px 12px;border-radius:8px;font-size:12px;white-space:nowrap;cursor:pointer;border:' + (active?'1.5px solid '+col:'1px solid #2d3748') + ';background:' + (active?col+'22':'transparent') + ';color:' + (active?col:'#555') + ';">';
+    html += statusLabels[tab] + ' <span style="background:' + (active?col:'#2d3748') + ';color:' + (active?'#fff':'#555') + ';border-radius:10px;padding:1px 7px;font-size:10px;margin-left:2px;">' + cnt + '</span></button>';
   });
   html += '</div>';
 
+  // Фильтруем товары по вкладке
+  var filtered = items.filter(function(i){ return i.status === activeTab; });
+
+  // Специфичный контент для каждой вкладки
+  if (activeTab === 'draft') {
+    // Индикатор контейнера
+    var draftItems = filtered;
+    if (draftItems.length > 0) {
+      var totalVol = 0, totalWeight = 0, totalSum = 0;
+      draftItems.forEach(function(item) {
+        var qty = item.qty || 100;
+        var price = item.sell_price_rub || item.avg_price || 1000;
+        var wkg = price < 500 ? 0.1 : price < 1500 ? 0.3 : price < 5000 ? 0.8 : price < 15000 ? 2.0 : 5.0;
+        totalVol += qty * wkg * 2.5 / 1000;
+        totalWeight += qty * wkg;
+        var buyCur = item.buy_currency || 'cny';
+        var buyRate = buyCur === 'usd' ? 90 : 12.5;
+        totalSum += (item.buy_price_cny || 0) * qty;
+      });
+      var dm = window._portfolioDelivMode || (totalVol < 5 ? "cargo" : "20ft");
+      var c20=28, c40=60, cargo=Math.round(totalWeight*4);
+      var tVol, cName, dCost, dNote;
+      if(dm==="cargo"){tVol=totalVol;cName="Карго";dCost="$"+cargo;dNote=Math.round(totalWeight)+" кг · $3-5/кг";}
+      else if(dm==="20ft"){tVol=c20;cName="Контейнер 20ft";dCost="~$2800";dNote="вместимость 28м³";}
+      else{tVol=c40;cName="Контейнер 40ft";dCost="~$4500";dNote="вместимость 60м³";}
+      var pp=dm==="cargo"?100:Math.min(100,Math.round(totalVol/tVol*100));
+      var fv=dm==="cargo"?0:Math.max(0,tVol-totalVol).toFixed(1);
+      var bc=pp<60?"#34d399":pp<85?"#fbbf24":"#ef4444";
+      var dmLabels = {cargo:'🚛 Карго'}; dmLabels['20ft']='📦 20ft'; dmLabels['40ft']='📦 40ft';
+      var dmColors = {cargo:'#38bdf8'}; dmColors['20ft']='#fbbf24'; dmColors['40ft']='#f59e0b';
+
+      html += '<div style="background:#0f1117;border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid #2d3748;">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+      html += '<div style="font-size:12px;font-weight:600;color:#34d399;">📦 ' + cName + ' · ' + dCost + ' · ' + dNote + '</div>';
+      html += '<div style="display:flex;gap:4px;">';
+      ['cargo','20ft','40ft'].forEach(function(m) {
+        var active = dm===m;
+        var col = active ? dmColors[m] : '#555';
+        var bg = active ? dmColors[m]+'22' : 'transparent';
+        var border = active ? dmColors[m] : '#2d3748';
+        html += '<button onclick="setDelivMode(' + String.fromCharCode(39) + m + String.fromCharCode(39) + ')" style="font-size:10px;padding:3px 7px;border-radius:4px;border:1px solid '+border+';background:'+bg+';color:'+col+';cursor:pointer;">'+dmLabels[m]+'</button>';
+      });
+      html += '</div></div>';
+      if(dm!=="cargo"){
+        html += '<div style="background:#1e2433;border-radius:6px;height:12px;margin-bottom:6px;">';
+        html += '<div style="height:100%;border-radius:6px;background:'+bc+';width:'+pp+'%;transition:width 0.3s;"></div></div>';
+        html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:#555;">';
+        html += '<span>'+totalVol.toFixed(1)+'м³ · '+pp+'% · '+draftItems.length+' товаров</span>';
+        html += '<span>свободно: '+fv+'м³</span></div>';
+      }
+      html += '</div>';
+
+      // Итого заказа
+      html += '<div style="background:#0f1a2e;border:1px solid #3b82f633;border-radius:10px;padding:14px;margin-bottom:16px;">';
+      html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px;text-align:center;">';
+      html += '<div><div style="font-size:9px;color:#555;margin-bottom:3px;">ТОВАРОВ В ЗАЯВКЕ</div><div style="font-size:18px;font-weight:700;color:#93c5fd;">' + draftItems.length + ' позиций</div></div>';
+      html += '<div><div style="font-size:9px;color:#555;margin-bottom:3px;">ДОСТАВКА</div><div style="font-size:18px;font-weight:700;color:#38bdf8;">' + dCost + '</div></div>';
+      html += '<div><div style="font-size:9px;color:#555;margin-bottom:3px;">ОБЩИЙ ВЕС</div><div style="font-size:18px;font-weight:700;color:#fff;">' + Math.round(totalWeight) + ' кг</div></div>';
+      html += '</div>';
+      html += '<button onclick="moveAllDraftToOrdered()" style="width:100%;background:#fbbf2422;border:1px solid #fbbf2444;border-radius:8px;padding:10px;color:#fbbf24;font-size:13px;font-weight:600;cursor:pointer;">📤 Отправить заявку поставщику → перевести в "Заказано"</button>';
+      html += '</div>';
+    }
+  }
+
+  if (activeTab === 'shipping') {
+    html += '<div style="background:#0f1a2e;border:1px solid #38bdf833;border-radius:10px;padding:12px;margin-bottom:12px;">';
+    html += '<div style="font-size:12px;color:#38bdf8;margin-bottom:4px;">🚢 Товары в пути из Китая</div>';
+    html += '<div style="font-size:11px;color:#555;">Укажите трек-номер и ожидаемую дату прибытия для каждого товара</div>';
+    html += '</div>';
+  }
+
+  if (activeTab === 'selling') {
+    var totalRevenue = 0;
+    filtered.forEach(function(i){ totalRevenue += (i.sell_price_rub||0) * (i.qty||0) / 30; });
+    if (filtered.length > 0) {
+      html += '<div style="background:#0f1a1f;border:1px solid #4ade8033;border-radius:10px;padding:12px;margin-bottom:12px;">';
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:center;">';
+      html += '<div><div style="font-size:9px;color:#555;margin-bottom:3px;">ОЖИД. ВЫРУЧКА/ДЕНЬ</div><div style="font-size:16px;font-weight:700;color:#4ade80;">' + Math.round(totalRevenue).toLocaleString('ru') + ' ₽</div></div>';
+      html += '<div><div style="font-size:9px;color:#555;margin-bottom:3px;">АКТИВНЫХ ПОЗИЦИЙ</div><div style="font-size:16px;font-weight:700;color:#4ade80;">' + filtered.length + '</div></div>';
+      html += '</div></div>';
+    }
+  }
+
+  // Карточки товаров
+  if (filtered.length === 0) {
+    html += '<div style="background:#1e2433;border-radius:10px;padding:30px;text-align:center;color:#555;">Нет товаров в этой стадии</div>';
+  } else {
+    html += '<div style="display:flex;flex-direction:column;gap:8px;">';
+    filtered.forEach(function(item, localIdx) {
+      var globalIdx = items.indexOf(item);
+      var sc = statusColors[item.status] || '#555';
+      var sl = statusLabels[item.status] || item.status;
+      var name = (item.full || item.name || '').split(' / ').pop();
+      html += '<div style="background:#1e2433;border-radius:12px;padding:14px;border-left:3px solid ' + sc + ';">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+      html += '<div><div style="font-size:14px;font-weight:600;color:#fff;">' + name + '</div>';
+      if (item.added) html += '<div style="font-size:10px;color:#444;margin-top:2px;">Добавлен: ' + new Date(item.added).toLocaleDateString('ru-RU') + '</div>';
+      html += '</div>';
+      html += '<div style="display:flex;gap:6px;align-items:center;">';
+      html += '<select onchange="updatePortfolioStatus(' + globalIdx + ',this.value)" style="background:#0f1117;border:1px solid #2d3748;border-radius:5px;color:#fff;padding:4px;font-size:10px;cursor:pointer;">';
+      Object.keys(statusLabels).forEach(function(s) {
+        html += '<option value="' + s + '"' + (item.status===s?' selected':'') + '>' + statusLabels[s] + '</option>';
+      });
+      html += '</select>';
+      html += '<button onclick="removePortfolioItem(' + globalIdx + ')" style="background:#ef444422;border:1px solid #ef444444;border-radius:5px;color:#ef4444;padding:4px 8px;cursor:pointer;font-size:11px;">✕</button>';
+      html += '</div></div>';
+
+      // Поля зависят от стадии
+      if (activeTab === 'draft') {
+        html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">';
+        var buyCur = item.buy_currency || 'cny';
+        var buyLabel = buyCur === 'usd' ? '$' : '¥';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЦЕНА ЗАКУПКИ (' + buyLabel + ')</div><div style="font-size:13px;font-weight:700;color:#fbbf24;">' + (item.buy_price_cny ? buyLabel + item.buy_price_cny : '—') + '</div></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">КОЛ-ВО (шт)</div><input type="number" value="' + (item.qty||100) + '" min="1" onchange="updatePortfolioQty(' + globalIdx + ',this.value)" style="width:70px;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px 6px;color:#fff;font-size:13px;font-weight:700;text-align:center;"></div>';
+        var marginColor = (item.margin_pct||0) >= 30 ? '#4ade80' : (item.margin_pct||0) >= 15 ? '#fbbf24' : '#ef4444';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">МАРЖА ПЛАН</div><div style="font-size:13px;font-weight:700;color:' + marginColor + ';">' + (item.margin_pct ? item.margin_pct + '%' : '—') + '</div></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЗАМЕТКА</div><div style="font-size:11px;color:#555;">' + (item.note || '—') + '</div></div>';
+        html += '</div>';
+      } else if (activeTab === 'ordered') {
+        html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ДАТА ЗАКАЗА</div><div style="font-size:13px;font-weight:700;color:#fff;">' + (item.order_date ? new Date(item.order_date).toLocaleDateString('ru-RU') : '—') + '</div></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">КОЛ-ВО</div><div style="font-size:13px;font-weight:700;color:#fff;">' + (item.qty||'—') + ' шт</div></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ОЖ. ОТПРАВКА</div><input type="date" value="' + (item.ship_date||'') + '" data-pf="ship_date" data-idx="' + globalIdx + '" onchange="pfUpdate(this)" style="background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px;color:#fff;font-size:11px;"></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ПОСТАВЩИК</div><div style="font-size:11px;color:#555;">' + (item.note || '—') + '</div></div>';
+        html += '</div>';
+      } else if (activeTab === 'shipping') {
+        html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ДАТА ОТПРАВКИ</div><div style="font-size:13px;font-weight:700;color:#fff;">' + (item.ship_date ? new Date(item.ship_date).toLocaleDateString('ru-RU') : '—') + '</div></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">КОЛ-ВО</div><div style="font-size:13px;font-weight:700;color:#fff;">' + (item.qty||'—') + ' шт</div></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ТРЕК-НОМЕР</div><input type="text" value="' + (item.track||'') + '" placeholder="например: SFE123456" data-pf="track" data-idx="' + globalIdx + '" onchange="pfUpdate(this)" style="width:120px;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px;color:#fff;font-size:11px;"></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ОЖ. ПРИБЫТИЕ</div><input type="date" value="' + (item.arrive_date||'') + '" data-pf="arrive_date" data-idx="' + globalIdx + '" onchange="pfUpdate(this)" style="background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px;color:#fff;font-size:11px;"></div>';
+        html += '</div>';
+      } else if (activeTab === 'customs') {
+        html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ДАТА ПРИБЫТИЯ</div><div style="font-size:13px;font-weight:700;color:#fff;">' + (item.arrive_date ? new Date(item.arrive_date).toLocaleDateString('ru-RU') : '—') + '</div></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">КОЛ-ВО</div><div style="font-size:13px;font-weight:700;color:#fff;">' + (item.qty||'—') + ' шт</div></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ТАМ. ПЛАТЁЖ</div><input type="number" value="' + (item.customs_fee||'') + '" placeholder="руб" data-pf="customs_fee" data-idx="' + globalIdx + '" onchange="pfUpdate(this)" style="width:80px;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px;color:#fff;font-size:11px;"></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ОЖ. РАСТАМОЖКА</div><input type="date" value="' + (item.customs_date||'') + '" data-pf="customs_date" data-idx="' + globalIdx + '" onchange="pfUpdate(this)" style="background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px;color:#fff;font-size:11px;"></div>';
+        html += '</div>';
+      } else if (activeTab === 'wb_stock') {
+        html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">АРТИКУЛ WB</div><input type="text" value="' + (item.wb_article||'') + '" placeholder="12345678" data-pf="wb_article" data-idx="' + globalIdx + '" onchange="pfUpdate(this)" style="width:100px;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px;color:#fff;font-size:11px;"></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ОСТАТОК WB</div><input type="number" value="' + (item.wb_stock||item.qty||0) + '" data-pf="wb_stock" data-idx="' + globalIdx + '" onchange="pfUpdate(this)" style="width:70px;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px;color:#fff;font-size:13px;text-align:center;"></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ДАТА ПОСТАВКИ</div><input type="date" value="' + (item.wb_date||'') + '" data-pf="wb_date" data-idx="' + globalIdx + '" onchange="pfUpdate(this)" style="background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px;color:#fff;font-size:11px;"></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЦЕНА WB</div><input type="number" value="' + (item.sell_price_rub||0) + '" data-pf="sell_price_rub" data-idx="' + globalIdx + '" onchange="pfUpdate(this)" style="width:80px;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px;color:#fff;font-size:11px;"></div>';
+        html += '</div>';
+      } else if (activeTab === 'selling') {
+        var marginColor2 = (item.margin_pct||0) >= 30 ? '#4ade80' : (item.margin_pct||0) >= 15 ? '#fbbf24' : '#ef4444';
+        html += '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">АРТИКУЛ WB</div><div style="font-size:12px;color:#93c5fd;">' + (item.wb_article||'—') + '</div></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ОСТАТОК</div><input type="number" value="' + (item.wb_stock||0) + '" data-pf="wb_stock" data-idx="' + globalIdx + '" onchange="pfUpdate(this)" style="width:60px;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px;color:#fff;font-size:13px;text-align:center;"></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЦЕНА WB</div><div style="font-size:13px;font-weight:700;color:#fff;">' + (item.sell_price_rub ? item.sell_price_rub + '₽' : '—') + '</div></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">МАРЖА ФАКТ</div><div style="font-size:13px;font-weight:700;color:' + marginColor2 + ';">' + (item.margin_pct ? item.margin_pct + '%' : '—') + '</div></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ДОЗАКАЗ</div><button onclick="reorderItem(' + globalIdx + ')" style="background:#3b82f622;border:1px solid #3b82f644;border-radius:5px;color:#93c5fd;padding:4px 8px;cursor:pointer;font-size:11px;">+ Дозаказ</button></div>';
+        html += '</div>';
+      } else {
+        html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">КОЛ-ВО</div><div style="font-size:13px;font-weight:700;color:#fff;">' + (item.qty||'—') + ' шт</div></div>';
+        var marginColor3 = (item.margin_pct||0) >= 30 ? '#4ade80' : (item.margin_pct||0) >= 15 ? '#fbbf24' : '#ef4444';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">МАРЖА</div><div style="font-size:13px;font-weight:700;color:' + marginColor3 + ';">' + (item.margin_pct ? item.margin_pct + '%' : '—') + '</div></div>';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЗАМЕТКА</div><div style="font-size:11px;color:#555;">' + (item.note||'—') + '</div></div>';
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
   div.innerHTML = html;
+}
+
+
+function pfUpdate(el) {
+  var p = el.closest('[data-pf]');
+  if (!p) return;
+  var idx = parseInt(p.getAttribute('data-idx'));
+  var field = p.getAttribute('data-pf');
+  var items = getPortfolioItems();
+  if (items[idx]) { items[idx][field] = el.value; savePortfolioItems(items); }
+}
+
+function setPortfolioTab(tab) {
+  window._portfolioTab = tab;
+  renderPortfolioSection();
+}
+
+function updatePortfolioField(idx, field, value) {
+  var items = getPortfolioItems();
+  if (items[idx]) {
+    items[idx][field] = value;
+    savePortfolioItems(items);
+  }
+}
+
+function moveAllDraftToOrdered() {
+  var items = getPortfolioItems();
+  var changed = false;
+  items.forEach(function(item) {
+    if (item.status === 'draft') { item.status = 'ordered'; changed = true; }
+  });
+  if (changed) { savePortfolioItems(items); window._portfolioTab = 'ordered'; renderPortfolioSection(); }
+}
+
+function reorderItem(idx) {
+  var items = getPortfolioItems();
+  var item = items[idx];
+  if (!item) return;
+  var newItem = {
+    full: item.full, name: item.name, revenue: item.revenue, score: item.score,
+    avg_price: item.avg_price, commission: item.commission,
+    added: new Date().toISOString(), status: 'draft',
+    buy_price_cny: item.buy_price_cny, buy_currency: item.buy_currency,
+    buy_price_rub: item.buy_price_rub, sell_price_rub: item.sell_price_rub,
+    qty: item.qty, margin_pct: item.margin_pct, note: item.note
+  };
+  items.push(newItem);
+  savePortfolioItems(items);
+  window._portfolioTab = 'draft';
+  renderPortfolioSection();
 }
 
 function updatePortfolioStatus(idx, status) {

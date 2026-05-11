@@ -3409,23 +3409,26 @@ function renderCompany() {
   const bynRate = rates ? (rates['byn'] || 0.036) : 0.036;
   const fmtByn = v => Math.round(v / usdRate * bynRate).toLocaleString('ru-RU');
 
+  const activeTab = window._companyTab || 'cashflow';
+  const tabs = [
+    {key:'cashflow', label:'📈 Окупаемость'},
+    {key:'expenses', label:'💸 Расходы'},
+    {key:'employees', label:'👥 Сотрудники'},
+  ];
+
+  // Расчёт общих данных
   let empRows = '';
   s.employees.forEach((emp, i) => {
     const nameField = emp.fixed
       ? `<span style="color:#e2e8f0;">${emp.name}</span>`
       : `<input type="text" value="${emp.name}" placeholder="${emp.placeholder||''}" onchange="companyUpdateEmpName(${i},this.value)"
            style="background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:13px;width:220px;">`;
-    // Налоги РБ: ФСЗН 34% (работодатель) + подоходный 13% (работник)
-    // Обратный расчёт: salary = сумма НА РУКИ
-    // gross = salary / (1 - 0.13) — начисленная зарплата
     const grossSalary = Math.round(emp.salary / 0.87);
-    const pitAmt  = grossSalary - Number(emp.salary); // ПН = gross - на_руки
-    const fsznAmt = Math.round(grossSalary * 0.34);   // ФСЗН от gross
-    const totalCost = grossSalary + fsznAmt; // полная стоимость для работодателя
-    const deleteBtn = emp.fixed ? `` : `<button onclick="companyRemoveEmployee(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:0 4px;" title="Удалить">✕</button>`;
-    empRows += `
-    <tr>
-      <td style="padding:8px 12px;">${nameField}${deleteBtn}</td>
+    const pitAmt  = grossSalary - Number(emp.salary);
+    const fsznAmt = Math.round(grossSalary * 0.34);
+    const totalCost = grossSalary + fsznAmt;
+    empRows += `<tr>
+      <td style="padding:8px 12px;">${nameField}</td>
       <td style="padding:8px 12px;">
         <input type="number" value="${emp.salary}" min="0" onfocus="if(this.value=='0'||this.value==0)this.value=''" onchange="companyUpdateEmpSalary(${i},this.value)"
           style="background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:4px 8px;color:#93c5fd;font-size:13px;width:100px;">
@@ -3434,7 +3437,7 @@ function renderCompany() {
       <td style="padding:8px 12px;color:#93c5fd;font-weight:500;">${fmtByn(grossSalary)} Br<br><span style="color:#555;font-size:10px;">на руки: ${fmtByn(emp.salary)} Br</span></td>
       <td style="padding:8px 12px;color:#64748b;font-size:12px;">
         <span style="color:#fbbf24;">+${fmtByn(fsznAmt)} Br ФСЗН</span><br>
-        <span style="color:#94a3b8;">−${fmtByn(pitAmt)} Br ПН</span>
+        <span style="color:#94a3b8;">-${fmtByn(pitAmt)} Br ПН</span>
       </td>
       <td style="padding:8px 12px;color:#e2e8f0;font-weight:600;">${fmtByn(totalCost)} Br</td>
     </tr>`;
@@ -3444,48 +3447,56 @@ function renderCompany() {
   const totalGross = s.employees.reduce((a,e) => a + Math.round(Number(e.salary)/0.87), 0);
   const warehouseCost = s.warehouse_m2 * s.warehouse_rate;
   const otherTotal = Array.isArray(s.other_expenses) ? s.other_expenses.reduce((a,e) => a + Number(e.amount), 0) : Number(s.other_expenses);
-  const totalSalaryWithTax = Math.round(totalSalary * 1.34); // с ФСЗН 34%
+  const totalSalaryWithTax = Math.round(totalGross * 1.34);
   const totalMonthly = totalSalaryWithTax + warehouseCost + otherTotal;
-
   const taxLabels = { usn6: 'УСН 6% (от выручки)', usn15: 'УСН 15% (доход−расход)', osn: 'ОСН (общая система)' };
 
-  const html = `
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-    <div style="color:#93c5fd;font-size:22px;font-weight:700;">⚙️ Компания</div>
-    <button onclick="resetCompanySettings()" style="background:#1e2433;border:1px solid #ef444444;border-radius:8px;padding:6px 14px;color:#ef4444;font-size:12px;cursor:pointer;">🔄 Сбросить все значения</button>
-  </div>
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">';
+  html += '<div style="font-size:20px;font-weight:700;color:#fff;">⚙️ Компания</div>';
+  html += '<button onclick="resetCompanySettings()" style="background:#ef444422;border:1px solid #ef444444;border-radius:8px;padding:6px 14px;color:#ef4444;font-size:12px;cursor:pointer;">🔄 Сбросить все значения</button>';
+  html += '</div>';
 
-  <!-- СОТРУДНИКИ -->
-  <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
+  // Вкладки
+  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:20px;">';
+  tabs.forEach(function(tab) {
+    var active = activeTab === tab.key;
+    var col = active ? '#3b82f6' : '#2d3748';
+    var bg = active ? '#3b82f622' : '#1e2433';
+    var textCol = active ? '#93c5fd' : '#555';
+    html += '<button onclick="setCompanyTab(&apos;' + tab.key + '&apos;)" style="padding:12px;border-radius:10px;cursor:pointer;border:1.5px solid '+col+';background:'+bg+';color:'+textCol+';font-size:14px;font-weight:600;">';
+    html += tab.label + '</button>';
+  });
+  html += '</div>';
+
+  // Контент вкладок
+  if (activeTab === 'employees') {
+    html += `<div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">👥 Сотрудники</div>
     <table style="width:100%;border-collapse:collapse;">
-      <thead>
-        <tr style="color:#64748b;font-size:12px;">
-          <th style="padding:6px 12px;text-align:left;">Должность</th>
-          <th style="padding:6px 12px;text-align:left;">На руки ($)</th>
-          <th style="padding:6px 12px;text-align:left;">Начислено (Br)</th>
-          <th style="padding:6px 12px;text-align:left;">Налоги РБ (Br)</th>
-          <th style="padding:6px 12px;text-align:left;">Итого затрат (Br)</th>
-        </tr>
-      </thead>
+      <thead><tr style="color:#64748b;font-size:12px;">
+        <th style="padding:6px 12px;text-align:left;">Должность</th>
+        <th style="padding:6px 12px;text-align:left;">На руки ($)</th>
+        <th style="padding:6px 12px;text-align:left;">Начислено (Br)</th>
+        <th style="padding:6px 12px;text-align:left;">Налоги РБ (Br)</th>
+        <th style="padding:6px 12px;text-align:left;">Итого затрат (Br)</th>
+      </tr></thead>
       <tbody>${empRows}</tbody>
-      <tfoot>
-        <tr style="border-top:1px solid #3b82f633;">
-          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">Итого ФОТ</td>
-          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${totalSalary.toLocaleString()} $</td>
-          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${fmtByn(totalGross)} Br<br><span style="color:#555;font-size:10px;">на руки: ${fmtByn(totalSalary)} Br</span></td>
-          <td style="padding:10px 12px;color:#fbbf24;font-size:12px;">ФСЗН 34% = ${fmtByn(Math.round(totalGross*0.34))} Br</td>
-          <td style="padding:10px 12px;color:#93c5fd;font-weight:700;">${fmtByn(Math.round(totalGross*1.34))} Br</td>
-        </tr>
-      </tfoot>
+      <tfoot><tr style="border-top:1px solid #3b82f633;">
+        <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">Итого ФОТ</td>
+        <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${totalSalary.toLocaleString()} $</td>
+        <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${fmtByn(totalGross)} Br<br><span style="color:#555;font-size:10px;">на руки: ${fmtByn(totalSalary)} Br</span></td>
+        <td style="padding:10px 12px;color:#fbbf24;font-size:12px;">ФСЗН 34% = ${fmtByn(Math.round(totalGross*0.34))} Br</td>
+        <td style="padding:10px 12px;color:#93c5fd;font-weight:700;">${fmtByn(Math.round(totalGross*1.34))} Br</td>
+      </tr></tfoot>
     </table>
-    <button onclick="companyAddEmployee()" style="margin-top:12px;background:#3b82f622;border:1px solid #3b82f655;border-radius:8px;padding:7px 16px;color:#93c5fd;font-size:13px;cursor:pointer;">+ Добавить сотрудника</button>
-  </div>
+    <button onclick="companyAddEmployee()" style="margin-top:12px;background:#3b82f622;border:1px solid #3b82f644;border-radius:8px;padding:8px 16px;color:#93c5fd;font-size:13px;cursor:pointer;">+ Добавить сотрудника</button>
+    </div>`;
+  }
 
-  <!-- СКЛАД -->
-  <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
-    <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">🏭 Аренда склада (РБ)</div>
-    <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+  if (activeTab === 'expenses') {
+    html += `<div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
+    <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">🏭 Аренда склада</div>
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
       <label style="color:#94a3b8;font-size:13px;">Площадь (м²):
         <input type="number" value="${s.warehouse_m2}" min="0" onchange="companyUpdateWarehouse('m2',this.value)"
           style="margin-left:8px;background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:4px 8px;color:#93c5fd;font-size:13px;width:80px;">
@@ -3496,34 +3507,26 @@ function renderCompany() {
       </label>
       <div style="color:#e2e8f0;font-size:14px;">= <span style="color:#93c5fd;font-weight:600;">${warehouseCost.toLocaleString()} $</span> / мес <span style="color:#64748b;">(${fmt(warehouseCost)} ${sym})</span></div>
     </div>
-  </div>
-
-  <!-- НАЛОГИ -->
-  <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
+    </div>
+    <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">📋 Налоговый режим (РБ)</div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;">
       ${Object.entries(taxLabels).map(([k,v]) => `
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;background:${s.tax_mode===k?'#3b82f622':'#1e2433'};border:1px solid ${s.tax_mode===k?'#3b82f6':'#3b82f633'};border-radius:8px;padding:8px 14px;">
-        <input type="radio" name="tax_mode" value="${k}" ${s.tax_mode===k?'checked':''} onchange="companyUpdateTax('${k}')"
-          style="accent-color:#3b82f6;">
+        <input type="radio" name="tax_mode" value="${k}" ${s.tax_mode===k?'checked':''} onchange="companyUpdateTax('${k}')" style="accent-color:#3b82f6;">
         <span style="color:#e2e8f0;font-size:13px;">${v}</span>
       </label>`).join('')}
     </div>
-  </div>
-
-  <!-- ПРОЧИЕ РАСХОДЫ -->
-  <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
+    </div>
+    <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">💸 Прочие расходы / мес</div>
     <table style="width:100%;border-collapse:collapse;">
-      <thead>
-        <tr style="color:#64748b;font-size:12px;">
-          <th style="padding:6px 12px;text-align:left;">Статья расходов</th>
-          <th style="padding:6px 12px;text-align:left;">Сумма ($)</th>
-          <th style="padding:6px 12px;text-align:left;">В ${sym}</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${(Array.isArray(s.other_expenses) ? s.other_expenses : []).map((item, i) => `
+      <thead><tr style="color:#64748b;font-size:12px;">
+        <th style="padding:6px 12px;text-align:left;">Статья расходов</th>
+        <th style="padding:6px 12px;text-align:left;">Сумма ($)</th>
+        <th style="padding:6px 12px;text-align:left;">В ${sym}</th>
+      </tr></thead>
+      <tbody>${(Array.isArray(s.other_expenses) ? s.other_expenses : []).map((item, i) => `
         <tr>
           <td style="padding:7px 12px;color:#e2e8f0;">${item.name}</td>
           <td style="padding:7px 12px;">
@@ -3534,20 +3537,14 @@ function renderCompany() {
           <td style="padding:7px 12px;color:#64748b;">${fmt(item.amount)} ${sym}</td>
         </tr>`).join('')}
       </tbody>
-      <tfoot>
-        <tr style="border-top:1px solid #3b82f633;">
-          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">Итого прочие</td>
-          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${otherTotal.toLocaleString()} $</td>
-          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${fmt(otherTotal)} ${sym}</td>
-        </tr>
-      </tfoot>
+      <tfoot><tr style="border-top:1px solid #3b82f633;">
+        <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">Итого прочие</td>
+        <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${otherTotal.toLocaleString()} $</td>
+        <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${fmt(otherTotal)} ${sym}</td>
+      </tr></tfoot>
     </table>
-  </div>
-
-
-
-  <!-- ИТОГО -->
-  <div style="background:linear-gradient(135deg,#1e2433,#1a2035);border:1px solid #3b82f655;border-radius:12px;padding:20px;margin-bottom:20px;">
+    </div>
+    <div style="background:linear-gradient(135deg,#1e2433,#1a2035);border:1px solid #3b82f655;border-radius:12px;padding:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:14px;">📊 Итого расходов в месяц</div>
     <div style="display:flex;gap:32px;flex-wrap:wrap;">
       <div><div style="color:#64748b;font-size:12px;">ФОТ (с ФСЗН)</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${totalSalaryWithTax.toLocaleString()} $</div></div>
@@ -3555,12 +3552,12 @@ function renderCompany() {
       <div><div style="color:#64748b;font-size:12px;">Прочее</div><div style="color:#e2e8f0;font-size:18px;font-weight:700;">${otherTotal.toLocaleString()} $</div></div>
       <div style="border-left:1px solid #3b82f633;padding-left:32px;"><div style="color:#93c5fd;font-size:12px;">ИТОГО</div><div style="color:#93c5fd;font-size:24px;font-weight:700;">${totalMonthly.toLocaleString()} $</div><div style="color:#64748b;font-size:12px;">${fmt(totalMonthly)} ${sym}</div></div>
     </div>
-  </div>
+    </div>`;
+  }
 
-  <!-- ПУТЬ К ОКУПАЕМОСТИ -->
-  <div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
+  if (activeTab === 'cashflow') {
+    html += `<div style="background:#1a2035;border:1px solid #3b82f633;border-radius:12px;padding:20px;margin-bottom:20px;">
     <div style="color:#e2e8f0;font-size:15px;font-weight:600;margin-bottom:18px;">📈 Путь к окупаемости</div>
-
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px;">
       <label style="color:#94a3b8;font-size:13px;">💰 Стартовый капитал ($)
         <input type="number" id="inv-capital" value="${s.start_capital > 0 ? s.start_capital : ''}" placeholder="введите сумму" min="0" step="1000"
@@ -3588,15 +3585,21 @@ function renderCompany() {
           style="display:block;margin-top:6px;width:100%;background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:6px 10px;color:#93c5fd;font-size:14px;">
       </label>
     </div>
-
     <div id="cashflow-controls" style="background:#1a2035;border-radius:10px;padding:14px;margin-bottom:16px;"></div>
     <div id="cashflow-summary" style="margin-bottom:20px;"></div>
     <div id="cashflow-chart" style="margin-bottom:20px;"></div>
     <div id="cashflow-table" style="overflow-x:auto;"></div>
-  </div>`;
+    </div>`;
+  }
 
   document.getElementById('company').innerHTML = html;
-  renderCashflow();
+  if (activeTab === 'cashflow') renderCashflow();
+}
+
+
+function setCompanyTab(tab) {
+  window._companyTab = tab;
+  renderCompany();
 }
 
 function companyUpdateStartDate(val) {

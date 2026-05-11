@@ -616,6 +616,7 @@ function openFromWatchlist(full){
   setQuery(full);
 }
 function showWatchlist(){
+  history.pushState({page:'watchlist'}, '', '/');
   hideAll();
   document.querySelectorAll('.sidebar-item').forEach(function(t){t.classList.remove('active');});
   var m=document.getElementById('watchlist-menu');
@@ -1338,6 +1339,7 @@ function refreshPortfolio() {
 var portfolioParams = null;
 
 async function showPortfolio() {
+  history.pushState({page:'picker'}, '', '/');
   hideAll();
   setActiveMenu(event.target);
   const div = document.getElementById('portfolio-picker');
@@ -1627,6 +1629,7 @@ function renderPortfolioResult(data, sym, rate) {
 }
 
 async function showTopNiches() {
+  history.pushState({page:'top'}, '', '/');
   hideAll();
   setActiveMenu(event.target);
   const topDiv = document.getElementById('top-niches');
@@ -1656,12 +1659,14 @@ async function showTopNiches() {
   `;
 }
 function showCalc() {
+  history.pushState({page:'calc'}, '', '/');
   hideAll();
   loadCalcRates();
   setActiveMenu(event.target);
   document.getElementById('calculator').style.display = 'block';
 }
 async function showCatalog() {
+  history.pushState({page:'catalog'}, '', '/');
   hideAll();
   setActiveMenu(event.target);
   document.getElementById('catalog').style.display = 'block';
@@ -2283,6 +2288,16 @@ window.addEventListener('popstate', function(e) {
     showCatalog(); _navigating = false;
   } else if (e.state && e.state.page === 'top') {
     showTopNiches(); _navigating = false;
+  } else if (e.state && e.state.page === 'calc') {
+    showCalc(); _navigating = false;
+  } else if (e.state && e.state.page === 'watchlist') {
+    showWatchlist(); _navigating = false;
+  } else if (e.state && e.state.page === 'portfolio') {
+    showPortfolioStub(); _navigating = false;
+  } else if (e.state && e.state.page === 'picker') {
+    showPortfolio(); _navigating = false;
+  } else if (e.state && e.state.page === 'company') {
+    showCompany(); _navigating = false;
   } else {
     goHome(); _navigating = false;
   }
@@ -2291,20 +2306,6 @@ window.addEventListener('popstate', function(e) {
 }
 loadTopChips();
 loadCalcRates();
-
-window.addEventListener('popstate', function(e) {
-  _navigating = true;
-  if (e.state && e.state.page === 'niche') {
-    document.getElementById('query').value = e.state.query;
-    analyze().then(() => { _navigating = false; });
-  } else if (e.state && e.state.page === 'catalog') {
-    showCatalog(); _navigating = false;
-  } else if (e.state && e.state.page === 'top') {
-    showTopNiches(); _navigating = false;
-  } else {
-    goHome(); _navigating = false;
-  }
-});
 
 
 function setQuery(q) {
@@ -3314,6 +3315,7 @@ function resetPortfolioForm() {
 }
 
 function showPortfolioStub() {
+  history.pushState({page:'portfolio'}, '', '/');
   hideAll();
   setActiveMenu(event.target);
   document.getElementById('portfolio').style.display = 'block';
@@ -3388,6 +3390,7 @@ function defaultCompanySettings() {
 }
 
 function showCompany() {
+  history.pushState({page:'company'}, '', '/');
   hideAll();
   setActiveMenu(document.getElementById('company-menu'));
   document.getElementById('company').style.display = 'block';

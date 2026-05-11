@@ -3406,6 +3406,8 @@ function renderCompany() {
   const usdRate = rates ? (rates['usd'] || 0.011) : 0.011;
   const curRate = rates ? (rates[currentCurrency] || 1) : 1;
   const fmt = v => (v / usdRate * curRate).toLocaleString('ru-RU', {maximumFractionDigits: 0});
+  const bynRate = rates ? (rates['byn'] || 0.036) : 0.036;
+  const fmtByn = v => Math.round(v / usdRate * bynRate).toLocaleString('ru-RU');
 
   let empRows = '';
   s.employees.forEach((emp, i) => {
@@ -3414,9 +3416,12 @@ function renderCompany() {
       : `<input type="text" value="${emp.name}" placeholder="${emp.placeholder||''}" onchange="companyUpdateEmpName(${i},this.value)"
            style="background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:13px;width:220px;">`;
     // Налоги РБ: ФСЗН 34% (работодатель) + подоходный 13% (работник)
-    const fsznAmt = Math.round(emp.salary * 0.34);
-    const pitAmt  = Math.round(emp.salary * 0.13);
-    const totalCost = Number(emp.salary) + fsznAmt; // полная стоимость для работодателя
+    // Обратный расчёт: salary = сумма НА РУКИ
+    // gross = salary / (1 - 0.13) — начисленная зарплата
+    const grossSalary = Math.round(emp.salary / 0.87);
+    const pitAmt  = grossSalary - Number(emp.salary); // ПН = gross - на_руки
+    const fsznAmt = Math.round(grossSalary * 0.34);   // ФСЗН от gross
+    const totalCost = grossSalary + fsznAmt; // полная стоимость для работодателя
     const deleteBtn = emp.fixed ? `` : `<button onclick="companyRemoveEmployee(${i})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;padding:0 4px;" title="Удалить">✕</button>`;
     empRows += `
     <tr>
@@ -3426,16 +3431,17 @@ function renderCompany() {
           style="background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:4px 8px;color:#93c5fd;font-size:13px;width:100px;">
         <span style="color:#888;margin-left:4px;">$</span>
       </td>
-      <td style="padding:8px 12px;color:#93c5fd;font-weight:500;">${fmt(emp.salary)} ${sym}</td>
+      <td style="padding:8px 12px;color:#93c5fd;font-weight:500;">${fmtByn(grossSalary)} Br<br><span style="color:#555;font-size:10px;">на руки: ${fmtByn(emp.salary)} Br</span></td>
       <td style="padding:8px 12px;color:#64748b;font-size:12px;">
-        <span style="color:#fbbf24;">+${fmt(fsznAmt)} ${sym} ФСЗН</span><br>
-        <span style="color:#94a3b8;">−${fmt(pitAmt)} ${sym} ПН</span>
+        <span style="color:#fbbf24;">+${fmtByn(fsznAmt)} Br ФСЗН</span><br>
+        <span style="color:#94a3b8;">−${fmtByn(pitAmt)} Br ПН</span>
       </td>
-      <td style="padding:8px 12px;color:#e2e8f0;font-weight:600;">${fmt(totalCost)} ${sym}<br><span style="color:#64748b;font-size:11px;">${totalCost} $</span></td>
+      <td style="padding:8px 12px;color:#e2e8f0;font-weight:600;">${fmtByn(totalCost)} Br</td>
     </tr>`;
   });
 
   const totalSalary = s.employees.reduce((a,e) => a + Number(e.salary), 0);
+  const totalGross = s.employees.reduce((a,e) => a + Math.round(Number(e.salary)/0.87), 0);
   const warehouseCost = s.warehouse_m2 * s.warehouse_rate;
   const otherTotal = Array.isArray(s.other_expenses) ? s.other_expenses.reduce((a,e) => a + Number(e.amount), 0) : Number(s.other_expenses);
   const totalSalaryWithTax = Math.round(totalSalary * 1.34); // с ФСЗН 34%
@@ -3456,10 +3462,10 @@ function renderCompany() {
       <thead>
         <tr style="color:#64748b;font-size:12px;">
           <th style="padding:6px 12px;text-align:left;">Должность</th>
-          <th style="padding:6px 12px;text-align:left;">Оклад ($)</th>
-          <th style="padding:6px 12px;text-align:left;">Оклад (${sym})</th>
-          <th style="padding:6px 12px;text-align:left;">Налоги РБ</th>
-          <th style="padding:6px 12px;text-align:left;">Итого затрат</th>
+          <th style="padding:6px 12px;text-align:left;">На руки ($)</th>
+          <th style="padding:6px 12px;text-align:left;">Начислено (Br)</th>
+          <th style="padding:6px 12px;text-align:left;">Налоги РБ (Br)</th>
+          <th style="padding:6px 12px;text-align:left;">Итого затрат (Br)</th>
         </tr>
       </thead>
       <tbody>${empRows}</tbody>
@@ -3467,9 +3473,9 @@ function renderCompany() {
         <tr style="border-top:1px solid #3b82f633;">
           <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">Итого ФОТ</td>
           <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${totalSalary.toLocaleString()} $</td>
-          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${fmt(totalSalary)} ${sym}</td>
-          <td style="padding:10px 12px;color:#fbbf24;font-size:12px;">ФСЗН 34% = ${fmt(Math.round(totalSalary*0.34))} ${sym}</td>
-          <td style="padding:10px 12px;color:#93c5fd;font-weight:700;">${fmt(Math.round(totalSalary*1.34))} ${sym}<br><span style="color:#64748b;font-size:11px;">${Math.round(totalSalary*1.34).toLocaleString()} $</span></td>
+          <td style="padding:10px 12px;color:#93c5fd;font-weight:600;">${fmtByn(totalGross)} Br<br><span style="color:#555;font-size:10px;">на руки: ${fmtByn(totalSalary)} Br</span></td>
+          <td style="padding:10px 12px;color:#fbbf24;font-size:12px;">ФСЗН 34% = ${fmtByn(Math.round(totalGross*0.34))} Br</td>
+          <td style="padding:10px 12px;color:#93c5fd;font-weight:700;">${fmtByn(Math.round(totalGross*1.34))} Br</td>
         </tr>
       </tfoot>
     </table>

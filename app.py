@@ -833,7 +833,7 @@ function calcContainerFromWatchlist() {
     var cr = document.getElementById('container-result');
     var wlr = document.getElementById('wl-container-result');
     if(cr && wlr) { wlr.innerHTML = cr.innerHTML; cr.innerHTML = ''; }
-  }, 100);
+  }, 500);
 }
 
 function updateWlQty(idx, qty) {
@@ -2270,7 +2270,17 @@ function addToRecent(name) {
   recent = recent.slice(0, 7);
   localStorage.setItem('recent_niches', JSON.stringify(recent));
   loadTopChips();
+}
 loadCalcRates();
+
+// Инициализация счётчика В работе при загрузке
+setTimeout(function(){
+  try {
+    var list = JSON.parse(localStorage.getItem('watchlist') || '[]');
+    var el = document.getElementById('watchlist-count');
+    if(el) el.textContent = list.length > 0 ? list.length : '';
+  } catch(e) {}
+}, 100);
 
 // Автозагрузка каталога при старте
 fetch('/catalog').then(r=>r.json()).then(data=>{
@@ -2303,7 +2313,6 @@ window.addEventListener('popstate', function(e) {
   }
 });
 
-}
 loadTopChips();
 loadCalcRates();
 

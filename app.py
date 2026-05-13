@@ -4148,7 +4148,7 @@ function renderPortfolioSection() {
 
   var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">';
   html += '<div style="font-size:20px;font-weight:700;color:#fff;">📦 Товарный портфель <span style="font-size:14px;color:#555;font-weight:400;">(' + items.length + ' товаров)</span></div>';
-  html += '<button onclick="addPortfolioItem()" style="background:#3b82f622;border:1px solid #3b82f644;border-radius:8px;padding:8px 14px;color:#93c5fd;font-size:12px;cursor:pointer;">+ Добавить</button>';
+  // кнопка "+ Добавить" убрана — товары добавляются только через "В работе"
   html += '</div>';
 
   if (items.length === 0) {

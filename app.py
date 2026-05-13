@@ -3972,7 +3972,42 @@ function renderCashflow() {
         <div style="color:${debtFreeMonth?'#34d399':'#ef4444'};font-size:15px;font-weight:700;">${debtFreeMonth ? 'Мес ' + debtFreeMonth : '>24 мес'}</div>
         <div style="color:#64748b;font-size:10px;">${debtFreeMonth ? getMonthLabel(debtFreeMonth) + ' · ' + returnMonthCount + ' мес выплат' : 'увеличьте маржу'}</div>
       </div>
-    </div>`;
+    </div>
+    ${(() => {
+      var pfItems = getPortfolioItems();
+      if (!pfItems || pfItems.length === 0) return '';
+      var frozenStatuses = ['draft','ordered','shipping','customs','wb_stock'];
+      var frozenItems = pfItems.filter(function(i){ return frozenStatuses.indexOf(i.status) >= 0; });
+      var frozenSum = frozenItems.reduce(function(sum, i){
+        var price = i.price || 0;
+        var qty = i.qty || 0;
+        var cur = i.cur || 'CNY';
+        var rub = cur === 'USD' ? price * 90 : price * 12.5;
+        return sum + rub * qty;
+      }, 0);
+      var customsSum = pfItems.filter(function(i){ return i.status === 'customs'; })
+        .reduce(function(sum, i){ return sum + (i.customs_fee || 0); }, 0);
+      var frozenUsd = Math.round(frozenSum / 90);
+      var customsUsd = Math.round(customsSum);
+      if (frozenItems.length === 0) return '';
+      return '<div style="background:#1a1f2e;border:1px solid #3b82f633;border-radius:10px;padding:14px;margin-top:4px;">' +
+        '<div style="font-size:12px;font-weight:600;color:#93c5fd;margin-bottom:10px;">🧊 Замороженный капитал (из Портфеля)</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">' +
+        '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;">' +
+        '<div style="font-size:10px;color:#555;margin-bottom:3px;">ТОВАРОВ В РАБОТЕ</div>' +
+        '<div style="font-size:18px;font-weight:700;color:#93c5fd;">' + frozenItems.length + '</div>' +
+        '<div style="font-size:10px;color:#555;">позиций</div></div>' +
+        '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;">' +
+        '<div style="font-size:10px;color:#555;margin-bottom:3px;">ЗАМОРОЖЕНО</div>' +
+        '<div style="font-size:18px;font-weight:700;color:#fbbf24;">' + frozenUsd.toLocaleString() + ' $</div>' +
+        '<div style="font-size:10px;color:#555;">' + Math.round(frozenSum).toLocaleString() + ' ₽</div></div>' +
+        '<div style="background:#0f1117;border-radius:8px;padding:10px;text-align:center;">' +
+        '<div style="font-size:10px;color:#555;margin-bottom:3px;">ТАМОЖНЯ</div>' +
+        '<div style="font-size:18px;font-weight:700;color:#f97316;">' + (customsUsd > 0 ? customsUsd.toLocaleString() + ' $' : '—') + '</div>' +
+        '<div style="font-size:10px;color:#555;">платежи</div></div>' +
+        '</div></div>';
+    })()}
+    \``;
 
   // CHART
   const chartEl = document.getElementById('cashflow-chart');

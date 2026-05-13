@@ -923,7 +923,7 @@ function setPmCur(cur) {
   var label = document.querySelector('#pm-buy-cny').previousElementSibling;
   if (label) label.textContent = cur==='cny' ? 'ЦЕНА ЗАКУПКИ (CNY ¥)' : 'ЦЕНА ЗАКУПКИ (USD $)';
 }
-function confirmMoveToPortfolio(idx) {
+async function confirmMoveToPortfolio(idx) {
   var list = window._wlList || [];
   var n = list[idx];
   if (!n) return;
@@ -942,29 +942,26 @@ function confirmMoveToPortfolio(idx) {
   var profit = sellRub - buyRub - commission - logistics;
   var marginPct = sellRub > 0 ? Math.round(profit / sellRub * 100) : 0;
 
-  var portfolio = JSON.parse(localStorage.getItem('portfolio') || '[]');
-  var exists = portfolio.find(function(p){ return p.full === n.full; });
-  if (!exists) {
-    portfolio.push({
+  // Проверяем дубликат в кэше
+  var existing = getPortfolioItems().find(function(p){ return p.full === n.full; });
+  if (!existing) {
+    var result = await pfAddToDB({
       full: n.full,
       name: n.name,
       revenue: n.revenue,
-      score: n.score,
-      avg_price: n.avg_price,
-      commission: n.commission,
       added: new Date().toISOString(),
       status: status,
-      buy_price_cny: buyCny,
-      buy_currency: _pmCur,
-      buy_price_rub: Math.round(buyRub),
-      sell_price_rub: sellRub,
+      cur: _pmCur === 'usd' ? 'USD' : 'CNY',
+      price: buyCny,
       qty: qty,
-      margin_pct: marginPct,
-      profit_per_unit: Math.round(profit),
+      sell_price: sellRub,
       order_date: orderDate,
       note: note
     });
-    localStorage.setItem('portfolio', JSON.stringify(portfolio));
+    if (!result.ok) {
+      alert('Ошибка сохранения в БД');
+      return;
+    }
   }
 
   // Закрываем модал
@@ -3323,11 +3320,14 @@ function resetPortfolioForm() {
   if (div) renderPortfolioQuestionnaire(div);
 }
 
-function showPortfolioStub() {
+async function showPortfolioStub() {
   history.pushState({page:'portfolio'}, '', '/');
   hideAll();
   setActiveMenu(event.target);
-  document.getElementById('portfolio').style.display = 'block';
+  var div = document.getElementById('portfolio');
+  div.style.display = 'block';
+  div.innerHTML = '<div style="text-align:center;padding:60px;color:#555;font-size:14px;">⏳ Загрузка портфеля...</div>';
+  await loadPortfolioFromDB();
   renderPortfolioSection();
 }
 
@@ -4044,12 +4044,80 @@ function companyRemoveEmployee(i) {
   }
 }
 
+// === DB-backed portfolio ===
+window._pfItems = null; // кэш загруженных из БД товаров
+
+function getSessionId() {
+  var sid = localStorage.getItem('pf_session_id');
+  if (!sid) {
+    sid = 'pf_' + Math.random().toString(36).substr(2,12) + '_' + Date.now();
+    localStorage.setItem('pf_session_id', sid);
+  }
+  return sid;
+}
+
 function getPortfolioItems() {
-  try { return JSON.parse(localStorage.getItem('portfolio') || '[]'); } catch(e) { return []; }
+  return window._pfItems || [];
 }
 
 function savePortfolioItems(items) {
-  localStorage.setItem('portfolio', JSON.stringify(items));
+  // legacy — не используется, оставлено для совместимости
+  window._pfItems = items;
+}
+
+async function loadPortfolioFromDB() {
+  try {
+    var resp = await fetch('/pf-items', {headers: {'X-Session-Id': getSessionId()}});
+    var items = await resp.json();
+    window._pfItems = items;
+    return items;
+  } catch(e) {
+    console.error('loadPortfolioFromDB error:', e);
+    window._pfItems = [];
+    return [];
+  }
+}
+
+async function pfAddToDB(item) {
+  try {
+    var resp = await fetch('/pf-items', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-Session-Id': getSessionId()},
+      body: JSON.stringify(item)
+    });
+    return await resp.json();
+  } catch(e) {
+    console.error('pfAddToDB error:', e);
+    return {ok: false};
+  }
+}
+
+async function pfUpdateToDB(id, field, value) {
+  try {
+    var resp = await fetch('/pf-items-update', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-Session-Id': getSessionId()},
+      body: JSON.stringify({id: id, field: field, value: value})
+    });
+    return await resp.json();
+  } catch(e) {
+    console.error('pfUpdateToDB error:', e);
+    return {ok: false};
+  }
+}
+
+async function pfDeleteFromDB(id) {
+  try {
+    var resp = await fetch('/pf-items-delete', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-Session-Id': getSessionId()},
+      body: JSON.stringify({id: id})
+    });
+    return await resp.json();
+  } catch(e) {
+    console.error('pfDeleteFromDB error:', e);
+    return {ok: false};
+  }
 }
 
 function setDelivMode(mode) {
@@ -4057,9 +4125,14 @@ function setDelivMode(mode) {
   renderPortfolioSection();
 }
 
-function updatePortfolioQty(idx, qty) {
+async function updatePortfolioQty(idx, qty) {
   var items = getPortfolioItems();
-  if (items[idx]) { items[idx].qty = parseInt(qty) || 100; savePortfolioItems(items); renderPortfolioSection(); }
+  if (!items[idx]) return;
+  var item = items[idx];
+  item.qty = parseInt(qty) || 100;
+  window._pfItems[idx] = item;
+  await pfUpdateToDB(item.id, 'qty', item.qty);
+  renderPortfolioSection();
 }
 
 function renderPortfolioSection() {
@@ -4272,12 +4345,22 @@ function renderPortfolioSection() {
       // Поля зависят от стадии
       if (activeTab === 'draft') {
         html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">';
-        var buyCur = item.buy_currency || 'cny';
-        var buyLabel = buyCur === 'usd' ? '$' : '¥';
-        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЦЕНА ЗАКУПКИ (' + buyLabel + ')</div><div style="font-size:13px;font-weight:700;color:#fbbf24;">' + (item.buy_price_cny ? buyLabel + item.buy_price_cny : '—') + '</div></div>';
+        var buyCur = item.cur || 'CNY';
+        var buyLabel = buyCur === 'USD' ? '$' : '¥';
+        var buyPrice = item.price || 0;
+        var sellPrice = item.sell_price || 0;
+        var marginPct = 0;
+        if (sellPrice > 0 && buyPrice > 0) {
+          var buyRub = buyCur === 'USD' ? buyPrice * 90 : buyPrice * 12.5;
+          var commission = 0.25 * sellPrice;
+          var logistics = 150;
+          var profit = sellPrice - buyRub - commission - logistics;
+          marginPct = Math.round(profit / sellPrice * 100);
+        }
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЦЕНА ЗАКУПКИ (' + buyLabel + ')</div><div style="font-size:13px;font-weight:700;color:#fbbf24;">' + (buyPrice ? buyLabel + buyPrice : '—') + '</div></div>';
         html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">КОЛ-ВО (шт)</div><input type="number" value="' + (item.qty||100) + '" min="1" onchange="updatePortfolioQty(' + globalIdx + ',this.value)" style="width:70px;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:4px 6px;color:#fff;font-size:13px;font-weight:700;text-align:center;"></div>';
-        var marginColor = (item.margin_pct||0) >= 30 ? '#4ade80' : (item.margin_pct||0) >= 15 ? '#fbbf24' : '#ef4444';
-        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">МАРЖА ПЛАН</div><div style="font-size:13px;font-weight:700;color:' + marginColor + ';">' + (item.margin_pct ? item.margin_pct + '%' : '—') + '</div></div>';
+        var marginColor = marginPct >= 30 ? '#4ade80' : marginPct >= 15 ? '#fbbf24' : '#ef4444';
+        html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">МАРЖА ПЛАН</div><div style="font-size:13px;font-weight:700;color:' + marginColor + ';">' + (sellPrice > 0 ? marginPct + '%' : '—') + '</div></div>';
         html += '<div style="text-align:center;"><div style="font-size:9px;color:#555;margin-bottom:3px;">ЗАМЕТКА</div><div style="font-size:11px;color:#555;">' + (item.note || '—') + '</div></div>';
         html += '</div>';
       } else if (activeTab === 'ordered') {
@@ -4334,13 +4417,29 @@ function renderPortfolioSection() {
 }
 
 
-function pfUpdate(el) {
+async function pfUpdate(el) {
   var p = el.closest('[data-pf]');
   if (!p) return;
   var idx = parseInt(p.getAttribute('data-idx'));
   var field = p.getAttribute('data-pf');
   var items = getPortfolioItems();
-  if (items[idx]) { items[idx][field] = el.value; savePortfolioItems(items); }
+  if (!items[idx]) return;
+  var item = items[idx];
+  var value = el.value;
+  // Маппинг JS полей -> DB колонки
+  var fieldMap = {
+    'full': 'full_name', 'name': 'name', 'revenue': 'revenue',
+    'status': 'status', 'cur': 'cur', 'price': 'price', 'qty': 'qty',
+    'sell_price': 'sell_price', 'order_date': 'order_date', 'note': 'note',
+    'ship_date': 'ship_date', 'track': 'track', 'arrive_date': 'arrive_date',
+    'customs_fee': 'customs_fee', 'customs_date': 'customs_date',
+    'wb_article': 'wb_article', 'wb_stock': 'wb_stock',
+    'supply_date': 'supply_date', 'wb_price': 'wb_price'
+  };
+  var dbField = fieldMap[field] || field;
+  item[field] = value;
+  window._pfItems[idx] = item;
+  await pfUpdateToDB(item.id, dbField, value);
 }
 
 function setPortfolioTab(tab) {
@@ -4348,61 +4447,87 @@ function setPortfolioTab(tab) {
   renderPortfolioSection();
 }
 
-function updatePortfolioField(idx, field, value) {
+async function updatePortfolioField(idx, field, value) {
   var items = getPortfolioItems();
-  if (items[idx]) {
-    items[idx][field] = value;
-    savePortfolioItems(items);
-  }
+  if (!items[idx]) return;
+  var item = items[idx];
+  item[field] = value;
+  window._pfItems[idx] = item;
+  var fieldMap = {
+    'full': 'full_name', 'name': 'name', 'revenue': 'revenue',
+    'status': 'status', 'cur': 'cur', 'price': 'price', 'qty': 'qty',
+    'sell_price': 'sell_price', 'order_date': 'order_date', 'note': 'note',
+    'ship_date': 'ship_date', 'track': 'track', 'arrive_date': 'arrive_date',
+    'customs_fee': 'customs_fee', 'customs_date': 'customs_date',
+    'wb_article': 'wb_article', 'wb_stock': 'wb_stock',
+    'supply_date': 'supply_date', 'wb_price': 'wb_price'
+  };
+  var dbField = fieldMap[field] || field;
+  await pfUpdateToDB(item.id, dbField, value);
 }
 
-function moveAllDraftToOrdered() {
+async function moveAllDraftToOrdered() {
   var items = getPortfolioItems();
-  var changed = false;
-  items.forEach(function(item) {
-    if (item.status === 'draft') { item.status = 'ordered'; changed = true; }
-  });
-  if (changed) { savePortfolioItems(items); window._portfolioTab = 'ordered'; renderPortfolioSection(); }
+  var draftItems = items.filter(function(i){ return i.status === 'draft'; });
+  if (draftItems.length === 0) return;
+  await Promise.all(draftItems.map(function(item) {
+    item.status = 'ordered';
+    return pfUpdateToDB(item.id, 'status', 'ordered');
+  }));
+  window._portfolioTab = 'ordered';
+  renderPortfolioSection();
 }
 
-function reorderItem(idx) {
+async function reorderItem(idx) {
   var items = getPortfolioItems();
   var item = items[idx];
   if (!item) return;
-  var newItem = {
-    full: item.full, name: item.name, revenue: item.revenue, score: item.score,
-    avg_price: item.avg_price, commission: item.commission,
+  var result = await pfAddToDB({
+    full: item.full, name: item.name, revenue: item.revenue,
     added: new Date().toISOString(), status: 'draft',
-    buy_price_cny: item.buy_price_cny, buy_currency: item.buy_currency,
-    buy_price_rub: item.buy_price_rub, sell_price_rub: item.sell_price_rub,
-    qty: item.qty, margin_pct: item.margin_pct, note: item.note
-  };
-  items.push(newItem);
-  savePortfolioItems(items);
-  window._portfolioTab = 'draft';
+    cur: item.cur, price: item.price, qty: item.qty,
+    sell_price: item.sell_price, note: item.note
+  });
+  if (result.ok) {
+    await loadPortfolioFromDB();
+    window._portfolioTab = 'draft';
+    renderPortfolioSection();
+  }
+}
+
+async function updatePortfolioStatus(idx, status) {
+  var items = getPortfolioItems();
+  if (!items[idx]) return;
+  var item = items[idx];
+  item.status = status;
+  window._pfItems[idx] = item;
+  await pfUpdateToDB(item.id, 'status', status);
   renderPortfolioSection();
 }
 
-function updatePortfolioStatus(idx, status) {
-  var items = getPortfolioItems();
-  if (items[idx]) { items[idx].status = status; savePortfolioItems(items); renderPortfolioSection(); }
-}
-
-function removePortfolioItem(idx) {
+async function removePortfolioItem(idx) {
   if (!confirm('Удалить товар из портфеля?')) return;
   var items = getPortfolioItems();
-  items.splice(idx, 1);
-  savePortfolioItems(items);
+  if (!items[idx]) return;
+  var id = items[idx].id;
+  window._pfItems.splice(idx, 1);
+  await pfDeleteFromDB(id);
   renderPortfolioSection();
 }
 
-function addPortfolioItem() {
+async function addPortfolioItem() {
   var name = prompt('Название товара или ниши:');
   if (!name) return;
-  var items = getPortfolioItems();
-  items.push({full: name, name: name, status: 'planning', added: new Date().toISOString(), qty: 100});
-  savePortfolioItems(items);
-  renderPortfolioSection();
+  var result = await pfAddToDB({
+    full: name, name: name, status: 'draft',
+    added: new Date().toISOString(), qty: 100
+  });
+  if (result.ok) {
+    await loadPortfolioFromDB();
+    renderPortfolioSection();
+  } else {
+    alert('Ошибка добавления товара');
+  }
 }
 
 
@@ -6253,8 +6378,156 @@ class Handler(BaseHTTPRequestHandler):
                     pass
 
 
+        elif self.path.startswith('/pf-items'):
+            try:
+                from urllib.parse import parse_qs, urlparse
+                session_id = self.headers.get('X-Session-Id', 'default')
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT id, full_name, name, revenue, status, cur, price, qty,
+                           sell_price, order_date, note, ship_date, track, arrive_date,
+                           customs_fee, customs_date, wb_article, wb_stock, supply_date,
+                           wb_price, added
+                    FROM portfolio
+                    WHERE session_id = %s
+                    ORDER BY created_at ASC
+                """, (session_id,))
+                rows = cur.fetchall()
+                cur.close()
+                conn.close()
+                cols = ['id','full','name','revenue','status','cur','price','qty',
+                        'sell_price','order_date','note','ship_date','track','arrive_date',
+                        'customs_fee','customs_date','wb_article','wb_stock','supply_date',
+                        'wb_price','added']
+                results = []
+                for r in rows:
+                    item = {}
+                    for i, col in enumerate(cols):
+                        val = r[i]
+                        if col == 'id':
+                            val = int(val) if val is not None else None
+                        elif col in ('revenue','qty','wb_stock'):
+                            val = int(val) if val is not None else 0
+                        elif hasattr(val, '__float__'):
+                            val = float(val)
+                        item[col] = val
+                    results.append(item)
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(results, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                import traceback
+                print('PF-ITEMS GET ERROR:', traceback.format_exc())
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+
     def do_POST(self):
-        if self.path == '/portfolio-ai':
+        if self.path == '/pf-items':
+            try:
+                session_id = self.headers.get('X-Session-Id', 'default')
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO portfolio
+                        (session_id, full_name, name, revenue, status, cur, price, qty,
+                         sell_price, order_date, note, ship_date, track, arrive_date,
+                         customs_fee, customs_date, wb_article, wb_stock, supply_date,
+                         wb_price, added)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    RETURNING id
+                """, (
+                    session_id,
+                    body.get('full'), body.get('name'), body.get('revenue', 0),
+                    body.get('status', 'draft'), body.get('cur', 'CNY'),
+                    body.get('price', 0), body.get('qty', 0),
+                    body.get('sell_price', 0), body.get('order_date'),
+                    body.get('note'), body.get('ship_date'), body.get('track'),
+                    body.get('arrive_date'), body.get('customs_fee', 0),
+                    body.get('customs_date'), body.get('wb_article'),
+                    body.get('wb_stock', 0), body.get('supply_date'),
+                    body.get('wb_price', 0), body.get('added')
+                ))
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                cur.close()
+                conn.close()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'ok': True, 'id': new_id}, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                import traceback
+                print('PF-ITEMS POST ERROR:', traceback.format_exc())
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+        elif self.path == '/pf-items-update':
+            try:
+                session_id = self.headers.get('X-Session-Id', 'default')
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                item_id = body.get('id')
+                field = body.get('field')
+                value = body.get('value')
+                allowed = ['full_name','name','revenue','status','cur','price','qty',
+                           'sell_price','order_date','note','ship_date','track','arrive_date',
+                           'customs_fee','customs_date','wb_article','wb_stock','supply_date',
+                           'wb_price','added']
+                if field not in allowed:
+                    raise ValueError(f'Field not allowed: {field}')
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute(f'UPDATE portfolio SET {field} = %s WHERE id = %s AND session_id = %s',
+                            (value, item_id, session_id))
+                conn.commit()
+                cur.close()
+                conn.close()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'ok': True}).encode('utf-8'))
+            except Exception as e:
+                import traceback
+                print('PF-ITEMS UPDATE ERROR:', traceback.format_exc())
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+        elif self.path == '/pf-items-delete':
+            try:
+                session_id = self.headers.get('X-Session-Id', 'default')
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                item_id = body.get('id')
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute('DELETE FROM portfolio WHERE id = %s AND session_id = %s',
+                            (item_id, session_id))
+                conn.commit()
+                cur.close()
+                conn.close()
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'ok': True}).encode('utf-8'))
+            except Exception as e:
+                import traceback
+                print('PF-ITEMS DELETE ERROR:', traceback.format_exc())
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+        elif self.path == '/portfolio-ai':
             try:
                 import anthropic
                 length = int(self.headers.get('Content-Length', 0))

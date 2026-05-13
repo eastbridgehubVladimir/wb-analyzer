@@ -535,6 +535,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="sidebar-item" id="watchlist-menu" onclick="showWatchlist()">📌 В работе <span id="watchlist-count" style="background:#3b82f633;color:#93c5fd;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;"></span></div>
   <div class="sidebar-item" onclick="showPortfolioStub()">📦 Портфель</div>
   <div class="sidebar-item" id="company-menu" onclick="showCompany()">⚙️ Компания</div>
+  <div class="sidebar-item" onclick="showHistory()">📋 История</div>
 </div>
 <div class="content-area">
 <div class="main">
@@ -549,6 +550,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
   <div id="top-niches" style="display:none;margin-top:24px;"></div>
   <div id="portfolio" style="display:none;margin-top:24px;"></div><div id="portfolio-picker" style="display:none;margin-top:24px;"></div>
+  <div id="history" style="display:none;margin-top:24px;"></div>
   <div id="company" style="display:none;margin-top:24px;"></div>
   <div id="watchlist" style="display:none;margin-top:24px;"></div><div id="catalog" style="display:none;margin-top:24px;">
     <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
@@ -3390,6 +3392,50 @@ function resetPortfolioForm() {
   window.portfolioAnswers = {};
   var div = document.getElementById('portfolio');
   if (div) renderPortfolioQuestionnaire(div);
+}
+
+async function showHistory() {
+  history.pushState({page:'history'}, '', '/');
+  hideAll();
+  document.querySelectorAll('.sidebar-item').forEach(function(t){t.classList.remove('active');});
+  var div = document.getElementById('history');
+  div.style.display = 'block';
+  div.innerHTML = '<div style="text-align:center;padding:60px;color:#555;">⏳ Загрузка истории...</div>';
+  try {
+    var resp = await fetch('/analysis-history', {credentials: 'same-origin'});
+    var items = await resp.json();
+    if (!items.length) {
+      div.innerHTML = '<div style="background:#1e2433;border-radius:12px;padding:40px;text-align:center;">' +
+        '<div style="font-size:48px;margin-bottom:12px;">📋</div>' +
+        '<div style="font-size:16px;color:#fff;margin-bottom:8px;">История пуста</div>' +
+        '<div style="font-size:13px;color:#555;">Запустите анализ любой ниши — результат сохранится здесь</div>' +
+        '</div>';
+      return;
+    }
+    var html = '<div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:20px;">📋 История анализов <span style="font-size:14px;color:#555;font-weight:400;">(' + items.length + ' записей)</span></div>';
+    html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+    items.forEach(function(item) {
+      var verdictMatch = item.result_text ? item.result_text.match(/^(ВХОДИТЬ|ТЕСТИРОВАТЬ|НЕ ВХОДИТЬ)/) : null;
+      var verdict = verdictMatch ? verdictMatch[0] : '';
+      var verdictColor = verdict === 'ВХОДИТЬ' ? '#4ade80' : verdict === 'ТЕСТИРОВАТЬ' ? '#fbbf24' : verdict === 'НЕ ВХОДИТЬ' ? '#ef4444' : '#555';
+      html += '<div style="background:#1e2433;border:1px solid #2d3748;border-radius:10px;padding:14px;display:flex;justify-content:space-between;align-items:center;">';
+      html += '<div style="flex:1;">';
+      html += '<div style="font-size:15px;font-weight:600;color:#e2e8f0;margin-bottom:4px;">' + item.niche_name + '</div>';
+      html += '<div style="font-size:12px;color:#555;">' + item.created_at + ' · ' + item.analysis_type + '</div>';
+      if (item.result_text) {
+        html += '<div style="font-size:12px;color:#94a3b8;margin-top:6px;">' + item.result_text.slice(0,150) + '...</div>';
+      }
+      html += '</div>';
+      if (verdict) {
+        html += '<div style="font-size:13px;font-weight:700;color:' + verdictColor + ';margin-left:16px;white-space:nowrap;">' + verdict + '</div>';
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+    div.innerHTML = html;
+  } catch(e) {
+    div.innerHTML = '<div style="color:#ef4444;padding:20px;">Ошибка загрузки истории: ' + e.message + '</div>';
+  }
 }
 
 async function showPortfolioStub() {
@@ -6528,6 +6574,57 @@ class Handler(BaseHTTPRequestHandler):
                     pass
 
 
+        elif self.path.startswith('/analysis-history'):
+            try:
+                from urllib.parse import parse_qs, urlparse
+                user_id = self.check_auth()
+                if not user_id:
+                    self.send_response(401)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'unauthorized'}).encode())
+                    return
+                niche = parse_qs(urlparse(self.path).query).get('niche', [None])[0]
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                if niche:
+                    cur.execute("""
+                        SELECT id, niche_name, analysis_type, result_text, created_at
+                        FROM analysis_history
+                        WHERE user_id = %s AND niche_name ILIKE %s
+                        ORDER BY created_at DESC LIMIT 20
+                    """, (user_id, f'%{niche}%'))
+                else:
+                    cur.execute("""
+                        SELECT id, niche_name, analysis_type, result_text, created_at
+                        FROM analysis_history
+                        WHERE user_id = %s
+                        ORDER BY created_at DESC LIMIT 50
+                    """, (user_id,))
+                rows = cur.fetchall()
+                cur.close()
+                conn.close()
+                results = []
+                for r in rows:
+                    results.append({
+                        'id': r[0],
+                        'niche_name': r[1],
+                        'analysis_type': r[2],
+                        'result_text': r[3],
+                        'created_at': r[4].strftime('%d.%m.%Y %H:%M') if r[4] else ''
+                    })
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(results, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                import traceback
+                print('HISTORY GET ERROR:', traceback.format_exc())
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+
         elif self.path.startswith('/pf-items'):
             try:
                 from urllib.parse import parse_qs, urlparse
@@ -9135,6 +9232,33 @@ def handle_master_stream(handler, body):
 
         event = json.dumps({'type':'html','html':html}, ensure_ascii=False)
         handler.wfile.write(('data: ' + event + '\n\n').encode('utf-8'))
+
+        # Сохраняем анализ в историю
+        try:
+            cookie = handler.headers.get('Cookie', '')
+            token = None
+            for part in cookie.split(';'):
+                part = part.strip()
+                if part.startswith('wb_session='):
+                    token = part[len('wb_session='):]
+            if token:
+                conn2 = psycopg2.connect(DB)
+                cur2 = conn2.cursor()
+                cur2.execute("SELECT user_id FROM sessions WHERE token = %s AND expires_at > NOW()", (token,))
+                row = cur2.fetchone()
+                if row:
+                    user_id = row[0]
+                    summary = str(ai.get('final_verdict','')) + ' | ' + str(ai.get('final_recommendation',''))[:200]
+                    cur2.execute("""
+                        INSERT INTO analysis_history (user_id, niche_name, niche_full, analysis_type, result_text)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (user_id, display_name, niche_name, 'master', summary))
+                    conn2.commit()
+                cur2.close()
+                conn2.close()
+        except Exception as he:
+            print('HISTORY SAVE ERROR:', he)
+
         handler.wfile.write(b'data: [DONE]\n\n')
         handler.wfile.flush()
     except Exception as e:

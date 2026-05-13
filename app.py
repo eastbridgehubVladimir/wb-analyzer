@@ -3754,6 +3754,7 @@ function renderCompany() {
         <input type="number" id="inv-margin" value="${s.margin_pct||22}" min="1" max="80"
           onchange="companyUpdateMargin(this.value);renderCashflow()"
           style="display:block;margin-top:6px;width:100%;background:#1e2433;border:1px solid #3b82f644;border-radius:6px;padding:6px 10px;color:#93c5fd;font-size:14px;">
+        <span id="margin-source-label" style="font-size:10px;color:#555;margin-top:4px;display:block;">загрузка...</span>
       </label>
       <label style="color:#94a3b8;font-size:13px;">🚢 Цикл товара (дней)
         <input type="number" id="inv-cycle" value="${s.goods_cycle||45}" min="7" max="120"
@@ -3803,7 +3804,23 @@ function companyUpdateWbDelay(val) {
 function renderCashflow() {
   const s = getCompanySettings() || defaultCompanySettings();
   const capital = s.start_capital || 0;
-  const margin = (s.margin_pct || 22) / 100;
+  // Автоматическая маржа из портфеля
+  var _pfAll = getPortfolioItems();
+  var _pfWithPrice = _pfAll.filter(function(i){ return i.price > 0 && i.sell_price > 0; });
+  var _autoMargin = null;
+  if (_pfWithPrice.length > 0) {
+    var _totalMargin = 0;
+    _pfWithPrice.forEach(function(i) {
+      var buyRub = i.cur === 'USD' ? i.price * 90 : i.price * 12.5;
+      var commission = 0.25 * i.sell_price;
+      var logistics = 150;
+      var profit = i.sell_price - buyRub - commission - logistics;
+      _totalMargin += profit / i.sell_price;
+    });
+    _autoMargin = Math.round(_totalMargin / _pfWithPrice.length * 100);
+  }
+  const margin = (_autoMargin !== null ? _autoMargin : (s.margin_pct || 22)) / 100;
+  const marginSource = _autoMargin !== null ? '📦 из портфеля (' + _pfWithPrice.length + ' товаров)' : '✏️ вручную';
   const cycleDays = s.goods_cycle || 45;
   const wbDelay = s.wb_delay || 14;
 
@@ -3957,6 +3974,21 @@ function renderCashflow() {
   const sellingItems = portfolioItems.filter(function(i){ return i.status === 'selling'; });
   const portfolioRevDay = sellingItems.reduce(function(sum, i){ return sum + (i.sell_price||i.sell_price_rub||0) * (i.qty||0) / 30; }, 0);
   const portfolioRevMonth = Math.round(portfolioRevDay * 30);
+
+  // Обновляем поле маржи и метку источника
+  var marginEl = document.getElementById('inv-margin');
+  var marginLabelEl = document.getElementById('margin-source-label');
+  if (marginEl && _autoMargin !== null) {
+    marginEl.value = _autoMargin;
+    marginEl.style.borderColor = '#4ade8044';
+    if (marginLabelEl) {
+      marginLabelEl.textContent = marginSource;
+      marginLabelEl.style.color = '#4ade80';
+    }
+  } else if (marginLabelEl) {
+    marginLabelEl.textContent = marginSource;
+    marginLabelEl.style.color = '#555';
+  }
 
   const controlsEl = document.getElementById('cashflow-controls');
   if (controlsEl) {

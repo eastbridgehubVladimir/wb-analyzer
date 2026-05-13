@@ -3394,6 +3394,52 @@ function resetPortfolioForm() {
   if (div) renderPortfolioQuestionnaire(div);
 }
 
+async function addToPortfolioFromHistory(nicheName) {
+  var modal = document.createElement('div');
+  modal.id = 'portfolio-modal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = '<div style="background:#1e2433;border-radius:16px;padding:28px;width:420px;max-width:90vw;">' +
+    '<div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:4px;">📦 Добавить в портфель</div>' +
+    '<div style="font-size:13px;color:#555;margin-bottom:20px;">' + nicheName + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">' +
+    '<div><div style="font-size:10px;color:#555;margin-bottom:4px;">ЦЕНА ЗАКУПКИ (CNY)</div>' +
+    '<input id="hpm-price" type="number" placeholder="например: 85" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:10px;color:#fff;font-size:14px;"></div>' +
+    '<div><div style="font-size:10px;color:#555;margin-bottom:4px;">КОЛ-ВО (шт)</div>' +
+    '<input id="hpm-qty" type="number" value="100" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:10px;color:#fff;font-size:14px;"></div>' +
+    '<div><div style="font-size:10px;color:#555;margin-bottom:4px;">ЦЕНА ПРОДАЖИ (₽)</div>' +
+    '<input id="hpm-sell" type="number" placeholder="например: 800" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:10px;color:#fff;font-size:14px;"></div>' +
+    '<div><div style="font-size:10px;color:#555;margin-bottom:4px;">ВАЛЮТА</div>' +
+    '<select id="hpm-cur" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:10px;color:#fff;font-size:14px;">' +
+    '<option value="CNY">CNY ¥</option><option value="USD">USD $</option></select></div>' +
+    '</div>' +
+    '<div style="margin-bottom:16px;"><div style="font-size:10px;color:#555;margin-bottom:4px;">ЗАМЕТКА</div>' +
+    '<input id="hpm-note" type="text" placeholder="поставщик, артикул..." style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:8px;padding:10px;color:#fff;font-size:14px;"></div>' +
+    '<div style="display:flex;gap:10px;">' +
+    '<button onclick="confirmHistoryPortfolio(' + String.fromCharCode(39) + nicheName + String.fromCharCode(39) + ')" style="flex:1;background:#34d399;border:none;border-radius:8px;padding:12px;color:#000;font-size:13px;font-weight:700;cursor:pointer;">✓ Добавить в Лист заказа</button>' +
+    '<button onclick="document.getElementById(' + String.fromCharCode(39) + 'portfolio-modal' + String.fromCharCode(39) + ').remove()" style="background:#2d3748;border:none;border-radius:8px;padding:12px 16px;color:#888;cursor:pointer;">Отмена</button>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+}
+
+async function confirmHistoryPortfolio(nicheName) {
+  var price = parseFloat(document.getElementById('hpm-price').value) || 0;
+  var qty = parseInt(document.getElementById('hpm-qty').value) || 100;
+  var sell = parseFloat(document.getElementById('hpm-sell').value) || 0;
+  var cur = document.getElementById('hpm-cur').value;
+  var note = document.getElementById('hpm-note').value;
+  var result = await pfAddToDB({
+    full: nicheName, name: nicheName, status: 'draft',
+    added: new Date().toISOString(),
+    cur: cur, price: price, qty: qty, sell_price: sell, note: note
+  });
+  if (result.ok) {
+    document.getElementById('portfolio-modal').remove();
+    alert('✅ Добавлено в Лист заказа!');
+  } else {
+    alert('Ошибка: ' + (result.error || 'неизвестная'));
+  }
+}
+
 async function showHistory() {
   history.pushState({page:'history'}, '', '/');
   hideAll();
@@ -3426,9 +3472,13 @@ async function showHistory() {
         html += '<div style="font-size:12px;color:#94a3b8;margin-top:6px;">' + item.result_text.slice(0,150) + '...</div>';
       }
       html += '</div>';
+      html += '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-left:16px;">';
       if (verdict) {
-        html += '<div style="font-size:13px;font-weight:700;color:' + verdictColor + ';margin-left:16px;white-space:nowrap;">' + verdict + '</div>';
+        html += '<div style="font-size:13px;font-weight:700;color:' + verdictColor + ';white-space:nowrap;">' + verdict + '</div>';
       }
+      var safeName = item.niche_name.replace(/'/g, "\'");
+      html += '<button onclick="addToPortfolioFromHistory(' + String.fromCharCode(39) + safeName + String.fromCharCode(39) + ')" style="background:#3b82f622;border:1px solid #3b82f644;border-radius:6px;padding:5px 10px;color:#93c5fd;font-size:11px;cursor:pointer;white-space:nowrap;">📦 В портфель</button>';
+      html += '</div>';
       html += '</div>';
     });
     html += '</div>';

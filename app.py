@@ -250,6 +250,77 @@ def get_ai_insights(row):
     # Инсайты убраны - используйте Глубокий анализ или Полный анализ
     return {"insights": [], "hypotheses": [], "analysis": ""}
 
+LOGIN_HTML = """<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WBAnalyzer — Вход</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0f1117; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .card { background: #1e2433; border: 1px solid #2d3748; border-radius: 16px; padding: 40px; width: 100%; max-width: 400px; }
+  .logo { text-align: center; margin-bottom: 32px; }
+  .logo-title { font-size: 28px; font-weight: 800; color: #3b82f6; }
+  .logo-sub { font-size: 13px; color: #555; margin-top: 4px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+  .field input { width: 100%; background: #0f1117; border: 1px solid #2d3748; border-radius: 8px; padding: 12px 14px; color: #e2e8f0; font-size: 14px; outline: none; transition: border 0.2s; }
+  .field input:focus { border-color: #3b82f6; }
+  .btn { width: 100%; background: #3b82f6; border: none; border-radius: 8px; padding: 13px; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: background 0.2s; }
+  .btn:hover { background: #2563eb; }
+  .error { background: #ef444422; border: 1px solid #ef444444; border-radius: 8px; padding: 10px 14px; color: #ef4444; font-size: 13px; margin-bottom: 16px; display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-title">WBAnalyzer</div>
+    <div class="logo-sub">AI-платформа анализа товарных ниш</div>
+  </div>
+  <div class="error" id="error-msg"></div>
+  <div class="field">
+    <label>Логин</label>
+    <input type="text" id="username" placeholder="admin" autocomplete="username">
+  </div>
+  <div class="field">
+    <label>Пароль</label>
+    <input type="password" id="password" placeholder="••••••" autocomplete="current-password">
+  </div>
+  <button class="btn" onclick="doLogin()">Войти</button>
+</div>
+<script>
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
+async function doLogin() {
+  var username = document.getElementById('username').value.trim();
+  var password = document.getElementById('password').value;
+  var errEl = document.getElementById('error-msg');
+  errEl.style.display = 'none';
+  if (!username || !password) { errEl.textContent = 'Введите логин и пароль'; errEl.style.display = 'block'; return; }
+  try {
+    var resp = await fetch('/auth', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username: username, password: password})
+    });
+    var data = await resp.json();
+    if (data.ok) {
+      window.location.href = '/';
+    } else {
+      errEl.textContent = data.error || 'Неверный логин или пароль';
+      errEl.style.display = 'block';
+    }
+  } catch(e) {
+    errEl.textContent = 'Ошибка соединения';
+    errEl.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>"""
+
 HTML = """<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -444,6 +515,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <button id="gcur-usd" onclick="setGlobalCurrency('usd')" style="background:transparent;border:1px solid #2d3748;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">$</button>
     <button id="gcur-eur" onclick="setGlobalCurrency('eur')" style="background:transparent;border:1px solid #2d3748;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">€</button>
     <button id="gcur-byn" onclick="setGlobalCurrency('byn')" style="background:transparent;border:1px solid #2d3748;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">Br</button>
+    <a href="/logout" style="background:transparent;border:1px solid #3d4a5c;border-radius:6px;color:#6b7a8d;font-size:12px;padding:6px 10px;cursor:pointer;text-decoration:none;margin-left:8px;">Выйти</a>
   </div>
 </div>
 <div class="page-wrap">
@@ -5484,12 +5556,54 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
+    def check_auth(self):
+        """Проверяет cookie сессии. Возвращает user_id или None."""
+        import hashlib, secrets
+        cookie = self.headers.get('Cookie', '')
+        for part in cookie.split(';'):
+            part = part.strip()
+            if part.startswith('wb_session='):
+                token = part[len('wb_session='):]
+                try:
+                    conn = psycopg2.connect(DB)
+                    cur = conn.cursor()
+                    cur.execute("SELECT user_id FROM sessions WHERE token = %s AND expires_at > NOW()", (token,))
+                    row = cur.fetchone()
+                    cur.close()
+                    conn.close()
+                    if row:
+                        return row[0]
+                except:
+                    pass
+        return None
+
+    def get_session_user_id(self):
+        return self.check_auth()
+
     def do_GET(self):
         if self.path == '/favicon.ico':
             self.send_response(204)
             self.end_headers()
             return
+        if self.path == '/login':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(LOGIN_HTML.encode('utf-8'))
+            return
+        if self.path == '/logout':
+            self.send_response(302)
+            self.send_header('Set-Cookie', 'wb_session=; Path=/; Max-Age=0')
+            self.send_header('Location', '/login')
+            self.end_headers()
+            return
         if self.path == '/':
+            user_id = self.check_auth()
+            if not user_id:
+                self.send_response(302)
+                self.send_header('Location', '/login')
+                self.end_headers()
+                return
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
@@ -6382,7 +6496,14 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path.startswith('/pf-items'):
             try:
                 from urllib.parse import parse_qs, urlparse
-                session_id = self.headers.get('X-Session-Id', 'default')
+                user_id = self.check_auth()
+                if not user_id:
+                    self.send_response(401)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'unauthorized'}).encode())
+                    return
+                session_id = str(user_id)
                 conn = psycopg2.connect(DB)
                 cur = conn.cursor()
                 cur.execute("""
@@ -6427,9 +6548,58 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
 
     def do_POST(self):
-        if self.path == '/pf-items':
+        if self.path == '/auth':
             try:
-                session_id = self.headers.get('X-Session-Id', 'default')
+                import hashlib, secrets
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                username = body.get('username', '').strip()
+                password = body.get('password', '')
+                password_hash = hashlib.sha256(password.encode()).hexdigest()
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute("SELECT id FROM users WHERE username = %s AND password_hash = %s", (username, password_hash))
+                user = cur.fetchone()
+                if user:
+                    token = secrets.token_hex(32)
+                    user_id = user[0]
+                    cur.execute("""
+                        INSERT INTO sessions (user_id, token, expires_at)
+                        VALUES (%s, %s, NOW() + INTERVAL '30 days')
+                    """, (user_id, token))
+                    conn.commit()
+                    cur.close()
+                    conn.close()
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.send_header('Set-Cookie', f'wb_session={token}; Path=/; Max-Age=2592000; HttpOnly')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'ok': True}).encode())
+                else:
+                    cur.close()
+                    conn.close()
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'ok': False, 'error': 'Неверный логин или пароль'}).encode())
+            except Exception as e:
+                import traceback
+                print('AUTH ERROR:', traceback.format_exc())
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+        elif self.path == '/pf-items':
+            try:
+                user_id = self.check_auth()
+                if not user_id:
+                    self.send_response(401)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'unauthorized'}).encode())
+                    return
+                session_id = str(user_id)
                 length = int(self.headers.get('Content-Length', 0))
                 body = json.loads(self.rfile.read(length))
                 conn = psycopg2.connect(DB)
@@ -6472,7 +6642,14 @@ class Handler(BaseHTTPRequestHandler):
 
         elif self.path == '/pf-items-update':
             try:
-                session_id = self.headers.get('X-Session-Id', 'default')
+                user_id = self.check_auth()
+                if not user_id:
+                    self.send_response(401)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'unauthorized'}).encode())
+                    return
+                session_id = str(user_id)
                 length = int(self.headers.get('Content-Length', 0))
                 body = json.loads(self.rfile.read(length))
                 item_id = body.get('id')
@@ -6505,7 +6682,14 @@ class Handler(BaseHTTPRequestHandler):
 
         elif self.path == '/pf-items-delete':
             try:
-                session_id = self.headers.get('X-Session-Id', 'default')
+                user_id = self.check_auth()
+                if not user_id:
+                    self.send_response(401)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'unauthorized'}).encode())
+                    return
+                session_id = str(user_id)
                 length = int(self.headers.get('Content-Length', 0))
                 body = json.loads(self.rfile.read(length))
                 item_id = body.get('id')

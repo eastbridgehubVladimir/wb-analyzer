@@ -3398,11 +3398,12 @@ function defaultCompanySettings() {
   };
 }
 
-function showCompany() {
+async function showCompany() {
   history.pushState({page:'company'}, '', '/');
   hideAll();
   setActiveMenu(document.getElementById('company-menu'));
   document.getElementById('company').style.display = 'block';
+  if (!window._pfItems) { await loadPortfolioFromDB(); }
   renderCompany();
 }
 function resetCompanySettings() {
@@ -3786,7 +3787,7 @@ function renderCashflow() {
   // Получаем данные из Портфеля
   const portfolioItems = getPortfolioItems();
   const sellingItems = portfolioItems.filter(function(i){ return i.status === 'selling'; });
-  const portfolioRevDay = sellingItems.reduce(function(sum, i){ return sum + (i.sell_price_rub||0) * (i.qty||0) / 30; }, 0);
+  const portfolioRevDay = sellingItems.reduce(function(sum, i){ return sum + (i.sell_price||i.sell_price_rub||0) * (i.qty||0) / 30; }, 0);
   const portfolioRevMonth = Math.round(portfolioRevDay * 30);
 
   const controlsEl = document.getElementById('cashflow-controls');

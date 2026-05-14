@@ -5747,7 +5747,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == '/compare.js':
-            with open('/Users/user/wb-saas/compare.js', 'rb') as f:
+            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'compare.js'), 'rb') as f:
                 js = f.read()
             self.send_response(200)
             self.send_header('Content-Type', 'application/javascript')

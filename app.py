@@ -713,6 +713,7 @@ function renderWatchlist() {
   html += '<div style="font-size:20px;font-weight:700;color:#fff;">&#128204; В работе <span style="font-size:14px;color:#555;font-weight:400;">(' + list.length + ' ниш)</span></div>';
   html += '<div style="display:flex;gap:8px;">';
   html += '<button onclick="runWatchlistMonitor()" title="Проверить изменения метрик по всем нишам в работе и получить AI-анализ что изменилось" style="background:#3b82f622;border:1px solid #3b82f644;border-radius:8px;padding:8px 16px;color:#93c5fd;font-size:12px;font-weight:600;cursor:pointer;">&#128276; Проверить изменения</button>';
+  html += '<button onclick="compareAllWL()" style="background:#f59e0b22;border:1px solid #f59e0b44;border-radius:8px;padding:8px 16px;color:#f59e0b;font-size:12px;font-weight:600;cursor:pointer;">&#9878; Сравнить все</button>';
   html += '</div>';
   html += '</div>';
 
@@ -5712,6 +5713,7 @@ async function submitMonitor(month) {
       <button id="sticky-wl-btn" onclick="toggleStickyWL(this)" style="background:#1e2433;border:1px solid #2d3748;border-radius:7px;padding:6px 14px;cursor:pointer;color:#888;font-size:11px;white-space:nowrap;">&#128278; В работе</button>
     </div>
   </div>
+<script src="/compare.js"></script>
 </body>
 </html>"""
 
@@ -5744,6 +5746,14 @@ class Handler(BaseHTTPRequestHandler):
         return self.check_auth()
 
     def do_GET(self):
+        if self.path == '/compare.js':
+            with open('/Users/user/wb-saas/compare.js', 'rb') as f:
+                js = f.read()
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/javascript')
+            self.end_headers()
+            self.wfile.write(js)
+            return
         if self.path == '/favicon.ico':
             self.send_response(204)
             self.end_headers()
@@ -8224,6 +8234,11 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
             body = json.loads(self.rfile.read(length))
             handle_trends_stream(self, body)
             return
+        elif self.path == '/compare-stream':
+            length = int(self.headers.get('Content-Length', 0))
+            body = json.loads(self.rfile.read(length))
+            handle_compare_stream(self, body)
+            return
         elif self.path == '/monitor-stream':
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
@@ -8563,6 +8578,85 @@ def handle_trends_stream(handler, body):
             handler.wfile.write(('data: ' + ev + '\n\n').encode('utf-8'))
             handler.wfile.flush()
         except: pass
+
+
+def handle_compare_stream(handler, body):
+    import anthropic as _anthropic
+    niches = body.get('niches', [])
+    niches_text = ''
+    for n in niches:
+        activity = round(n.get('sellers_with_sales',0)/n.get('sellers',1)*100) if n.get('sellers',0) > 0 else 0
+        niches_text += (
+            f"\n- {n.get('display_name', n.get('name',''))}:\n"
+            f"  Выручка: {n.get('revenue',0):,.0f} руб/мес | Цена: {n.get('avg_price',0):,.0f} руб\n"
+            f"  Маржа: {n.get('profit_pct',0)*100:.0f}% | Выкуп: {n.get('buyout_pct',0)*100:.0f}% | Оборот: {n.get('turnover',0)} дн\n"
+            f"  Продавцы: {n.get('sellers',0)} (активных: {activity}%) | Score: {n.get('score',0)}/100"
+        )
+    prompt = (
+        "Ты эксперт по торговле на Wildberries. Торговая компания из Беларуси выбирает нишу для следующей закупки.\n\n"
+        f"НИШИ В РАБОТЕ:{niches_text}\n\n"
+        "Определи ОДНУ лучшую нишу для закупки. Верни строго JSON без markdown:\n"
+        "{\n"
+        '  "winner": "название",\n'
+        '  "winner_reason": "2-3 довода",\n'
+        '  "winner_risks": "главный риск",\n'
+        '  "ranking": [{"name": "ниша", "place": 1, "verdict": "кратко"}],\n'
+        '  "avoid": "ниша которую не брать",\n'
+        '  "avoid_reason": "почему"\n'
+        "}"
+    )
+    client = _anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
+    handler.send_response(200)
+    handler.send_header('Content-type', 'text/event-stream; charset=utf-8')
+    handler.send_header('Cache-Control', 'no-cache')
+    handler.end_headers()
+    full_text = ''
+    try:
+        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=2000, messages=[{'role':'user','content':prompt}]) as stream:
+            for text in stream.text_stream:
+                full_text += text
+                chunk = json.dumps({'type':'progress','chars':len(full_text)}, ensure_ascii=False)
+                handler.wfile.write(('data: ' + chunk + '\n\n').encode('utf-8'))
+                handler.wfile.flush()
+        ai = json.loads(full_text.strip().replace('```json','').replace('```','').strip())
+        winner = ai.get('winner','—')
+        html = (
+            '<div style="background:#f59e0b15;border:1px solid #f59e0b44;border-radius:10px;padding:16px;margin-bottom:14px;">'
+            '<div style="font-size:11px;color:#555;margin-bottom:4px;">&#127942; ЛУЧШИЙ ВЫБОР ДЛЯ ЗАКУПКИ</div>'
+            '<div style="font-size:18px;font-weight:700;color:#f59e0b;margin-bottom:8px;">' + winner + '</div>'
+            '<div style="font-size:12px;color:#aaa;line-height:1.7;margin-bottom:8px;">' + ai.get('winner_reason','') + '</div>'
+            '<div style="font-size:11px;color:#ef4444;">&#9888; Риск: ' + ai.get('winner_risks','') + '</div>'
+            '</div>'
+        )
+        ranking = ai.get('ranking', [])
+        if ranking:
+            html += '<div style="margin-bottom:14px;">'
+            for r in ranking:
+                place = r.get('place', 0)
+                medal = '&#127947;' if place==1 else '&#129352;' if place==2 else '&#129353;' if place==3 else str(place)+'.'
+                pcolor = '#f59e0b' if place==1 else '#94a3b8' if place==2 else '#b45309' if place==3 else '#555'
+                html += (
+                    '<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #1e2433;">'
+                    '<div style="font-size:14px;min-width:24px;">' + medal + '</div>'
+                    '<div><div style="font-size:12px;color:' + pcolor + ';font-weight:500;">' + r.get('name','') + '</div>'
+                    '<div style="font-size:11px;color:#555;">' + r.get('verdict','') + '</div></div></div>'
+                )
+            html += '</div>'
+        avoid = ai.get('avoid','')
+        if avoid:
+            html += (
+                '<div style="background:#ef444415;border:1px solid #ef444433;border-radius:8px;padding:12px;">'
+                '<div style="font-size:11px;color:#ef4444;font-weight:600;margin-bottom:4px;">&#128683; НЕ БРАТЬ: ' + avoid + '</div>'
+                '<div style="font-size:11px;color:#aaa;">' + ai.get('avoid_reason','') + '</div>'
+                '</div>'
+            )
+        done_chunk = json.dumps({'type':'done','html':html}, ensure_ascii=False)
+        handler.wfile.write(('data: ' + done_chunk + '\n\n').encode('utf-8'))
+        handler.wfile.flush()
+    except Exception as e:
+        err = json.dumps({'type':'done','html':'Ошибка: ' + str(e)}, ensure_ascii=False)
+        handler.wfile.write(('data: ' + err + '\n\n').encode('utf-8'))
+        handler.wfile.flush()
 
 
 def handle_monitor_stream(handler, body):

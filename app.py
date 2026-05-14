@@ -713,7 +713,7 @@ function renderWatchlist() {
   html += '<div style="font-size:20px;font-weight:700;color:#fff;">&#128204; В работе <span style="font-size:14px;color:#555;font-weight:400;">(' + list.length + ' ниш)</span></div>';
   html += '<div style="display:flex;gap:8px;">';
   html += '<button onclick="runWatchlistMonitor()" title="Проверить изменения метрик по всем нишам в работе и получить AI-анализ что изменилось" style="background:#3b82f622;border:1px solid #3b82f644;border-radius:8px;padding:8px 16px;color:#93c5fd;font-size:12px;font-weight:600;cursor:pointer;">&#128276; Проверить изменения</button>';
-  html += '<button onclick="compareAllWL()" style="background:#f59e0b22;border:1px solid #f59e0b44;border-radius:8px;padding:8px 16px;color:#f59e0b;font-size:12px;font-weight:600;cursor:pointer;">&#9878; Сравнить все</button>';
+  html += '<button onclick="compareAllWL()" style="background:#f59e0b22;border:1px solid #f59e0b44;border-radius:8px;padding:8px 16px;color:#f59e0b;font-size:12px;font-weight:600;cursor:pointer;">&#9878; Сравнить</button>';
   html += '</div>';
   html += '</div>';
 
@@ -3635,7 +3635,7 @@ function renderCompany() {
 
   let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">';
   html += '<div style="font-size:20px;font-weight:700;color:#fff;">⚙️ Компания</div>';
-  html += '<button onclick="resetCompanySettings()" style="background:#ef444422;border:1px solid #ef444444;border-radius:8px;padding:6px 14px;color:#ef4444;font-size:12px;cursor:pointer;">🔄 Сбросить все значения</button>';
+  html += '<button onclick="resetCompanySettings()" style="background:transparent;border:1px solid #3d4a5c;border-radius:8px;padding:6px 14px;color:#6b7a8d;font-size:12px;cursor:pointer;">🔄 Сбросить все значения</button>';
   html += '</div>';
 
   // Вкладки

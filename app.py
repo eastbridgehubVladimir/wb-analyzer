@@ -528,7 +528,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   </div>
 <div class="sidebar">
 
-  <div class="sidebar-item active" onclick="showCatalog()">🔍 Все ниши</div>
+  <div class="sidebar-item active" id="catalog-menu" onclick="showCatalog()">🔍 Все ниши</div>
   <div class="sidebar-item" onclick="showTopNiches()">⭐ Топ ниши</div>
   <div class="sidebar-item" onclick="showPortfolio()">🎯 Подбор</div>
   <div class="sidebar-item" onclick="showCalc()">🧮 Калькулятор</div>
@@ -1740,7 +1740,9 @@ function showCalc() {
 async function showCatalog() {
   history.pushState({page:'catalog'}, '', '/');
   hideAll();
-  setActiveMenu(event.target);
+  document.querySelectorAll('.sidebar-item').forEach(function(t){ t.classList.remove('active'); });
+  var _catalogMenu = document.getElementById('catalog-menu');
+  if (_catalogMenu) _catalogMenu.classList.add('active');
   document.getElementById('catalog').style.display = 'block';
   // search-box остаётся видимым в каталоге
   if (catalogData.length > 0) { filterCatalog(); return; }
@@ -5687,6 +5689,10 @@ async function submitMonitor(month) {
     container.innerHTML = '<div style="color:#ef4444;padding:12px;font-size:13px;">❌ ' + e.message + '</div>';
   }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+  showCatalog();
+});
 </script>
 </div>
 </div>

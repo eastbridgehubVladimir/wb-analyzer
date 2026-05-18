@@ -720,6 +720,7 @@ function renderWatchlist() {
 
 
   // Карточки ниш с чекбоксами
+  html += '<div style="font-size:11px;color:#555;margin-bottom:12px;">&#9432; Нажмите на карточку чтобы отметить нишу — кнопка <b style="color:#f59e0b;">&#9878; Сравнить</b> сравнит только отмеченные. Без отметок сравниваются все.</div>';
   html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;" id="wl-grid">';
   for (var i = 0; i < list.length; i++) {
     var n = list[i];

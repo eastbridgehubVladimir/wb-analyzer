@@ -4654,6 +4654,36 @@ function renderPortfolioSection() {
     html += '</div>';
   }
 
+  // Итоговая строка по всем товарам
+  var allItems = getPortfolioItems();
+  if (allItems.length > 0) {
+    var totalInvested = 0;
+    var totalRevenue = 0;
+    var totalItems = allItems.length;
+    var sellingCount = 0;
+    allItems.forEach(function(i) {
+      // Вложения: цена закупки * кол-во (в рублях)
+      if (i.price && i.qty) {
+        var cur = i.cur || 'CNY';
+        var rate = cur === 'USD' ? (rates['usd'] ? 1/rates['usd'] : 90) : (rates['cny'] ? 1/rates['cny'] : 12.5);
+        totalInvested += i.price * i.qty * rate;
+      }
+      // Выручка: только selling товары
+      if (i.status === 'selling' && i.sell_price_rub && i.wb_stock) {
+        totalRevenue += i.sell_price_rub * i.wb_stock;
+        sellingCount++;
+      }
+    });
+    html += '<div style="background:#1a2035;border:1px solid #2d3748;border-radius:12px;padding:14px;margin-top:16px;">';
+    html += '<div style="font-size:11px;color:#555;margin-bottom:10px;font-weight:500;">ИТОГО ПО ПОРТФЕЛЮ</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center;">';
+    html += '<div><div style="font-size:9px;color:#555;margin-bottom:3px;">ВСЕГО ТОВАРОВ</div><div style="font-size:16px;font-weight:700;color:#e2e8f0;">' + totalItems + '</div></div>';
+    html += '<div><div style="font-size:9px;color:#555;margin-bottom:3px;">ПРОДАЁТСЯ</div><div style="font-size:16px;font-weight:700;color:#4ade80;">' + sellingCount + '</div></div>';
+    html += '<div><div style="font-size:9px;color:#555;margin-bottom:3px;">ВЛОЖЕНО</div><div style="font-size:16px;font-weight:700;color:#fbbf24;">' + (totalInvested > 0 ? Math.round(totalInvested).toLocaleString('ru') + ' ₽' : '—') + '</div></div>';
+    html += '<div><div style="font-size:9px;color:#555;margin-bottom:3px;">ОСТАТОК НА СКЛАДЕ</div><div style="font-size:16px;font-weight:700;color:#38bdf8;">' + (totalRevenue > 0 ? Math.round(totalRevenue).toLocaleString('ru') + ' ₽' : '—') + '</div></div>';
+    html += '</div></div>';
+  }
+
   div.innerHTML = html;
 }
 

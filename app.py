@@ -6230,17 +6230,18 @@ class Handler(BaseHTTPRequestHandler):
                     if mpstats_path:
                         last_segment = mpstats_path.split('/')[-1].lower()
                         path_words = [w for w in last_segment.replace('-',' ').split() if len(w) > 3 and w not in stop_words]
-                    # Объединяем — приоритет словам из названия ниши
+                    # Объединяем слова и корни для морфологии
                     niche_keywords = list(set(niche_name_words + path_words))
+                    niche_roots = [w[:5] for w in niche_keywords if len(w) >= 5]
 
                     if niche_keywords:
                         items = []
                         for item in items_raw:
                             item_name = (item.get('name','') or '').lower()
-                            # Товар подходит если хотя бы одно ключевое слово есть в названии
-                            if any(kw in item_name for kw in niche_keywords):
+                            exact = any(kw in item_name for kw in niche_keywords)
+                            root_match = any(root in item_name for root in niche_roots)
+                            if exact or root_match:
                                 items.append(item)
-                        # Если фильтр слишком строгий — берём все
                         if len(items) < 5:
                             items = items_raw
                     else:

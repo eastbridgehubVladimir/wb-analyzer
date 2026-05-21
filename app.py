@@ -6221,12 +6221,17 @@ class Handler(BaseHTTPRequestHandler):
                         data_warning = True
 
                     # Фильтруем товары по ключевым словам из названия ниши
-                    # Берём последнее слово пути как ключевое слово ниши
+                    stop_words = {'для', 'при', 'под', 'над', 'без', 'про', 'все', 'или'}
                     niche_keywords = []
+                    # Берём слова из названия ниши (более точно чем из пути)
+                    niche_name_words = [w for w in niche_name.lower().replace('-',' ').split() if len(w) > 3 and w not in stop_words]
+                    # Также берём слова из последнего сегмента пути
+                    path_words = []
                     if mpstats_path:
                         last_segment = mpstats_path.split('/')[-1].lower()
-                        # Разбиваем на слова длиннее 3 символов
-                        niche_keywords = [w for w in last_segment.replace('-',' ').split() if len(w) > 3]
+                        path_words = [w for w in last_segment.replace('-',' ').split() if len(w) > 3 and w not in stop_words]
+                    # Объединяем — приоритет словам из названия ниши
+                    niche_keywords = list(set(niche_name_words + path_words))
 
                     if niche_keywords:
                         items = []

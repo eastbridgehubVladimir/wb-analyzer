@@ -6312,43 +6312,69 @@ class Handler(BaseHTTPRequestHandler):
                     if not path_verified and len(common_words) == 0:
                         data_warning = True
                 
-                # Определяем путь для MPStats: из БД или fallback = имя ниши
-                if row and row[0]:
-                    mpstats_path = row[0]
-                    niche_name_for_fallback = row[1]
-                else:
-                    # Нет пути в БД — пробуем имя ниши напрямую как путь
-                    mpstats_path = None
-                    niche_name_for_fallback = row[1] if row else query
+                # ── Умный подбор MPStats пути ────────────────────────────────
+                mpstats_path = row[0] if (row and row[0]) else None
+                niche_name = (row[1] if row else None) or query
 
-                # Пробуем основной путь, потом fallback варианты
-                items_raw = []
+                # Ключевые слова ниши — для оценки качества пути
+                stop_words = {'для', 'при', 'под', 'над', 'без', 'про', 'все', 'или', 'типа'}
+                niche_name_words = [w for w in niche_name.lower().replace('-',' ').replace('/',' ').split()
+                                    if len(w) > 3 and w not in stop_words]
+                niche_roots = [w[:5] for w in niche_name_words if len(w) >= 5]
+
+                def _keyword_match_pct(items_list):
+                    """Доля товаров из выборки, чьё имя содержит ключевое слово ниши."""
+                    if not niche_name_words or not items_list:
+                        return 1.0  # нет ключевых слов — считаем путь валидным
+                    sample = items_list[:50]
+                    matched = sum(
+                        1 for item in sample
+                        if any(kw in (item.get('name','') or '').lower()
+                               for kw in niche_name_words + niche_roots)
+                    )
+                    return matched / len(sample)
+
+                # Порядок попыток: DB-путь → имя ниши → последний сегмент DB-пути
                 paths_to_try = []
                 if mpstats_path:
                     paths_to_try.append(mpstats_path)
-                # Fallback: имя ниши как путь (часто совпадает с путём в MPStats)
-                if niche_name_for_fallback and niche_name_for_fallback not in paths_to_try:
-                    paths_to_try.append(niche_name_for_fallback)
-                # Fallback: последний сегмент пути как самостоятельная категория
+                if niche_name and niche_name not in paths_to_try:
+                    paths_to_try.append(niche_name)
                 if mpstats_path:
                     last_seg = mpstats_path.split('/')[-1]
                     if last_seg not in paths_to_try:
                         paths_to_try.append(last_seg)
 
+                items_raw = []
                 used_path = None
+                best_fallback = []   # лучший вариант из некачественных путей
+                best_fallback_pct = 0.0
+
                 for try_path in paths_to_try:
                     try:
-                        data = get_mpstats_cached(try_path, '2024-04-01', '2026-04-14')
-                        items_try = data.get('data', [])
-                        if len(items_try) > 0:
+                        d_mp = get_mpstats_cached(try_path, '2024-04-01', '2026-04-14')
+                        items_try = d_mp.get('data', [])
+                        if not items_try:
+                            print(f'[CHARTS] Путь {try_path!r} → 0 товаров')
+                            continue
+                        pct = _keyword_match_pct(items_try)
+                        print(f'[CHARTS] Путь {try_path!r} → {len(items_try)} товаров, match={pct:.0%}')
+                        if pct >= 0.20:   # ≥20% совпадение = хороший путь
                             items_raw = items_try
                             used_path = try_path
-                            print(f'[CHARTS] Нашли {len(items_raw)} товаров по пути: {try_path}')
                             break
-                        else:
-                            print(f'[CHARTS] Путь {try_path!r} вернул 0 товаров, пробуем следующий')
+                        elif pct > best_fallback_pct:
+                            best_fallback = items_try
+                            best_fallback_pct = pct
                     except Exception as mp_err:
-                        print(f'[CHARTS] Ошибка запроса по пути {try_path!r}: {mp_err}')
+                        print(f'[CHARTS] Ошибка {try_path!r}: {mp_err}')
+
+                if not items_raw and best_fallback:
+                    # Ни один путь не дал хорошего совпадения — берём лучшее из доступного
+                    items_raw = best_fallback
+                    used_path = None
+                    data_warning = True
+                    print(f'[CHARTS] Используем fallback ({best_fallback_pct:.0%} совпадений)')
 
                 if not items_raw:
                     self.send_response(200)
@@ -6356,22 +6382,14 @@ class Handler(BaseHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(json.dumps({'error': 'no_data', 'tried_paths': paths_to_try}).encode())
                 else:
-                    # Если MPStats вернул товары по fallback пути — помечаем как неточное
-                    if used_path != mpstats_path:
+                    if used_path and used_path != mpstats_path:
                         data_warning = True
 
-                    niche_name = niche_name_for_fallback or query
-
-                    # Фильтруем товары по ключевым словам из названия ниши
-                    stop_words = {'для', 'при', 'под', 'над', 'без', 'про', 'все', 'или'}
-                    niche_keywords = []
-                    # Берём слова из названия ниши (более точно чем из пути)
-                    niche_name_words = [w for w in niche_name.lower().replace('-',' ').replace('/',' ').split() if len(w) > 3 and w not in stop_words]
-                    # Также берём слова из последнего сегмента пути
+                    # Фильтрация по ключевым словам
+                    stop_words = {'для', 'при', 'под', 'над', 'без', 'про', 'все', 'или', 'типа'}
                     path_words = []
-                    ref_path = used_path or mpstats_path or niche_name
-                    if ref_path:
-                        last_segment = ref_path.split('/')[-1].lower()
+                    if used_path:
+                        last_segment = used_path.split('/')[-1].lower()
                         path_words = [w for w in last_segment.replace('-',' ').split() if len(w) > 3 and w not in stop_words]
                     # Объединяем слова и корни для морфологии
                     niche_keywords = list(set(niche_name_words + path_words))

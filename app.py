@@ -94,7 +94,7 @@ def get_mpstats_cached(path, d1, d2):
         'https://mpstats.io/api/wb/get/category',
         headers=headers,
         params={'d1': d1, 'd2': d2, 'path': path},
-        json={'startRow': 0, 'endRow': 100, 'sortModel': [{'colId': 'revenue', 'sort': 'desc'}]},
+        json={'startRow': 0, 'endRow': 500, 'sortModel': [{'colId': 'revenue', 'sort': 'desc'}]},
         timeout=30
     )
     print(f'MPStats status: {r.status_code}, path: {path}')
@@ -1850,8 +1850,18 @@ async function loadCharts(name) {
     
     const loadingEl = document.getElementById('chart-loading');
     if (loadingEl) loadingEl.style.display = 'none';
-    
-    if (data.error || !data.labels || data.labels.length === 0) return;
+
+    if (data.error || !data.labels || data.labels.length === 0) {
+      const chartArea = document.getElementById('chart-loading');
+      if (chartArea) {
+        const msg = data.error === 'no_data'
+          ? '⚠️ MPStats не вернул данных по этой нише. Попробуйте позже или выберите другую нишу.'
+          : '⚠️ Нет данных для графиков — ниша не найдена в MPStats.';
+        chartArea.innerHTML = '<div style="padding:12px;color:#888;font-size:12px;text-align:center;">' + msg + '</div>';
+        chartArea.style.display = 'block';
+      }
+      return;
+    }
     
     window._chartData = data;
     
@@ -6302,29 +6312,66 @@ class Handler(BaseHTTPRequestHandler):
                     if not path_verified and len(common_words) == 0:
                         data_warning = True
                 
-                if not row or not row[0]:
+                # Определяем путь для MPStats: из БД или fallback = имя ниши
+                if row and row[0]:
+                    mpstats_path = row[0]
+                    niche_name_for_fallback = row[1]
+                else:
+                    # Нет пути в БД — пробуем имя ниши напрямую как путь
+                    mpstats_path = None
+                    niche_name_for_fallback = row[1] if row else query
+
+                # Пробуем основной путь, потом fallback варианты
+                items_raw = []
+                paths_to_try = []
+                if mpstats_path:
+                    paths_to_try.append(mpstats_path)
+                # Fallback: имя ниши как путь (часто совпадает с путём в MPStats)
+                if niche_name_for_fallback and niche_name_for_fallback not in paths_to_try:
+                    paths_to_try.append(niche_name_for_fallback)
+                # Fallback: последний сегмент пути как самостоятельная категория
+                if mpstats_path:
+                    last_seg = mpstats_path.split('/')[-1]
+                    if last_seg not in paths_to_try:
+                        paths_to_try.append(last_seg)
+
+                used_path = None
+                for try_path in paths_to_try:
+                    try:
+                        data = get_mpstats_cached(try_path, '2024-04-01', '2026-04-14')
+                        items_try = data.get('data', [])
+                        if len(items_try) > 0:
+                            items_raw = items_try
+                            used_path = try_path
+                            print(f'[CHARTS] Нашли {len(items_raw)} товаров по пути: {try_path}')
+                            break
+                        else:
+                            print(f'[CHARTS] Путь {try_path!r} вернул 0 товаров, пробуем следующий')
+                    except Exception as mp_err:
+                        print(f'[CHARTS] Ошибка запроса по пути {try_path!r}: {mp_err}')
+
+                if not items_raw:
                     self.send_response(200)
                     self.send_header('Content-type', 'application/json; charset=utf-8')
                     self.end_headers()
-                    self.wfile.write(json.dumps({'error': 'no_path'}).encode())
+                    self.wfile.write(json.dumps({'error': 'no_data', 'tried_paths': paths_to_try}).encode())
                 else:
-                    mpstats_path = row[0]
-                    data = get_mpstats_cached(mpstats_path, '2024-04-01', '2026-04-14')
-                    items_raw = data.get('data', [])
-
-                    # Если MPStats вернул 0 товаров — данные неточные
-                    if len(items_raw) == 0:
+                    # Если MPStats вернул товары по fallback пути — помечаем как неточное
+                    if used_path != mpstats_path:
                         data_warning = True
+
+                    niche_name = niche_name_for_fallback or query
 
                     # Фильтруем товары по ключевым словам из названия ниши
                     stop_words = {'для', 'при', 'под', 'над', 'без', 'про', 'все', 'или'}
                     niche_keywords = []
                     # Берём слова из названия ниши (более точно чем из пути)
-                    niche_name_words = [w for w in niche_name.lower().replace('-',' ').split() if len(w) > 3 and w not in stop_words]
+                    niche_name_words = [w for w in niche_name.lower().replace('-',' ').replace('/',' ').split() if len(w) > 3 and w not in stop_words]
                     # Также берём слова из последнего сегмента пути
                     path_words = []
-                    if mpstats_path:
-                        last_segment = mpstats_path.split('/')[-1].lower()
+                    ref_path = used_path or mpstats_path or niche_name
+                    if ref_path:
+                        last_segment = ref_path.split('/')[-1].lower()
                         path_words = [w for w in last_segment.replace('-',' ').split() if len(w) > 3 and w not in stop_words]
                     # Объединяем слова и корни для морфологии
                     niche_keywords = list(set(niche_name_words + path_words))

@@ -2592,6 +2592,7 @@ async function downloadReport(level) {
     max_products: 20,
     scrape_pages: 2,
     report_level: level,
+    agents: window._agentResults || {},
   };
   try {
     const resp = await fetch(PDF_API_ENDPOINT + params, {
@@ -2705,6 +2706,7 @@ function isSeasonal(name) {
 function renderResult(d) {
   window.lastResult = d;
   window.currentNiche = d;
+  window._agentResults = {};  // сбрасываем результаты агентов при новой нише
   // Скрываем блоки агентов при новой нише
   var ab = document.getElementById('adBlock');
   if (ab) ab.style.display = 'none';
@@ -2954,6 +2956,8 @@ async function runSupplierAnalysis() {
             container.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude ищет поставщиков... ' + msg.chars + ' симв.</div>';
           } else if (msg.type === 'done') {
             renderSupplierResult(msg.data);
+            window._agentResults = window._agentResults || {};
+            window._agentResults.supplier = msg.data;
           } else if (msg.type === 'error') {
             container.innerHTML = '<div style="color:#ef4444;padding:12px;">' + msg.error + '</div>';
           }
@@ -5043,6 +5047,9 @@ async function runContentAgent() {
             container.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude генерирует... ' + msg.chars + ' симв.</div>';
           } else if (msg.type === 'html') {
             container.innerHTML = msg.html;
+            window._agentResults = window._agentResults || {};
+            const rawEl = container.querySelector('#content-raw');
+            if (rawEl) window._agentResults.content_raw = rawEl.innerText;
           } else if (msg.type === 'error') {
             container.innerHTML = '<div style="color:#ef4444;padding:12px;">' + msg.error + '</div>';
           }
@@ -5096,6 +5103,8 @@ async function runDocsAnalysis() {
             container.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude готовит документы... ' + msg.chars + ' симв.</div>';
           } else if (msg.type === 'done') {
             renderDocsResult(msg.data);
+            window._agentResults = window._agentResults || {};
+            window._agentResults.docs = msg.data;
           } else if (msg.type === 'error') {
             container.innerHTML = '<div style="color:#ef4444;padding:12px;">' + msg.error + '</div>';
           }
@@ -5688,6 +5697,8 @@ async function runAdAnalysis() {
           } else if (msg.type === 'done') {
             window._adForecastId = msg.forecast_id;
             renderAdStrategy(msg, sym, rate);
+            window._agentResults = window._agentResults || {};
+            window._agentResults.ad = msg.analysis;
             btn.textContent = '🔄 Обновить анализ';
             btn.style.opacity = '1';
             btn.disabled = false;

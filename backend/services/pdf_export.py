@@ -624,6 +624,247 @@ class PDFReportGenerator:
         els.append(self._sp(0.15))
         return els
 
+    # ── агентские секции ──────────────────────────────────────────────────────
+
+    def _sec_supplier(self, ag: dict) -> list:
+        s = ag.get('supplier') or {}
+        if not s:
+            return []
+        els = [PageBreak(), self._h2("Поиск поставщиков и цены закупки"), self._hr()]
+
+        taobao = float(s.get('price_taobao_usd', 0))
+        alibaba = float(s.get('price_alibaba_usd', 0))
+        moq = int(s.get('moq', 0))
+        margin = float(s.get('real_margin_pct', 0))
+        roi = float(s.get('roi_pct', 0))
+        profit_unit = float(s.get('profit_per_unit_rub', 0))
+        summary_text = str(s.get('summary', ''))
+
+        rows = [['Параметр', 'Значение']]
+        if taobao: rows.append(['Цена 1688 / Taobao', f"${taobao:.1f}"])
+        if alibaba: rows.append(['Цена Alibaba (опт)', f"${alibaba:.1f}"])
+        if moq: rows.append(['MOQ (мин. партия)', f"{moq} шт."])
+        if margin: rows.append(['Маржа (реальная)', f"{margin:.0f}%"])
+        if roi: rows.append(['ROI', f"{roi:.0f}%"])
+        if profit_unit: rows.append(['Прибыль/ед.', _rub(profit_unit)])
+
+        t = Table(rows, colWidths=[3.2*inch, 3.4*inch])
+        t.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,0), C_GRAY),
+            ('TEXTCOLOR',     (0,0), (-1,0), C_WHITE),
+            ('FONTNAME',      (0,0), (-1,0), FB),
+            ('FONTNAME',      (0,1), (-1,-1), FN),
+            ('FONTSIZE',      (0,0), (-1,-1), 10),
+            ('ALIGN',         (0,0), (-1,-1), 'LEFT'),
+            ('GRID',          (0,0), (-1,-1), 0.5, C_BORDER),
+            ('ROWBACKGROUNDS',(0,1), (-1,-1), [C_WHITE, C_LIGHT]),
+            ('TOPPADDING',    (0,1), (-1,-1), 5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ]))
+        els.append(t)
+        if summary_text:
+            els.append(self._sp(0.15))
+            for para in summary_text.split('. '):
+                para = para.strip()
+                if para:
+                    els.append(self._body(para + '.'))
+        els.append(self._sp(0.2))
+
+        links = s.get('search_links') or []
+        if links:
+            els.append(self._h3("Площадки для поиска поставщиков:"))
+            for lnk in links:
+                platform = str(lnk.get('platform', ''))
+                desc = str(lnk.get('description', ''))
+                url = str(lnk.get('url', ''))
+                els.append(self._bullet(f"<b>{platform}</b> — {desc}  ({url})"))
+            els.append(self._sp(0.1))
+
+        return els
+
+    def _sec_advertising(self, ag: dict) -> list:
+        a = ag.get('ad') or {}
+        if not a:
+            return []
+        els = [PageBreak(), self._h2("Рекламная стратегия WB"), self._hr()]
+
+        load_level = str(a.get('load_level', '')).lower()
+        load_label = {'low': 'Низкая', 'medium': 'Умеренная', 'high': 'Высокая'}.get(load_level, load_level)
+        load_hex = {'low': '10B981', 'medium': 'F59E0B', 'high': 'EF4444'}.get(load_level, 'F59E0B')
+
+        els.append(KeepTogether([
+            self._h3("Рекламная нагрузка в нише:"),
+            Paragraph(f"<b><font color='#{load_hex}'>{load_label}</font></b>", self.styles['WBBody']),
+            self._body(str(a.get('load_analysis', ''))),
+            self._sp(0.1),
+        ]))
+
+        strategy_type = str(a.get('strategy_type', ''))
+        strategy_detail = str(a.get('strategy_detail', ''))
+        if strategy_type or strategy_detail:
+            els.append(self._h3(f"Стратегия: {strategy_type}"))
+            els.append(self._body(strategy_detail))
+            steps = a.get('strategy_steps') or []
+            for i, step in enumerate(steps, 1):
+                els.append(self._bullet(f"Шаг {i}: {step}"))
+            els.append(self._sp(0.1))
+
+        budget = a.get('budget') or {}
+        if budget:
+            els.append(self._h3("Рекомендуемый рекламный бюджет:"))
+            rows = [['Период', 'Бюджет']]
+            if budget.get('start_rub'): rows.append(['Старт (1-й месяц)', _rub(budget['start_rub'])])
+            if budget.get('growth_rub'): rows.append(['Рост (2-й месяц)', _rub(budget['growth_rub'])])
+            if budget.get('sustain_rub'): rows.append(['Удержание', _rub(budget['sustain_rub'])])
+            t = Table(rows, colWidths=[2.8*inch, 3.8*inch])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0,0),(-1,0), C_GRAY), ('TEXTCOLOR',(0,0),(-1,0),C_WHITE),
+                ('FONTNAME',(0,0),(-1,0),FB), ('FONTNAME',(0,1),(-1,-1),FN),
+                ('FONTSIZE',(0,0),(-1,-1),10), ('ALIGN',(0,0),(-1,-1),'LEFT'),
+                ('GRID',(0,0),(-1,-1),0.5,C_BORDER),
+                ('ROWBACKGROUNDS',(0,1),(-1,-1),[C_WHITE,C_LIGHT]),
+                ('TOPPADDING',(0,1),(-1,-1),5), ('BOTTOMPADDING',(0,0),(-1,-1),6),
+            ]))
+            els.append(t)
+            if budget.get('comment'):
+                els.append(self._small(str(budget['comment'])))
+            els.append(self._sp(0.15))
+
+        forecast = a.get('forecast') or {}
+        cpm = a.get('cpm_forecast') or {}
+        if forecast or cpm:
+            els.append(self._h3("Прогноз результатов:"))
+            if cpm:
+                els.append(self._body(
+                    f"CPM старт: {_rub(cpm.get('start_rub', 0))}  |  "
+                    f"CPM через 2 мес: {_rub(cpm.get('month2_rub', 0))}"
+                ))
+                if cpm.get('comment'):
+                    els.append(self._small(str(cpm['comment'])))
+            m1 = (forecast.get('month1') or {}).get('metrics') or []
+            m2 = (forecast.get('month2') or {}).get('metrics') or []
+            if m1:
+                els.append(self._h3("Месяц 1 — ожидаемые показатели:"))
+                for m in m1:
+                    els.append(self._bullet(str(m)))
+            if m2:
+                els.append(self._h3("Месяц 2 — ожидаемые показатели:"))
+                for m in m2:
+                    els.append(self._bullet(str(m)))
+            els.append(self._sp(0.1))
+
+        return els
+
+    def _sec_content_card(self, ag: dict) -> list:
+        raw = str(ag.get('content_raw', '') or '')
+        if not raw.strip():
+            return []
+        els = [PageBreak(), self._h2("Карточка товара — контент от AI"), self._hr()]
+
+        current_section = None
+        for line in raw.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+            if line and line[0].isdigit() and len(line) > 2 and line[1] == '.':
+                current_section = line
+                els.append(self._h3(line))
+            elif line.startswith('-') or line.startswith('•'):
+                els.append(self._bullet(line.lstrip('-•').strip()))
+            elif line.startswith('**') and line.endswith('**'):
+                els.append(self._h3(line.strip('*')))
+            else:
+                els.append(self._body(line))
+
+        els.append(self._sp(0.1))
+        return els
+
+    def _sec_documents(self, ag: dict) -> list:
+        d = ag.get('docs') or {}
+        if not d:
+            return []
+        els = [PageBreak(), self._h2("Документы и сертификация"), self._hr()]
+
+        complexity = str(d.get('complexity', 'medium')).lower()
+        comp_label = {'low': 'Простая', 'medium': 'Умеренная', 'high': 'Сложная'}.get(complexity, complexity)
+        comp_color = {'low': C_GREEN, 'medium': C_YELLOW, 'high': C_RED}.get(complexity, C_YELLOW)
+        comp_reason = str(d.get('complexity_reason', ''))
+        summary_text = str(d.get('summary', ''))
+
+        els.append(self._h3(f"Сложность оформления: {comp_label}"))
+        if comp_reason:
+            els.append(self._body(comp_reason))
+        if summary_text:
+            els.append(self._body(summary_text))
+        els.append(self._sp(0.1))
+
+        wb_docs = list(d.get('wb_docs') or [])
+        if wb_docs:
+            els.append(self._h3("Документы для Wildberries:"))
+            rows = [['Документ', 'Стоимость', 'Срок', 'Обязательность']]
+            for doc in wb_docs:
+                req = 'Обязательно' if doc.get('required') else 'Желательно'
+                rows.append([
+                    str(doc.get('name', ''))[:40],
+                    str(doc.get('cost', '—'))[:16],
+                    str(doc.get('duration', '—'))[:14],
+                    req,
+                ])
+            t = Table(rows, colWidths=[2.6*inch, 1.2*inch, 1.1*inch, 1.7*inch])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0,0),(-1,0), C_GRAY), ('TEXTCOLOR',(0,0),(-1,0),C_WHITE),
+                ('FONTNAME',(0,0),(-1,0),FB), ('FONTNAME',(0,1),(-1,-1),FN),
+                ('FONTSIZE',(0,0),(-1,0), 9), ('FONTSIZE',(0,1),(-1,-1), 8),
+                ('ALIGN',(0,0),(-1,-1),'LEFT'),
+                ('GRID',(0,0),(-1,-1),0.5,C_BORDER),
+                ('ROWBACKGROUNDS',(0,1),(-1,-1),[C_WHITE,C_LIGHT]),
+                ('TOPPADDING',(0,1),(-1,-1),4), ('BOTTOMPADDING',(0,0),(-1,-1),5),
+            ]))
+            els.append(t)
+            els.append(self._sp(0.15))
+
+            for doc in wb_docs:
+                if doc.get('description'):
+                    els.append(self._small(f"• {doc.get('name','')}: {doc.get('description','')}"))
+            els.append(self._sp(0.1))
+
+        customs_docs = list(d.get('customs_docs') or [])
+        if customs_docs:
+            els.append(self._h3("Документы для таможни (ввоз из Китая):"))
+            for doc in customs_docs:
+                els.append(self._bullet(f"<b>{doc.get('name','')}</b> — {doc.get('description','')}"))
+            els.append(self._sp(0.1))
+
+        risks = list(d.get('risks') or [])
+        if risks:
+            els.append(self._h3("Риски и как их избежать:"))
+            for r in risks:
+                risk_text = str(r.get('risk', ''))
+                solution = str(r.get('solution', ''))
+                els.append(self._bullet(f"<b>{risk_text}</b>"))
+                if solution:
+                    els.append(Paragraph(f"   → {solution}", self.styles['WBSmall']))
+            els.append(self._sp(0.1))
+
+        total_cost = str(d.get('total_cost_byn') or d.get('total_cost') or '')
+        total_dur = str(d.get('total_duration', ''))
+        if total_cost or total_dur:
+            rows2 = [['Итоговые затраты', 'Общий срок']]
+            rows2.append([total_cost or '—', total_dur or '—'])
+            t2 = Table(rows2, colWidths=[3.3*inch, 3.3*inch])
+            t2.setStyle(TableStyle([
+                ('BACKGROUND',(0,0),(-1,0),C_GRAY), ('TEXTCOLOR',(0,0),(-1,0),C_WHITE),
+                ('FONTNAME',(0,0),(-1,0),FB), ('FONTNAME',(0,1),(-1,-1),FN),
+                ('FONTSIZE',(0,0),(-1,-1),10),
+                ('ALIGN',(0,0),(-1,-1),'CENTER'),
+                ('GRID',(0,0),(-1,-1),0.5,C_BORDER),
+                ('TOPPADDING',(0,1),(-1,-1),7), ('BOTTOMPADDING',(0,0),(-1,-1),7),
+            ]))
+            els.append(t2)
+            els.append(self._sp(0.1))
+
+        return els
+
     # ── главный метод ─────────────────────────────────────────────────────────
 
     def generate_pdf(self, data: dict, level: str = "standard") -> BytesIO:
@@ -638,6 +879,8 @@ class PDFReportGenerator:
         verdict = (data.get('verdict') or 'TEST').upper()
         score   = data.get('score', 0)
         cat     = data.get('category', '')
+
+        ag = data.get('agents', {}) or {}
 
         els = []
         els += self._sec_header(data, level)
@@ -656,6 +899,11 @@ class PDFReportGenerator:
             els += self._sec_risks(m, verdict)
             els += self._sec_strategy(m, verdict, cat)
             els += self._sec_dimensions(data)
+            # Секции агентов
+            els += self._sec_supplier(ag)
+            els += self._sec_advertising(ag)
+            els += self._sec_content_card(ag)
+            els += self._sec_documents(ag)
 
         els += self._sec_charts(data, level)
         els += self._sec_products(data, level)

@@ -24,6 +24,10 @@ class CategoryAnalysisRequest(BaseModel):
         default=None,
         description="Готовые метрики из браузера — используются напрямую без запросов к MPStats"
     )
+    agents: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Результаты агентов из браузера (supplier, ad, docs, content_raw)"
+    )
 
 
 class ScrapedProductOut(BaseModel):

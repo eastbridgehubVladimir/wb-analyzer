@@ -280,12 +280,15 @@ async def export_category_pdf(
     hypotheses_list = niche_extra.get('hypotheses') or (ai_raw.hypotheses if ai_raw else [])
     analysis_text = niche_extra.get('analysis') or (ai_raw.analysis if ai_raw else '')
 
+    agents_data = dict(payload.agents or {})
+
     analysis_data = {
         'category': payload.category,
         'products_scraped': len(products),
         'score': decision.score,
         'verdict': decision.verdict.value,
         'summary': decision.summary,
+        'agents': agents_data,
         'dimensions': [
             {
                 'name': d.name,

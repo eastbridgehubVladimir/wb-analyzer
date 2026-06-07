@@ -2540,6 +2540,87 @@ function hideSuggestions() {
   if (box) box.style.display = 'none';
 }
 
+const PDF_API_ENDPOINT = window.PDF_API_ENDPOINT || 'http://127.0.0.1:8002/api/v1/analysis/category/export-pdf';
+const PDF_EXPORT_STUB = false;
+
+async function downloadReport(level) {
+  const niche = (window.currentNiche && window.currentNiche.name) ? window.currentNiche.name : document.getElementById('query').value.trim();
+  if (!niche) {
+    const errEl = document.getElementById('error');
+    if (errEl) {
+      errEl.style.display = 'block';
+      errEl.textContent = 'Введите нишу перед загрузкой отчёта.';
+    }
+    return;
+  }
+  const params = PDF_EXPORT_STUB ? '?stub=true' : '';
+  const d = window.currentNiche || {};
+  const sellers = d.sellers || 0;
+  const compLevel = sellers > 200 ? 'saturated' : sellers > 50 ? 'high' : sellers > 10 ? 'medium' : 'low';
+  const body = {
+    category: niche,
+    niche_full: d.full || niche,
+    pre_computed: {
+      // Метрики ниши
+      monthly_revenue_estimate: Math.round((d.revenue_annual || (d.revenue || 0) / 2) / 12),
+      annual_revenue: Math.round(d.revenue_annual || (d.revenue || 0) / 2),
+      avg_orders_per_day: Math.round((d.orders || 0) / 30 * 10) / 10,
+      orders_per_month: d.orders || 0,
+      active_sellers: sellers,
+      sellers_with_sales: d.sellers_with_sales || 0,
+      competition_level: compLevel,
+      median_price: d.avg_price || 0,
+      price_iqr: 0,
+      top_20pct_revenue_share: 0,
+      top_10_revenue_share: 0,
+      // Качество ниши
+      buyout_pct: d.buyout_pct || 0,
+      profit_pct: d.profit_pct || 0,
+      turnover: d.turnover || 0,
+      commission: d.commission || 0,
+      lost_revenue_pct: d.lost_revenue_pct || 0,
+      avg_rating: d.avg_rating || 0,
+      // Скоринг
+      score: d.score || 0,
+      verdict: d.verdict || 'TEST',
+      summary: d.name || niche,
+      // AI-аналитика (уже есть на странице!)
+      insights: d.insights || [],
+      hypotheses: d.hypotheses || [],
+      analysis: d.analysis || '',
+    },
+    max_products: 20,
+    scrape_pages: 2,
+    report_level: level,
+  };
+  try {
+    const resp = await fetch(PDF_API_ENDPOINT + params, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      throw new Error('Сервер вернул ' + resp.status);
+    }
+    const blob = await resp.blob();
+    const filename = `WB-Analysis-${niche.replace(/[\\/]/g, '-')}-${level}.pdf`;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    const errEl = document.getElementById('error');
+    if (errEl) {
+      errEl.style.display = 'block';
+      errEl.textContent = 'Не удалось скачать PDF: ' + e.message;
+    }
+  }
+}
+
 async function analyze() {
   hideAll();
   const q = document.getElementById('query').value.trim();
@@ -2641,6 +2722,10 @@ function renderResult(d) {
         ${d.data_warning ? '<span style="font-size:11px;color:#ef4444;background:#ef444422;border-radius:4px;padding:2px 6px;">&#9888; неточные данные</span>' : ''}
       </div>
     </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+      <button onclick="downloadReport('basic')" class="btn" style="background:#cbd5e1;color:#0f172a;font-weight:700;">PDF Basic</button>
+      <button onclick="downloadReport('standard')" class="btn" style="background:#38bdf8;color:#0f172a;font-weight:700;">PDF Standard</button>
+      <button onclick="downloadReport('deep')" class="btn" style="background:#8b5cf6;color:#fff;font-weight:700;">PDF Deep</button>
     </div>
 
     <!-- ЗОНА 1: Метрики -->
@@ -7792,11 +7877,40 @@ class Handler(BaseHTTPRequestHandler):
                 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
                 message = client.messages.create(
                     model="claude-sonnet-4-5",
-                    max_tokens=4000,
+                    max_tokens=8000,
                     messages=[{"role": "user", "content": prompt}]
                 )
-                raw = message.content[0].text.strip().replace('```json','').replace('```','').strip()
-                result = json.loads(raw)
+                raw = message.content[0].text.strip()
+                # Убираем markdown-обёртку если есть
+                if '```' in raw:
+                    raw = raw.split('```json')[-1].split('```')[0].strip()
+
+                # Пробуем распарсить JSON
+                try:
+                    result = json.loads(raw)
+                except json.JSONDecodeError:
+                    # Если ответ обрезан — пробуем достроить JSON
+                    try:
+                        # Закрываем незакрытые структуры
+                        fixed = raw.rstrip().rstrip(',')
+                        depth_curly = fixed.count('{') - fixed.count('}')
+                        depth_square = fixed.count('[') - fixed.count(']')
+                        fixed += ']' * max(0, depth_square) + '}' * max(0, depth_curly)
+                        result = json.loads(fixed)
+                    except Exception:
+                        # Последний fallback — возвращаем структуру с сырым текстом
+                        result = {
+                            "complexity": "medium",
+                            "summary": "Анализ получен, но ответ был слишком большим для полного разбора. Основная информация ниже.",
+                            "raw_text": raw[:3000],
+                            "wb_docs": [],
+                            "supplier_docs": [],
+                            "customs_docs": [],
+                            "risks": [],
+                            "total_cost": "—",
+                            "total_cost_byn": "—",
+                            "total_duration": "—",
+                        }
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
@@ -7804,10 +7918,16 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
 
             except Exception as e:
-                self.send_response(500)
-                self.send_header('Content-type', 'application/json')
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()
-                self.wfile.write(json.dumps({'error': str(e)}).encode('utf-8'))
+                self.wfile.write(json.dumps({
+                    'error': str(e),
+                    'complexity': 'medium',
+                    'summary': f'Ошибка при анализе: {str(e)[:200]}',
+                    'wb_docs': [], 'supplier_docs': [], 'customs_docs': [],
+                    'risks': [], 'total_cost': '—', 'total_cost_byn': '—', 'total_duration': '—',
+                }, ensure_ascii=False).encode('utf-8'))
 
         elif self.path == '/trends-finder':
             try:
@@ -8521,14 +8641,36 @@ def handle_docs_stream(handler, body):
 
     full_text = ''
     try:
-        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=4000, messages=[{'role':'user','content':prompt}]) as stream:
+        with client.messages.stream(model='claude-sonnet-4-5', max_tokens=8000, messages=[{'role':'user','content':prompt}]) as stream:
             for text in stream.text_stream:
                 full_text += text
                 chunk = json.dumps({'type':'progress','chars':len(full_text)}, ensure_ascii=False)
                 handler.wfile.write(('data: ' + chunk + '\n\n').encode('utf-8'))
                 handler.wfile.flush()
 
-        result = json.loads(full_text.strip().replace('```json','').replace('```','').strip())
+        raw = full_text.strip()
+        if '```' in raw:
+            raw = raw.split('```json')[-1].split('```')[0].strip()
+
+        try:
+            result = json.loads(raw)
+        except json.JSONDecodeError:
+            # Ответ мог быть обрезан — пробуем «достроить» JSON
+            try:
+                fixed = raw.rstrip().rstrip(',')
+                fixed += ']' * max(0, fixed.count('[') - fixed.count(']'))
+                fixed += '}' * max(0, fixed.count('{') - fixed.count('}'))
+                result = json.loads(fixed)
+            except Exception:
+                result = {
+                    'complexity': 'medium',
+                    'complexity_reason': 'Ответ AI был слишком большим',
+                    'summary': 'Анализ получен, но ответ был обрезан. Основная информация в raw_text.',
+                    'raw_text': raw[:4000],
+                    'wb_docs': [], 'supplier_docs': [], 'customs_docs': [],
+                    'risks': [], 'total_cost': '—', 'total_cost_byn': '—', 'total_duration': '—',
+                }
+
         event = json.dumps({'type':'done','data':result}, ensure_ascii=False)
         handler.wfile.write(('data: ' + event + '\n\n').encode('utf-8'))
         handler.wfile.write(b'data: [DONE]\n\n')
@@ -8537,8 +8679,15 @@ def handle_docs_stream(handler, body):
         import traceback
         print('DOCS STREAM ERROR:', traceback.format_exc())
         try:
-            ev = json.dumps({'type':'error','error':str(e)}, ensure_ascii=False)
+            fallback = {
+                'complexity': 'medium', 'complexity_reason': str(e)[:200],
+                'summary': f'Ошибка при анализе: {str(e)[:200]}',
+                'wb_docs': [], 'supplier_docs': [], 'customs_docs': [],
+                'risks': [], 'total_cost': '—', 'total_cost_byn': '—', 'total_duration': '—',
+            }
+            ev = json.dumps({'type':'done','data':fallback}, ensure_ascii=False)
             handler.wfile.write(('data: ' + ev + '\n\n').encode('utf-8'))
+            handler.wfile.write(b'data: [DONE]\n\n')
             handler.wfile.flush()
         except: pass
 

@@ -2567,6 +2567,13 @@ async function downloadReport(level) {
   const d = window.currentNiche || {};
   const sellers = d.sellers || 0;
   const compLevel = sellers > 200 ? 'saturated' : sellers > 50 ? 'high' : sellers > 10 ? 'medium' : 'low';
+  // Захватываем графики как PNG-изображения
+  const _charts = {};
+  ['revenueChart','salesChart','priceChart','trendChart','sellersChart','forecastChart'].forEach(function(id) {
+    var c = document.getElementById(id);
+    if (c && c.tagName === 'CANVAS') { try { _charts[id] = c.toDataURL('image/png'); } catch(e) {} }
+  });
+
   const body = {
     category: niche,
     niche_full: d.full || niche,
@@ -2580,6 +2587,7 @@ async function downloadReport(level) {
       sellers_with_sales: d.sellers_with_sales || 0,
       competition_level: compLevel,
       median_price: d.avg_price || 0,
+      avg_check: d.avg_price || 0,
       price_iqr: 0,
       top_20pct_revenue_share: 0,
       top_10_revenue_share: 0,
@@ -2589,6 +2597,7 @@ async function downloadReport(level) {
       turnover: d.turnover || 0,
       commission: d.commission || 0,
       lost_revenue_pct: d.lost_revenue_pct || 0,
+      lost_revenue: d.lost_revenue || 0,
       avg_rating: d.avg_rating || 0,
       // Скоринг
       score: d.score || 0,
@@ -2603,6 +2612,7 @@ async function downloadReport(level) {
     scrape_pages: 2,
     report_level: level,
     agents: window._agentResults || {},
+    charts: _charts,
   };
   try {
     const resp = await fetch(PDF_API_ENDPOINT + params, {
@@ -5439,6 +5449,8 @@ async function runUnitEconomy() {
             resultBlock.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует... ' + msg.chars + ' симв.</div>';
           } else if (msg.type === 'done') {
             renderUnitEconomy(msg.data, symbols[currentCurrency], rates[currentCurrency]);
+            window._agentResults = window._agentResults || {};
+            window._agentResults.unit = msg.data;
           } else if (msg.type === 'error') { throw new Error(msg.error); }
         } catch(pe) {}
       }
@@ -5592,6 +5604,8 @@ async function runWarehouseAnalysis() {
             container.innerHTML = '<div style="color:#64748b;font-size:12px;padding:8px;">⧗ Claude анализирует... ' + msg.chars + ' симв.</div>';
           } else if (msg.type === 'done') {
             renderWarehouseStrategy(msg.analysis, symbols[currentCurrency], rates[currentCurrency]);
+            window._agentResults = window._agentResults || {};
+            window._agentResults.supply = msg.analysis;
           } else if (msg.type === 'error') { throw new Error(msg.error); }
         } catch(pe) {}
       }

@@ -191,6 +191,8 @@ async def export_category_pdf(
             'turnover': float(pc.get('turnover', 0)),
             'commission': float(pc.get('commission', 0)),
             'lost_revenue_pct': float(pc.get('lost_revenue_pct', 0)),
+            'lost_revenue': float(pc.get('lost_revenue', 0)),
+            'avg_check': float(pc.get('avg_check', 0)),
             'avg_rating': float(pc.get('avg_rating', 0)),
             # AI-аналитика с текущей страницы
             'insights': list(pc.get('insights') or []),
@@ -281,6 +283,7 @@ async def export_category_pdf(
     analysis_text = niche_extra.get('analysis') or (ai_raw.analysis if ai_raw else '')
 
     agents_data = dict(payload.agents or {})
+    charts_data = dict(payload.charts or {})
 
     analysis_data = {
         'category': payload.category,
@@ -289,6 +292,7 @@ async def export_category_pdf(
         'verdict': decision.verdict.value,
         'summary': decision.summary,
         'agents': agents_data,
+        'charts': charts_data,
         'dimensions': [
             {
                 'name': d.name,
@@ -315,6 +319,8 @@ async def export_category_pdf(
             'turnover': niche_extra.get('turnover', 0),
             'commission': niche_extra.get('commission', 0),
             'lost_revenue_pct': niche_extra.get('lost_revenue_pct', 0),
+            'lost_revenue': niche_extra.get('lost_revenue', 0),
+            'avg_check': niche_extra.get('avg_check', metrics.median_price),
             'avg_rating': niche_extra.get('avg_rating', 0),
         },
         'products': [

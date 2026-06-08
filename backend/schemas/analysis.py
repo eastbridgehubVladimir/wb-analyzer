@@ -26,7 +26,11 @@ class CategoryAnalysisRequest(BaseModel):
     )
     agents: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="Результаты агентов из браузера (supplier, ad, docs, content_raw)"
+        description="Результаты агентов из браузера (supplier, ad, docs, content_raw, unit, supply)"
+    )
+    charts: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="Графики из браузера в формате base64 PNG (revenueChart, salesChart, ...)"
     )
 
 

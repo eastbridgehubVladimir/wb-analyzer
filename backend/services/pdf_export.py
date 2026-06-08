@@ -388,9 +388,15 @@ class PDFReportGenerator:
             ]
             if commission:
                 rows.append(['Комиссия WB', comm_str, ''])
+            avg_check = float(m.get('avg_check', 0))
+            lost_rev  = float(m.get('lost_revenue', 0))
+            if avg_check:
+                rows.append(['Средний чек', _rub(avg_check), ''])
             if lp:
-                rows.append(['Упущенная выручка', _pct(lp),
+                rows.append(['Упущенная выручка (%)', _pct(lp),
                              'высокий потенциал' if lp>0.3 else ('умеренный' if lp>0.1 else 'низкий')])
+            if lost_rev:
+                rows.append(['Упущенная выручка (₽)', _rub(lost_rev), ''])
             if ar:
                 rows.append(['Средний рейтинг', f"{ar:.1f} ★", ''])
 
@@ -624,7 +630,162 @@ class PDFReportGenerator:
         els.append(self._sp(0.15))
         return els
 
+    # ── графики из браузера ───────────────────────────────────────────────────
+
+    def _sec_browser_charts(self, charts: dict) -> list:
+        """Вставляет PNG-скриншоты графиков захваченных из браузера."""
+        import base64
+        if not charts:
+            return []
+
+        chart_meta = [
+            ('revenueChart',  'Динамика выручки топ-100 товаров'),
+            ('salesChart',    'Динамика заказов'),
+            ('priceChart',    'Распределение цен'),
+            ('trendChart',    'Тренд в нише'),
+            ('sellersChart',  'Доля продавцов (топ)'),
+            ('forecastChart', 'Прогноз выручки — 3 месяца'),
+        ]
+
+        W = 6.4 * inch
+
+        els = [PageBreak(), self._h2("Графики"), self._hr()]
+        found = False
+        for key, label in chart_meta:
+            b64 = charts.get(key, '')
+            if not b64 or ',' not in b64:
+                continue
+            try:
+                img_bytes = base64.b64decode(b64.split(',')[1])
+                buf = BytesIO(img_bytes)
+                # Определяем пропорции: sellersChart — квадратная pie-диаграмма
+                h = 2.8 * inch if key == 'sellersChart' else 3.2 * inch
+                img = Image(buf, width=W, height=h)
+                els.append(self._h3(label))
+                els.append(img)
+                els.append(self._sp(0.2))
+                found = True
+            except Exception:
+                continue
+
+        return els if found else []
+
     # ── агентские секции ──────────────────────────────────────────────────────
+
+    def _sec_unit_economy(self, ag: dict) -> list:
+        """Юнит-экономика: 3 сценария + рекомендация Claude."""
+        u = ag.get('unit') or {}
+        if not u:
+            return []
+
+        els = [PageBreak(), self._h2("Юнит-экономика"), self._hr()]
+
+        rec = u.get('recommendation') or {}
+        if rec.get('title'):
+            els.append(self._h3(str(rec['title'])))
+        if rec.get('detail'):
+            els.append(self._body(str(rec['detail'])))
+            els.append(self._sp(0.1))
+
+        scenarios = u.get('scenarios') or {}
+        sc_labels = {'s1': 'Сценарий 1 (мин.)', 's2': 'Сценарий 2 (опт.)', 's3': 'Сценарий 3 (макс.)'}
+        verdict_map = {'profit': 'Прибыльно', 'marginal': 'На грани', 'loss': 'Убыток'}
+        rows = [['Показатель', 'Сц. 1', 'Сц. 2', 'Сц. 3']]
+        keys_order = [
+            ('total_cost_rub',       'Себест. + логистика, ₽'),
+            ('wb_commission_rub',    'Комиссия WB, ₽'),
+            ('wb_logistics_rub',     'Логистика WB, ₽'),
+            ('profit_per_unit_rub',  'Прибыль/ед, ₽'),
+            ('roi_pct',              'ROI, %'),
+            ('margin_pct',           'Маржа, %'),
+        ]
+        for field, label in keys_order:
+            row = [label]
+            for sk in ('s1', 's2', 's3'):
+                s = scenarios.get(sk) or {}
+                val = s.get(field, '')
+                if val == '' or val is None:
+                    row.append('—')
+                elif field.endswith('_pct'):
+                    row.append(f"{val}%")
+                else:
+                    row.append(f"{int(float(val)):,}".replace(',', ' '))
+            rows.append(row)
+
+        # Вердикт строка
+        verdict_row = ['Вердикт']
+        for sk in ('s1', 's2', 's3'):
+            s = scenarios.get(sk) or {}
+            verdict_row.append(verdict_map.get(s.get('verdict', ''), '—'))
+        rows.append(verdict_row)
+
+        t = Table(rows, colWidths=[2.4*inch, 1.3*inch, 1.3*inch, 1.3*inch])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), C_DARK),
+            ('TEXTCOLOR',  (0,0), (-1,0), colors.white),
+            ('FONTNAME',   (0,0), (-1,0), FB),
+            ('FONTSIZE',   (0,0), (-1,-1), 8),
+            ('FONTNAME',   (0,1), (-1,-1), FN),
+            ('GRID',       (0,0), (-1,-1), 0.4, C_BORDER),
+            ('ROWBACKGROUNDS', (0,1), (-1,-1), [C_WHITE, C_LIGHT]),
+            ('TOPPADDING', (0,0), (-1,-1), 5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ]))
+        els.append(t)
+        els.append(self._sp(0.1))
+        return els
+
+    def _sec_supply_strategy(self, ag: dict) -> list:
+        """Стратегия поставок: модель FBS/FBO, рекомендации по складам, объём."""
+        r = ag.get('supply') or {}
+        if not r:
+            return []
+
+        els = [PageBreak(), self._h2("Стратегия поставок"), self._hr()]
+
+        model = str(r.get('model', ''))
+        detail = str(r.get('model_detail', ''))
+        if model:
+            els.append(self._h3(f"Рекомендуемая модель: {model}"))
+        if detail:
+            els.append(self._body(detail))
+            els.append(self._sp(0.1))
+
+        tips = list(r.get('warehouse_tips') or [])
+        if tips:
+            els.append(self._h3("Рекомендации по складам:"))
+            for tip in tips:
+                els.append(self._bullet(str(tip)))
+            els.append(self._sp(0.1))
+
+        stock = r.get('stock') or {}
+        if stock:
+            els.append(self._h3("Объём первой поставки:"))
+            rows = [['', 'Минимум', 'Оптимум', 'Максимум'],
+                    ['Единиц', str(stock.get('min_units','—')), str(stock.get('opt_units','—')), str(stock.get('max_units','—'))],
+                    ['Сумма, ₽', _rub(stock.get('min_rub',0)), _rub(stock.get('opt_rub',0)), _rub(stock.get('max_rub',0))]]
+            t = Table(rows, colWidths=[1.6*inch, 1.6*inch, 1.6*inch, 1.6*inch])
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), C_DARK),
+                ('TEXTCOLOR',  (0,0), (-1,0), colors.white),
+                ('FONTNAME',   (0,0), (-1,0), FB),
+                ('FONTSIZE',   (0,0), (-1,-1), 9),
+                ('FONTNAME',   (0,1), (-1,-1), FN),
+                ('GRID',       (0,0), (-1,-1), 0.4, C_BORDER),
+                ('ROWBACKGROUNDS', (0,1), (-1,-1), [C_WHITE, C_LIGHT]),
+                ('TOPPADDING', (0,0), (-1,-1), 6),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+            ]))
+            els.append(t)
+            els.append(self._sp(0.1))
+
+        extra_tips = list(r.get('reorder_tips') or [])
+        if extra_tips:
+            els.append(self._h3("Пополнение запасов:"))
+            for tip in extra_tips:
+                els.append(self._bullet(str(tip)))
+
+        return els
 
     def _sec_supplier(self, ag: dict) -> list:
         s = ag.get('supplier') or {}
@@ -880,7 +1041,8 @@ class PDFReportGenerator:
         score   = data.get('score', 0)
         cat     = data.get('category', '')
 
-        ag = data.get('agents', {}) or {}
+        ag     = data.get('agents', {}) or {}
+        charts = data.get('charts', {}) or {}
 
         els = []
         els += self._sec_header(data, level)
@@ -889,6 +1051,13 @@ class PDFReportGenerator:
         if level in ('standard', 'deep'):
             els += self._sec_market_analysis(m, cat)
             els += self._sec_competition(m)
+
+        # Графики из браузера (все уровни, если есть)
+        els += self._sec_browser_charts(charts)
+
+        # Топ товары
+        els += self._sec_charts(data, level)
+        els += self._sec_products(data, level)
 
         els += self._sec_ai_insights(ai, level)
 
@@ -899,14 +1068,14 @@ class PDFReportGenerator:
             els += self._sec_risks(m, verdict)
             els += self._sec_strategy(m, verdict, cat)
             els += self._sec_dimensions(data)
-            # Секции агентов
-            els += self._sec_supplier(ag)
+            # AI-агенты в правильном порядке
+            els += self._sec_unit_economy(ag)
             els += self._sec_advertising(ag)
-            els += self._sec_content_card(ag)
+            els += self._sec_supplier(ag)
             els += self._sec_documents(ag)
+            els += self._sec_supply_strategy(ag)
+            els += self._sec_content_card(ag)
 
-        els += self._sec_charts(data, level)
-        els += self._sec_products(data, level)
         els += self._sec_cta(level)
 
         doc.build(els)

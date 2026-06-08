@@ -2550,81 +2550,55 @@ function hideSuggestions() {
   if (box) box.style.display = 'none';
 }
 
-const PDF_API_ENDPOINT = '/pdf-export';
-const PDF_EXPORT_STUB = false;
-
 async function downloadReport(level) {
-  const niche = (window.currentNiche && window.currentNiche.name) ? window.currentNiche.name : document.getElementById('query').value.trim();
-  if (!niche) {
+  const nicheName = (window.currentNiche && window.currentNiche.name)
+    ? window.currentNiche.name
+    : document.getElementById('query').value.trim();
+  if (!nicheName) {
     const errEl = document.getElementById('error');
-    if (errEl) {
-      errEl.style.display = 'block';
-      errEl.textContent = 'Введите нишу перед загрузкой отчёта.';
-    }
+    if (errEl) { errEl.style.display = 'block'; errEl.textContent = 'Введите нишу перед загрузкой отчёта.'; }
     return;
   }
-  const params = PDF_EXPORT_STUB ? '?stub=true' : '';
-  const d = window.currentNiche || {};
-  const sellers = d.sellers || 0;
-  const compLevel = sellers > 200 ? 'saturated' : sellers > 50 ? 'high' : sellers > 10 ? 'medium' : 'low';
-  // Захватываем графики как PNG-изображения
-  const _charts = {};
-  ['revenueChart','salesChart','priceChart','trendChart','sellersChart','forecastChart'].forEach(function(id) {
-    var c = document.getElementById(id);
-    if (c && c.tagName === 'CANVAS') { try { _charts[id] = c.toDataURL('image/png'); } catch(e) {} }
-  });
 
-  const body = {
-    category: niche,
-    niche_full: d.full || niche,
-    pre_computed: {
-      // Метрики ниши
-      monthly_revenue_estimate: Math.round((d.revenue_annual || (d.revenue || 0) / 2) / 12),
-      annual_revenue: Math.round(d.revenue_annual || (d.revenue || 0) / 2),
-      avg_orders_per_day: Math.round((d.orders || 0) / 30 * 10) / 10,
-      orders_per_month: d.orders || 0,
-      active_sellers: sellers,
-      sellers_with_sales: d.sellers_with_sales || 0,
-      competition_level: compLevel,
-      median_price: d.avg_price || 0,
-      avg_check: d.avg_price || 0,
-      price_iqr: 0,
-      top_20pct_revenue_share: 0,
-      top_10_revenue_share: 0,
-      // Качество ниши
-      buyout_pct: d.buyout_pct || 0,
-      profit_pct: d.profit_pct || 0,
-      turnover: d.turnover || 0,
-      commission: d.commission || 0,
-      lost_revenue_pct: d.lost_revenue_pct || 0,
-      lost_revenue: d.lost_revenue || 0,
-      avg_rating: d.avg_rating || 0,
-      // Скоринг
-      score: d.score || 0,
-      verdict: d.verdict || 'TEST',
-      summary: d.name || niche,
-      // AI-аналитика (уже есть на странице!)
-      insights: d.insights || [],
-      hypotheses: d.hypotheses || [],
-      analysis: d.analysis || '',
-    },
-    max_products: 20,
-    scrape_pages: 2,
-    report_level: level,
-    agents: window._agentResults || {},
-    charts: _charts,
-  };
+  // Показываем прогресс
+  const levelLabels = {basic: 'Basic (~30 сек)', standard: 'Standard (~1 мин)', deep: 'Deep (~2 мин)'};
+  const errEl = document.getElementById('error');
+  if (errEl) { errEl.style.display = 'block'; errEl.style.color = '#38bdf8';
+    errEl.textContent = `Генерируем PDF ${levelLabels[level] || level}… Пожалуйста, подождите.`; }
+
+  const niche = window.currentNiche || {};
+
   try {
-    const resp = await fetch(PDF_API_ENDPOINT + params, {
+    const resp = await fetch('/pdf-auto', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        level: level,
+        niche: {
+          name: niche.name || nicheName,
+          display_name: niche.display_name || niche.name || nicheName,
+          revenue: niche.revenue || 0,
+          revenue_annual: niche.revenue_annual || 0,
+          orders: niche.orders || 0,
+          sellers: niche.sellers || 0,
+          sellers_with_sales: niche.sellers_with_sales || 0,
+          avg_price: niche.avg_price || 0,
+          buyout_pct: niche.buyout_pct || 0,
+          profit_pct: niche.profit_pct || 0,
+          turnover: niche.turnover || 0,
+          commission: niche.commission || 0,
+          lost_revenue: niche.lost_revenue || 0,
+          lost_revenue_pct: niche.lost_revenue_pct || 0,
+          avg_rating: niche.avg_rating || 0,
+        }
+      }),
     });
     if (!resp.ok) {
-      throw new Error('Сервер вернул ' + resp.status);
+      const txt = await resp.text();
+      throw new Error('Сервер вернул ' + resp.status + ': ' + txt.slice(0, 200));
     }
     const blob = await resp.blob();
-    const filename = `WB-Analysis-${niche.replace(/[\\/]/g, '-')}-${level}.pdf`;
+    const filename = `WB-Analysis-${nicheName.replace(/[\\/]/g, '-')}-${level}.pdf`;
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -2633,12 +2607,10 @@ async function downloadReport(level) {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+    if (errEl) { errEl.style.display = 'none'; errEl.style.color = ''; }
   } catch (e) {
-    const errEl = document.getElementById('error');
-    if (errEl) {
-      errEl.style.display = 'block';
-      errEl.textContent = 'Не удалось скачать PDF: ' + e.message;
-    }
+    if (errEl) { errEl.style.display = 'block'; errEl.style.color = '#ef4444';
+      errEl.textContent = 'Не удалось скачать PDF: ' + e.message; }
   }
 }
 
@@ -8609,8 +8581,62 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 self.end_headers()
                 self.wfile.write(json.dumps({'error':str(e)}).encode('utf-8'))
 
+        elif self.path.startswith('/pdf-auto'):
+            # Автоматическая генерация PDF: запускаем агентов server-side, возвращаем PDF
+            try:
+                import traceback as _tb
+                length = int(self.headers.get('Content-Length', 0))
+                body_bytes = self.rfile.read(length)
+                payload = json.loads(body_bytes)
+                level = str(payload.get('level', 'basic')).lower()
+                niche = dict(payload.get('niche') or {})
+                niche_name = niche.get('name', '')
+
+                # Получаем товары из MPStats для графиков (не критично)
+                items_raw = []
+                try:
+                    from datetime import date, timedelta
+                    conn = psycopg2.connect(DB)
+                    cur = conn.cursor()
+                    cur.execute(
+                        "SELECT mpstats_path FROM niches WHERE name ILIKE %s AND mpstats_path IS NOT NULL LIMIT 1",
+                        (f'%{niche_name}%',)
+                    )
+                    row = cur.fetchone()
+                    conn.close()
+                    mpstats_path = row[0] if row else niche_name
+                    d2 = date.today().isoformat()
+                    d1 = (date.today() - timedelta(days=60)).isoformat()
+                    mp_data = get_mpstats_cached(mpstats_path, d1, d2)
+                    items_raw = mp_data.get('data', [])[:100]
+                    print(f'[PDF-AUTO] MPStats items: {len(items_raw)}')
+                except Exception as mp_err:
+                    print(f'[PDF-AUTO] MPStats skip: {mp_err}')
+
+                # Импортируем pdf_auto и генерируем PDF
+                import importlib, sys as _sys
+                if 'pdf_auto' in _sys.modules:
+                    importlib.reload(_sys.modules['pdf_auto'])
+                import pdf_auto
+                pdf_bytes = pdf_auto.generate(level, niche, items_raw)
+
+                niche_slug = niche_name.replace('/', '-').replace(' ', '_')[:40]
+                filename = f'WBAnalyzer-{niche_slug}-{level}.pdf'
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/pdf')
+                self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+                self.send_header('Content-Length', str(len(pdf_bytes)))
+                self.end_headers()
+                self.wfile.write(pdf_bytes)
+            except Exception as e:
+                _tb.print_exc()
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+
         elif self.path.startswith('/pdf-export'):
-            # Прокси к FastAPI backend (127.0.0.1:8002) — работает server-side
+            # Прокси к FastAPI backend (оставлен для совместимости)
             try:
                 import urllib.request as _ureq
                 length = int(self.headers.get('Content-Length', 0))

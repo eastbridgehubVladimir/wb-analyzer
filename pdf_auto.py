@@ -12,10 +12,28 @@ pdf_auto.py — Автогенерация PDF-отчётов WBAnalyzer.
   standard — всё из basic + юнит-экономика + реклама + топ-20
   deep     — всё из standard + поставщики + склад + контент + документы + глубокий анализ
 """
-import os, sys, json, re, io, time
+import os, sys, json, re, io, time, subprocess
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_ROOT, 'backend'))
+
+# ── Авто-установка зависимостей ────────────────────────────────────────────────
+def _ensure_deps():
+    pkgs = []
+    try:
+        import reportlab  # noqa
+    except ImportError:
+        pkgs.append('reportlab==4.2.5')
+    try:
+        import matplotlib  # noqa
+    except ImportError:
+        pkgs.append('matplotlib==3.9.4')
+    if pkgs:
+        print(f'[pdf_auto] Installing: {pkgs}')
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q'] + pkgs)
+        print('[pdf_auto] Install done')
+
+_ensure_deps()
 
 # ── ReportLab ──────────────────────────────────────────────────────────────────
 from reportlab.lib.pagesizes import A4

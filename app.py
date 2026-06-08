@@ -8614,9 +8614,6 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                     print(f'[PDF-AUTO] MPStats skip: {mp_err}')
 
                 # Импортируем pdf_auto и генерируем PDF
-                import importlib, sys as _sys
-                if 'pdf_auto' in _sys.modules:
-                    importlib.reload(_sys.modules['pdf_auto'])
                 import pdf_auto
                 pdf_bytes = pdf_auto.generate(level, niche, items_raw)
 

@@ -31,6 +31,8 @@ def _ensure_deps():
     if pkgs:
         print(f'[pdf_auto] Installing: {pkgs}')
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q'] + pkgs)
+        import importlib as _il
+        _il.invalidate_caches()
         print('[pdf_auto] Install done')
 
 _ensure_deps()
@@ -580,7 +582,6 @@ def _sec_cover(niche: dict, level: str) -> list:
         ('BOTTOMPADDING', (0,0), (-1,-1), 6),
         ('LEFTPADDING', (0,0), (-1,-1), 10),
         ('RIGHTPADDING', (0,0), (-1,-1), 10),
-        ('ROUNDEDCORNERS', [6], (0,0), (-1,-1)),
     ]))
     from reportlab.platypus import HRFlowable
     els.append(Table([[badge]], colWidths=[COL_W]))

@@ -2550,7 +2550,7 @@ function hideSuggestions() {
   if (box) box.style.display = 'none';
 }
 
-const PDF_API_ENDPOINT = window.PDF_API_ENDPOINT || 'http://127.0.0.1:8002/api/v1/analysis/category/export-pdf';
+const PDF_API_ENDPOINT = '/pdf-export';
 const PDF_EXPORT_STUB = false;
 
 async function downloadReport(level) {
@@ -8608,6 +8608,39 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 self.send_header('Content-type','application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'error':str(e)}).encode('utf-8'))
+
+        elif self.path.startswith('/pdf-export'):
+            # Прокси к FastAPI backend (127.0.0.1:8002) — работает server-side
+            try:
+                import urllib.request as _ureq
+                length = int(self.headers.get('Content-Length', 0))
+                body_bytes = self.rfile.read(length)
+                backend_url = 'http://127.0.0.1:8002/api/v1/analysis/category/export-pdf'
+                qs = self.path[len('/pdf-export'):]
+                if qs:
+                    backend_url += qs
+                req = _ureq.Request(
+                    backend_url,
+                    data=body_bytes,
+                    headers={'Content-Type': 'application/json'},
+                    method='POST',
+                )
+                with _ureq.urlopen(req, timeout=120) as resp:
+                    pdf_bytes = resp.read()
+                    ct = resp.headers.get('Content-Type', 'application/pdf')
+                    cd = resp.headers.get('Content-Disposition', 'attachment; filename="report.pdf"')
+                self.send_response(200)
+                self.send_header('Content-Type', ct)
+                self.send_header('Content-Disposition', cd)
+                self.send_header('Content-Length', str(len(pdf_bytes)))
+                self.end_headers()
+                self.wfile.write(pdf_bytes)
+            except Exception as e:
+                import traceback; traceback.print_exc()
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
 
         else:
             self.send_response(404)

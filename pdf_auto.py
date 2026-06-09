@@ -658,7 +658,8 @@ def _sec_cover(niche: dict, level: str) -> list:
 
 def _sec_metrics(niche: dict) -> list:
     n = niche
-    revenue    = float(n.get('revenue', 0))
+    # revenue_annual = revenue/2 (DB stores ~2yr total); fallback to revenue/2 if not set
+    revenue    = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
     orders     = int(n.get('orders', 0))
     sellers    = int(n.get('sellers', 0))
     sws        = int(n.get('sellers_with_sales', 0))
@@ -684,7 +685,7 @@ def _sec_metrics(niche: dict) -> list:
     # Ряд 1: Выручка, Заказы, Продавцы
     orders_sub = f'≈ {orders_per_day} в день' if orders_per_day else ''
     row1 = [
-        _card('ВЫРУЧКА НИШИ', _rub(revenue), 'по данным MPStats', C_NAVY),
+        _card('ВЫРУЧКА НИШИ', _rub(revenue), 'за 12 месяцев', C_NAVY),
         _card('ЗАКАЗОВ / МЕС', _num(orders), orders_sub, C_BLUE2),
         _card('ПРОДАВЦОВ', f'{sellers} / {sws} акт.', f'{act_pct}% с продажами', C_GREEN),
     ]
@@ -1441,7 +1442,7 @@ def _sec_browser_charts(charts: dict, level: str, niche: dict = None) -> list:
     if not charts:
         return []
     n = niche or {}
-    revenue   = float(n.get('revenue', 0))
+    revenue   = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
     avg_price = float(n.get('avg_price', 0))
     sellers   = int(n.get('sellers', 0))
     sws       = int(n.get('sellers_with_sales', 0))
@@ -1452,7 +1453,7 @@ def _sec_browser_charts(charts: dict, level: str, niche: dict = None) -> list:
         'revenueChart': {
             'label': 'Динамика выручки',
             'desc': (f'Изменение месячной выручки ниши за последние 12 месяцев. '
-                     f'Среднемесячный объём рынка — {_rub(revenue)}. '
+                     f'Годовой объём рынка — {_rub(revenue)}. '
                      'Растущие столбцы указывают на расширение ниши.'),
         },
         'salesChart': {

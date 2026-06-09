@@ -8,8 +8,9 @@ except ImportError:
 
 # Временное хранилище PDF-сессий и готовых PDF-файлов
 import uuid as _uuid
+import re
 _pdf_sessions = {}   # {session_id: {level, niche, charts}}
-_pdf_results  = {}   # {key: bytes}
+_pdf_results  = {}   # {key: {'pdf': bytes, 'filename': str}}
 import json
 import asyncio
 import subprocess, sys
@@ -2606,26 +2607,30 @@ async function downloadReport(level) {
   };
 
   // Захватываем графики из браузера (canvas → JPEG, высокое разрешение для PDF)
+  // Форс-ресайз чтобы Chart.js обновил размеры если канвас ранее был скрыт/нулевой
+  try {
+    [revenueChartInstance, salesChartInstance, window.priceChartInstance,
+     window.trendChartInstance, window.sellersChartInstance, window.forecastChartInstance
+    ].forEach(function(inst){ try { if (inst) inst.resize(); } catch(e){} });
+  } catch(e) {}
   const charts = {};
   ['revenueChart','salesChart','priceChart','trendChart','sellersChart','forecastChart'].forEach(function(id) {
     try {
       var c = document.getElementById(id);
       if (!c || c.tagName !== 'CANVAS') return;
-      // Сохраняем оригинальное разрешение canvas (Chart.js с devicePixelRatio даёт 2x)
-      // Ограничиваем только сверху чтобы не раздувать размер запроса
-      // Проверяем что canvas реально отрисован (не пустой)
-      if (c.width < 10 || c.height < 10) return;
-      // Тёмный фон уже встроен в canvas через плагин chartDarkBg.
-      // Создаём копию с ограниченным разрешением для PDF.
+      // Не проверяем c.width/c.height — если Chart.js не успел отрисовать,
+      // размеры могут быть 0, но после resize() должны стать корректными.
+      // Пустые канвасы отфильтруются по длине dataUrl.
+      var w = c.width  || c.offsetWidth  || 800;
+      var h = c.height || c.offsetHeight || 300;
       var tc = document.createElement('canvas');
-      tc.width  = Math.min(c.width,  1400);
-      tc.height = Math.min(c.height, 800);
+      tc.width  = Math.min(w, 1400);
+      tc.height = Math.min(h, 800);
       var tctx = tc.getContext('2d');
-      tctx.fillStyle = '#1e293b';          // запасной фон если плагин не сработал
+      tctx.fillStyle = '#1e293b';
       tctx.fillRect(0, 0, tc.width, tc.height);
-      tctx.drawImage(c, 0, 0, tc.width, tc.height);
+      if (c.width > 0 && c.height > 0) tctx.drawImage(c, 0, 0, tc.width, tc.height);
       var dataUrl = tc.toDataURL('image/jpeg', 0.88);
-      // Минимальный размер реального графика — пустой canvas даст < 3 кБ
       if (dataUrl && dataUrl.length > 4000) charts[id] = dataUrl;
     } catch(e) {}
   });
@@ -5997,7 +6002,8 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 pdf_bytes = pdf_auto.render(level, niche, agents, content_text, [], charts)
                 key = _uuid.uuid4().hex
-                _pdf_results[key] = pdf_bytes
+                _niche_safe = re.sub(r'[\\\/:"*?<>|]', '', niche.get('name', 'report')).strip() or 'report'
+                _pdf_results[key] = {'pdf': pdf_bytes, 'filename': f'WBAnalyzer {_niche_safe} {level}.pdf'}
                 _sse({'type': 'done', 'key': key})
             except Exception as _pe:
                 import traceback; traceback.print_exc()
@@ -6006,11 +6012,18 @@ class Handler(BaseHTTPRequestHandler):
 
         if self.path.startswith('/pdf-download/'):
             key = self.path[len('/pdf-download/'):]
-            pdf_bytes = _pdf_results.pop(key, None)
-            if pdf_bytes:
+            result = _pdf_results.pop(key, None)
+            if result:
+                pdf_bytes = result['pdf'] if isinstance(result, dict) else result
+                raw_name  = result.get('filename', 'WBAnalyzer-report.pdf') if isinstance(result, dict) else 'WBAnalyzer-report.pdf'
+                # RFC 5987: filename* для UTF-8 имён (поддерживается всеми браузерами)
+                import urllib.parse as _up
+                enc_name  = _up.quote(raw_name, safe=' .-_')
+                ascii_name = raw_name.encode('ascii', 'replace').decode('ascii')
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/pdf')
-                self.send_header('Content-Disposition', 'attachment; filename="WBAnalyzer-report.pdf"')
+                self.send_header('Content-Disposition',
+                    f'attachment; filename="{ascii_name}"; filename*=UTF-8\'\'{enc_name}')
                 self.send_header('Content-Length', str(len(pdf_bytes)))
                 self.end_headers()
                 self.wfile.write(pdf_bytes)

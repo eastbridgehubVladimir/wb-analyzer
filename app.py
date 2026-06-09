@@ -2599,15 +2599,19 @@ async function downloadReport(level) {
       if (!c || c.tagName !== 'CANVAS') return;
       // Сохраняем оригинальное разрешение canvas (Chart.js с devicePixelRatio даёт 2x)
       // Ограничиваем только сверху чтобы не раздувать размер запроса
+      // Проверяем что canvas реально отрисован (не пустой)
+      if (c.width < 10 || c.height < 10) return;
       var tc = document.createElement('canvas');
-      tc.width  = Math.min(c.width,  1200);
-      tc.height = Math.min(c.height, 700);
+      tc.width  = Math.min(c.width,  1400);
+      tc.height = Math.min(c.height, 800);
       var tctx = tc.getContext('2d');
-      tctx.fillStyle = '#ffffff';
+      // Тёмный фон — под цвет chart.js dark theme
+      tctx.fillStyle = '#1e293b';
       tctx.fillRect(0, 0, tc.width, tc.height);
       tctx.drawImage(c, 0, 0, tc.width, tc.height);
-      var dataUrl = tc.toDataURL('image/jpeg', 0.85);
-      if (dataUrl && dataUrl.length > 200) charts[id] = dataUrl;
+      var dataUrl = tc.toDataURL('image/jpeg', 0.88);
+      // Минимальный размер реального графика — пустой canvas даст < 3 кБ
+      if (dataUrl && dataUrl.length > 4000) charts[id] = dataUrl;
     } catch(e) {}
   });
 

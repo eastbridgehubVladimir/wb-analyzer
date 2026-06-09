@@ -1054,7 +1054,7 @@ def _sec_master(r: dict) -> list:
                 prob_cell = _p(prob_str.capitalize(), size=8, bold=True,
                                color=_prob_colors.get(prob_str, C_GRAY), align=TA_CENTER)
                 rows.append([str(risk.get('risk', '')), prob_cell, str(risk.get('mitigation', ''))])
-            els.append(_tbl(rows, col_widths=[2.5*inch, 1.1*inch, 3.0*inch]))
+            els.append(_tbl(rows, col_widths=[2.6*inch, 1.1*inch, COL_W - 3.7*inch]))
 
     # Финансовая модель — только в Standard и Deep
     if level != 'basic':
@@ -1068,7 +1068,7 @@ def _sec_master(r: dict) -> list:
             v = fm_merged.get(k)
             if v is not None:
                 rows.append([lbl, _rub(v) if 'cost' in k or 'budget' in k else str(v)])
-        els.append(_tbl(rows, col_widths=[3.5*inch, 3.1*inch]))
+        els.append(_tbl(rows, col_widths=[COL_W * 0.52, COL_W * 0.48]))
 
     if level != 'basic':
         sp = r.get('seasonal_plan') or {}
@@ -1172,7 +1172,7 @@ def _sec_unit(r: dict) -> list:
         verdict_row.append(vmap.get(s.get('verdict',''), '—'))
     rows.append(verdict_row)
 
-    els.append(_tbl(rows, col_widths=[2.4*inch, 1.3*inch, 1.3*inch, 1.3*inch]))
+    els.append(_tbl(rows, col_widths=[COL_W - 3.9*inch, 1.3*inch, 1.3*inch, 1.3*inch]))
     els.append(_sp(0.1))
     return els
 
@@ -1216,7 +1216,7 @@ def _sec_ads(r: dict) -> list:
                 rows.append([label, _rub(budget[phase]), ''])
         if budget.get('comment'):
             rows.append(['', '', str(budget['comment'])])
-        els.append(_tbl(rows, col_widths=[1.5*inch, 1.5*inch, 3.6*inch]))
+        els.append(_tbl(rows, col_widths=[1.5*inch, 1.5*inch, COL_W - 3.0*inch]))
 
     cpm = r.get('cpm_forecast') or {}
     if cpm:
@@ -1224,7 +1224,7 @@ def _sec_ads(r: dict) -> list:
         rows = [['Старт', 'Мес. 2', 'Комментарий']]
         rows.append([_rub(cpm.get('start_rub',0)), _rub(cpm.get('month2_rub',0)),
                      str(cpm.get('comment',''))])
-        els.append(_tbl(rows, col_widths=[1.5*inch, 1.5*inch, 3.6*inch]))
+        els.append(_tbl(rows, col_widths=[1.5*inch, 1.5*inch, COL_W - 3.0*inch]))
 
     _KPI_EXPAND = {
         'CTR':    'CTR (кликабельность, %)',
@@ -1271,7 +1271,7 @@ def _sec_supplier(r: dict) -> list:
                 _rub(r.get('profit_per_unit_rub', 0)),
             ])
     if len(rows) > 1:
-        els.append(_tbl(rows, col_widths=[1.8*inch, 1.0*inch, 0.9*inch, 0.8*inch, 0.8*inch, 1.3*inch]))
+        els.append(_tbl(rows, col_widths=[1.8*inch, 1.0*inch, 0.9*inch, 0.8*inch, 0.8*inch, COL_W - 5.3*inch]))
 
     summary = str(r.get('summary', ''))
     if summary:
@@ -1299,7 +1299,7 @@ def _sec_supplier(r: dict) -> list:
             else:
                 link_cell = Paragraph(url or '—', _desc_s)
             link_rows.append([platform, desc, link_cell])
-        els.append(_tbl(link_rows, col_widths=[1.1*inch, 2.0*inch, 3.5*inch]))
+        els.append(_tbl(link_rows, col_widths=[1.1*inch, 2.0*inch, COL_W - 3.1*inch]))
 
     els.append(_sp(0.1))
     return els
@@ -1328,7 +1328,7 @@ def _sec_docs(r: dict) -> list:
                 f"{doc.get('duration_days', 0)} дн.",
                 'Да' if doc.get('required') else 'Нет',
             ])
-        els.append(_tbl(rows, col_widths=[3.0*inch, 1.2*inch, 0.8*inch, 0.8*inch + 0.8*inch]))
+        els.append(_tbl(rows, col_widths=[COL_W - 3.6*inch, 1.2*inch, 0.8*inch, 1.6*inch]))
         for doc in wb_docs:
             desc = str(doc.get('description', ''))
             if desc:
@@ -1351,7 +1351,7 @@ def _sec_docs(r: dict) -> list:
     if total_cost or total_days:
         rows = [['Итого затраты', 'Итого срок']]
         rows.append([_rub(total_cost), f'{total_days} дней'])
-        els.append(_tbl(rows, col_widths=[3.25*inch, 3.35*inch]))
+        els.append(_tbl(rows, col_widths=[COL_W * 0.5, COL_W * 0.5]))
 
     els.append(_sp(0.1))
     return els
@@ -1393,7 +1393,7 @@ def _sec_warehouse(r: dict) -> list:
         rows = [['', 'Минимум', 'Оптимум', 'Максимум']]
         rows.append(['Единиц', str(stock.get('min_units','—')), str(stock.get('opt_units','—')), str(stock.get('max_units','—'))])
         rows.append(['Сумма', _rub(stock.get('min_rub',0)), _rub(stock.get('opt_rub',0)), _rub(stock.get('max_rub',0))])
-        els.append(_tbl(rows, col_widths=[1.5*inch, 1.7*inch, 1.7*inch, 1.7*inch]))
+        els.append(_tbl(rows, col_widths=[1.5*inch, 1.7*inch, 1.7*inch, COL_W - 4.9*inch]))
         if stock.get('comment'):
             els.append(_body(str(stock['comment'])))
 
@@ -2227,8 +2227,13 @@ def _sec_browser_charts(charts: dict, level: str, niche: dict = None) -> list:
         try:
             _header, b64 = data_url.split(',', 1)
             img_bytes = __import__('base64').b64decode(b64)
+            # Пустой или испорченный canvas — пропускаем (< 3 КБ = пустое изображение)
+            if len(img_bytes) < 3000:
+                print(f'[PDF] chart {chart_id} too small ({len(img_bytes)}b), skipping')
+                continue
             img_buf = io.BytesIO(img_bytes)
-            img = Image(img_buf, width=COL_W, height=2.4*inch)
+            img_buf.seek(0)
+            img = Image(img_buf, width=COL_W, height=2.5*inch)
             img.hAlign = 'CENTER'
             els.append(_p(meta['label'], size=10, bold=True, color=C_NAVY,
                           align=TA_CENTER, space_before=8, space_after=2))

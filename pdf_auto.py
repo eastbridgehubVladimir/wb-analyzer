@@ -1221,3 +1221,84 @@ def generate(level: str, niche: dict, chart_items: list = None) -> bytes:
     buf.seek(0)
     print(f'[PDF] Готово за {time.time()-t0:.1f}s, размер={len(buf.getvalue())} байт')
     return buf.getvalue()
+
+
+# ── Раздельные точки входа (sequential mode) ──────────────────────────────────
+
+_AGENT_FNS = {
+    'master':    (_run_master,    'dict'),
+    'unit':      (_run_unit,      'dict'),
+    'ads':       (_run_ads,       'dict'),
+    'deep':      (_run_deep,      'dict'),
+    'supplier':  (_run_supplier,  'dict'),
+    'docs':      (_run_docs,      'dict'),
+    'warehouse': (_run_warehouse, 'dict'),
+    'content':   (_run_content,   'str'),
+}
+
+
+def run_agent(name: str, niche: dict):
+    """Запускает ОДИН агент. Вызывается из /agent/<name>."""
+    entry = _AGENT_FNS.get(name)
+    if entry is None:
+        return {'error': f'unknown agent: {name}'}
+    fn, ret_type = entry
+    result = fn(niche)
+    if ret_type == 'str':
+        return {'text': result if isinstance(result, str) else ''}
+    return result if isinstance(result, dict) else {}
+
+
+def render(level: str, niche: dict, agents: dict,
+           content_text: str = '', chart_items: list = None) -> bytes:
+    """
+    Собирает PDF из готовых результатов агентов — без вызовов Claude.
+    Вызывается из /pdf-render после того как JS собрал все ответы агентов.
+    """
+    t0 = time.time()
+    items = chart_items or []
+    top_limit = 5 if level == 'basic' else 20
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            rightMargin=MARGIN, leftMargin=MARGIN,
+                            topMargin=0.6*inch, bottomMargin=0.5*inch)
+    els = []
+    els += _sec_cover(niche, level)
+    els += _sec_metrics(niche)
+
+    if items:
+        if len(items) >= 4:
+            d = _chart_revenue_line(items)
+            if d:
+                els += [_h2('Топ товары по выручке'), _hr(), d, _sp(0.1)]
+        if level in ('standard', 'deep') and len(items) >= 6:
+            d2 = _chart_price_bar(items)
+            if d2:
+                els += [_h2('Распределение цен'), _hr(), d2, _sp(0.1)]
+        if level == 'deep' and len(items) >= 8:
+            d3 = _chart_sellers_pie(items)
+            if d3:
+                els += [_h2('Доля продавцов'), _hr(), d3, _sp(0.1)]
+
+    els += _sec_top_products(items, limit=top_limit)
+    els += _sec_master(agents.get('master') or {})
+
+    if level in ('standard', 'deep'):
+        els += _sec_unit(agents.get('unit') or {})
+        els += _sec_ads(agents.get('ads') or {})
+
+    if level == 'deep':
+        els += _sec_deep(agents.get('deep') or {})
+        els += _sec_supplier(agents.get('supplier') or {})
+        els += _sec_docs(agents.get('docs') or {})
+        els += _sec_warehouse(agents.get('warehouse') or {})
+        els += _sec_content(content_text)
+
+    els += _sec_upsell(level)
+
+    doc.build(els)
+    buf.seek(0)
+    pdf = buf.getvalue()
+    print(f'[PDF-RENDER] Готово за {time.time()-t0:.1f}s, размер={len(pdf)} байт')
+    return pdf

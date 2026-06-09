@@ -1249,11 +1249,61 @@ def run_agent(name: str, niche: dict):
     return result if isinstance(result, dict) else {}
 
 
+def _sec_browser_charts(charts: dict, level: str) -> list:
+    """Вставляет графики из браузера (base64 data-URL → Image в PDF)."""
+    if not charts:
+        return []
+    els = [_h2('Графики ниши'), _hr()]
+    chart_labels = {
+        'revenueChart': 'Динамика выручки и продаж',
+        'salesChart':   'Сезонность заказов',
+        'priceChart':   'Распределение цен',
+        'trendChart':   'Тренд ниши',
+        'sellersChart': 'Доля продавцов',
+        'forecastChart':'Прогноз выручки',
+    }
+    row_imgs = []
+    for chart_id, label in chart_labels.items():
+        data_url = charts.get(chart_id, '')
+        if not data_url:
+            continue
+        try:
+            # data:image/jpeg;base64,....  или  data:image/png;base64,...
+            header, b64 = data_url.split(',', 1)
+            img_bytes = __import__('base64').b64decode(b64)
+            img_buf = io.BytesIO(img_bytes)
+            img = Image(img_buf, width=COL_W / 2 - 0.1*inch, height=1.8*inch)
+            img.hAlign = 'CENTER'
+            row_imgs.append((label, img))
+        except Exception as _e:
+            print(f'[PDF] chart {chart_id} skip: {_e}')
+
+    # 2 графика в ряд
+    for i in range(0, len(row_imgs), 2):
+        pair = row_imgs[i:i+2]
+        cells = []
+        for label, img in pair:
+            cells.append([_p(label, size=8, color=C_GRAY, align=TA_CENTER), img])
+        if len(cells) == 1:
+            cells.append([_sp(0.1), _sp(0.1)])
+        t = Table([cells], colWidths=[COL_W/2]*2)
+        t.setStyle(TableStyle([
+            ('ALIGN',  (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('TOPPADDING', (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ]))
+        els.append(t)
+        els.append(_sp(0.08))
+    return els
+
+
 def render(level: str, niche: dict, agents: dict,
-           content_text: str = '', chart_items: list = None) -> bytes:
+           content_text: str = '', chart_items: list = None,
+           charts: dict = None) -> bytes:
     """
     Собирает PDF из готовых результатов агентов — без вызовов Claude.
-    Вызывается из /pdf-render после того как JS собрал все ответы агентов.
+    charts: словарь {chart_id: base64_data_url} из браузера (canvas.toDataURL).
     """
     t0 = time.time()
     items = chart_items or []
@@ -1267,19 +1317,21 @@ def render(level: str, niche: dict, agents: dict,
     els += _sec_cover(niche, level)
     els += _sec_metrics(niche)
 
-    if items:
+    # Графики из браузера (canvas → base64 → Image в PDF)
+    browser_charts = dict(charts or {})
+    if browser_charts:
+        els += _sec_browser_charts(browser_charts, level)
+    elif items:
+        # Резервный вариант: ReportLab-графики из MPStats
         if len(items) >= 4:
             d = _chart_revenue_line(items)
-            if d:
-                els += [_h2('Топ товары по выручке'), _hr(), d, _sp(0.1)]
+            if d: els += [_h2('Топ товары по выручке'), _hr(), d, _sp(0.1)]
         if level in ('standard', 'deep') and len(items) >= 6:
             d2 = _chart_price_bar(items)
-            if d2:
-                els += [_h2('Распределение цен'), _hr(), d2, _sp(0.1)]
+            if d2: els += [_h2('Распределение цен'), _hr(), d2, _sp(0.1)]
         if level == 'deep' and len(items) >= 8:
             d3 = _chart_sellers_pie(items)
-            if d3:
-                els += [_h2('Доля продавцов'), _hr(), d3, _sp(0.1)]
+            if d3: els += [_h2('Доля продавцов'), _hr(), d3, _sp(0.1)]
 
     els += _sec_top_products(items, limit=top_limit)
     els += _sec_master(agents.get('master') or {})

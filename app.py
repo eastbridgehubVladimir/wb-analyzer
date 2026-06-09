@@ -1,4 +1,15 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
+try:
+    from http.server import ThreadingHTTPServer
+except ImportError:
+    import socketserver
+    class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
+        daemon_threads = True
+
+# Временное хранилище PDF-сессий и готовых PDF-файлов
+import uuid as _uuid
+_pdf_sessions = {}   # {session_id: {level, niche, charts}}
+_pdf_results  = {}   # {key: bytes}
 import json
 import asyncio
 import subprocess, sys
@@ -2559,97 +2570,77 @@ async function downloadReport(level) {
     if (errEl) { errEl.style.display = 'block'; errEl.textContent = 'Введите нишу перед загрузкой отчёта.'; }
     return;
   }
-
   const errEl = document.getElementById('error');
   const showStatus = (msg, color) => {
     if (!errEl) return;
-    errEl.style.display = 'block';
-    errEl.style.color = color || '#38bdf8';
-    errEl.textContent = msg;
+    errEl.style.display = 'block'; errEl.style.color = color || '#38bdf8'; errEl.textContent = msg;
   };
 
   const niche = window.currentNiche || {};
   const nicheBody = {
-    name: niche.name || nicheName,
-    display_name: niche.display_name || niche.name || nicheName,
-    revenue: niche.revenue || 0,
-    revenue_annual: niche.revenue_annual || 0,
-    orders: niche.orders || 0,
-    sellers: niche.sellers || 0,
-    sellers_with_sales: niche.sellers_with_sales || 0,
-    avg_price: niche.avg_price || 0,
-    buyout_pct: niche.buyout_pct || 0,
-    profit_pct: niche.profit_pct || 0,
-    turnover: niche.turnover || 0,
-    commission: niche.commission || 0,
-    lost_revenue: niche.lost_revenue || 0,
-    lost_revenue_pct: niche.lost_revenue_pct || 0,
+    name: niche.name || nicheName, display_name: niche.display_name || niche.name || nicheName,
+    revenue: niche.revenue || 0, revenue_annual: niche.revenue_annual || 0,
+    orders: niche.orders || 0, sellers: niche.sellers || 0,
+    sellers_with_sales: niche.sellers_with_sales || 0, avg_price: niche.avg_price || 0,
+    buyout_pct: niche.buyout_pct || 0, profit_pct: niche.profit_pct || 0,
+    turnover: niche.turnover || 0, commission: niche.commission || 0,
+    lost_revenue: niche.lost_revenue || 0, lost_revenue_pct: niche.lost_revenue_pct || 0,
     avg_rating: niche.avg_rating || 0,
   };
 
-  // Агенты по уровням
-  const agentsByLevel = {
-    basic:    ['master'],
-    standard: ['master', 'unit', 'ads'],
-    deep:     ['master', 'unit', 'ads', 'deep', 'supplier', 'docs', 'warehouse', 'content'],
-  };
+  // Захватываем графики из браузера (canvas → JPEG 75%, max 700px ширина)
+  const charts = {};
+  ['revenueChart','salesChart','priceChart','trendChart','sellersChart','forecastChart'].forEach(function(id) {
+    try {
+      var c = document.getElementById(id);
+      if (!c || c.tagName !== 'CANVAS') return;
+      var tc = document.createElement('canvas');
+      tc.width = Math.min(c.width, 700); tc.height = Math.min(c.height, 300);
+      tc.getContext('2d').drawImage(c, 0, 0, tc.width, tc.height);
+      var dataUrl = tc.toDataURL('image/jpeg', 0.75);
+      if (dataUrl && dataUrl.length > 100) charts[id] = dataUrl;
+    } catch(e) {}
+  });
+
   const agentLabels = {
-    master:    '🔍 Мастер-анализ',
-    unit:      '💰 Юнит-экономика',
-    ads:       '📢 Стратегия рекламы',
-    deep:      '🔬 Глубокий анализ',
-    supplier:  '🏭 Поиск поставщиков',
-    docs:      '📋 Документы и сертификаты',
-    warehouse: '📦 Стратегия поставок',
-    content:   '✍️ Создание карточки',
+    master:'🔍 Мастер-анализ', unit:'💰 Юнит-экономика', ads:'📢 Реклама',
+    deep:'🔬 Глубокий анализ', supplier:'🏭 Поставщики',
+    docs:'📋 Документы', warehouse:'📦 Склад', content:'✍️ Карточка',
   };
-  const agentNames = agentsByLevel[level] || ['master'];
 
-  const agents = {};
-  let contentText = '';
-
+  showStatus('⏳ Подготовка...');
   try {
-    // Запускаем агентов последовательно — каждый со своим лимитом 60 сек
-    for (let i = 0; i < agentNames.length; i++) {
-      const name = agentNames[i];
-      showStatus(`${agentLabels[name] || name} (${i + 1}/${agentNames.length})…`);
-      const resp = await fetch('/agent/' + name, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({niche: nicheBody}),
-      });
-      if (!resp.ok) {
-        const txt = await resp.text();
-        throw new Error(`Агент ${name}: ${resp.status} — ${txt.slice(0, 150)}`);
-      }
-      const data = await resp.json();
-      if (name === 'content') {
-        contentText = data.text || '';
-      } else {
-        agents[name] = data;
-      }
-    }
-
-    // Собираем PDF (быстро, без Claude)
-    showStatus('📄 Собираем PDF…');
-    const pdfResp = await fetch('/pdf-render', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({level, niche: nicheBody, agents, content_text: contentText}),
+    // Шаг 1: сохраняем данные ниши + графики на сервере → получаем session_id
+    const prep = await fetch('/pdf-prepare', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({level, niche: nicheBody, charts}),
     });
-    if (!pdfResp.ok) {
-      const txt = await pdfResp.text();
-      throw new Error('PDF render: ' + txt.slice(0, 200));
-    }
-    const blob = await pdfResp.blob();
-    const filename = 'WBAnalyzer-' + nicheName.replace(/[\\/]/g, '-') + '-' + level + '.pdf';
-    const url = URL.createObjectURL(blob);
+    if (!prep.ok) throw new Error('prepare: ' + prep.status);
+    const {session_id} = await prep.json();
+
+    // Шаг 2: открываем SSE — сервер запускает агентов без лимита времени
+    const key = await new Promise(function(resolve, reject) {
+      const es = new EventSource('/pdf-stream/' + session_id);
+      const timer = setTimeout(function() { es.close(); reject(new Error('Timeout 10 мин')); }, 600000);
+      es.onmessage = function(e) {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'progress')  showStatus((agentLabels[msg.step] || msg.step) + ' (' + msg.n + '/' + msg.total + ')…');
+          if (msg.type === 'rendering') showStatus('📄 Генерируем PDF...');
+          if (msg.type === 'done')  { clearTimeout(timer); es.close(); resolve(msg.key); }
+          if (msg.type === 'error') { clearTimeout(timer); es.close(); reject(new Error(msg.error)); }
+        } catch(err) {}
+      };
+      es.onerror = function() { clearTimeout(timer); es.close(); reject(new Error('SSE: соединение прервано')); };
+    });
+
+    // Шаг 3: скачиваем готовый PDF
     const link = document.createElement('a');
-    link.href = url; link.download = filename;
+    link.href = '/pdf-download/' + key;
+    link.download = 'WBAnalyzer-' + nicheName.replace(/[\\/]/g, '-') + '-' + level + '.pdf';
     document.body.appendChild(link); link.click(); link.remove();
-    URL.revokeObjectURL(url);
     if (errEl) { errEl.style.display = 'none'; errEl.style.color = ''; }
-  } catch (e) {
+  } catch(e) {
     showStatus('Не удалось скачать PDF: ' + e.message, '#ef4444');
   }
 }
@@ -5934,6 +5925,69 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(204)
             self.end_headers()
             return
+
+        if self.path.startswith('/pdf-stream/'):
+            # SSE: запускает агентов последовательно, шлёт прогресс, сохраняет PDF
+            session_id = self.path[len('/pdf-stream/'):]
+            session = _pdf_sessions.pop(session_id, None)
+            if not session:
+                self.send_response(404); self.end_headers(); return
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream; charset=utf-8')
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('X-Accel-Buffering', 'no')
+            self.end_headers()
+            def _sse(data):
+                try:
+                    self.wfile.write(('data: ' + json.dumps(data, ensure_ascii=False) + '\n\n').encode('utf-8'))
+                    self.wfile.flush()
+                except Exception: pass
+            def _ka():  # keepalive — чтобы Railway не закрыл соединение
+                try:
+                    self.wfile.write(b': ka\n\n')
+                    self.wfile.flush()
+                except Exception: pass
+            level  = session['level']
+            niche  = session['niche']
+            charts = session.get('charts') or {}
+            agent_seq = ['master']
+            if level in ('standard', 'deep'): agent_seq += ['unit', 'ads']
+            if level == 'deep': agent_seq += ['deep', 'supplier', 'docs', 'warehouse', 'content']
+            agents = {}; content_text = ''
+            import pdf_auto
+            for i, name in enumerate(agent_seq):
+                _sse({'type': 'progress', 'step': name, 'n': i + 1, 'total': len(agent_seq)})
+                try:
+                    result = pdf_auto.run_agent(name, niche)
+                    if name == 'content': content_text = result.get('text', '')
+                    else: agents[name] = result
+                except Exception as _ae:
+                    _sse({'type': 'agent_error', 'step': name, 'error': str(_ae)})
+                _ka()
+            _sse({'type': 'rendering'})
+            try:
+                pdf_bytes = pdf_auto.render(level, niche, agents, content_text, [], charts)
+                key = _uuid.uuid4().hex
+                _pdf_results[key] = pdf_bytes
+                _sse({'type': 'done', 'key': key})
+            except Exception as _pe:
+                import traceback; traceback.print_exc()
+                _sse({'type': 'error', 'error': str(_pe)})
+            return
+
+        if self.path.startswith('/pdf-download/'):
+            key = self.path[len('/pdf-download/'):]
+            pdf_bytes = _pdf_results.pop(key, None)
+            if pdf_bytes:
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/pdf')
+                self.send_header('Content-Disposition', 'attachment; filename="WBAnalyzer-report.pdf"')
+                self.send_header('Content-Length', str(len(pdf_bytes)))
+                self.end_headers()
+                self.wfile.write(pdf_bytes)
+            else:
+                self.send_response(404); self.end_headers()
+            return
         if self.path == '/login':
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=utf-8')
@@ -8621,6 +8675,28 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 self.end_headers()
                 self.wfile.write(json.dumps({'error':str(e)}).encode('utf-8'))
 
+        elif self.path == '/pdf-prepare':
+            # Сохраняет данные ниши и возвращает session_id для SSE-потока
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                body_bytes = self.rfile.read(length)
+                payload = json.loads(body_bytes)
+                sid = _uuid.uuid4().hex
+                _pdf_sessions[sid] = {
+                    'level':  str(payload.get('level', 'basic')).lower(),
+                    'niche':  dict(payload.get('niche') or {}),
+                    'charts': dict(payload.get('charts') or {}),
+                }
+                resp = json.dumps({'session_id': sid}).encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(resp)))
+                self.end_headers()
+                self.wfile.write(resp)
+            except Exception as e:
+                self.send_response(500); self.send_header('Content-Type', 'application/json')
+                self.end_headers(); self.wfile.write(json.dumps({'error': str(e)}).encode())
+
         elif self.path.startswith('/agent/'):
             # Запуск одного агента — каждый вызов имеет свой 60-секундный лимит
             try:
@@ -9915,4 +9991,4 @@ if __name__ == '__main__':
     except Exception as _e:
         print(f'[startup] PDF deps warning: {_e}')
     print("🚀 Сервер запущен: http://localhost:8080")
-    HTTPServer(('', 8080), Handler).serve_forever()
+    ThreadingHTTPServer(('', 8080), Handler).serve_forever()

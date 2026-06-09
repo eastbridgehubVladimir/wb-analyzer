@@ -8647,7 +8647,7 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
 
         elif self.path == '/pdf-render':
-            # Быстрая сборка PDF из готовых результатов агентов (без Claude)
+            # Быстрая сборка PDF из готовых результатов агентов (без Claude и без MPStats)
             try:
                 import traceback as _tb3
                 length = int(self.headers.get('Content-Length', 0))
@@ -8657,29 +8657,10 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 niche = dict(payload.get('niche') or {})
                 agents = dict(payload.get('agents') or {})
                 content_text = str(payload.get('content_text') or '')
-
-                # Товары из MPStats для графиков
-                items_raw = []
-                try:
-                    from datetime import date as _date, timedelta as _td
-                    _conn = psycopg2.connect(DB)
-                    _cur = _conn.cursor()
-                    _cur.execute(
-                        "SELECT mpstats_path FROM niches WHERE name ILIKE %s AND mpstats_path IS NOT NULL LIMIT 1",
-                        (f'%{niche.get("name","")}%',)
-                    )
-                    _row = _cur.fetchone()
-                    _conn.close()
-                    _mp_path = _row[0] if _row else niche.get('name', '')
-                    _d2 = _date.today().isoformat()
-                    _d1 = (_date.today() - _td(days=60)).isoformat()
-                    _mp = get_mpstats_cached(_mp_path, _d1, _d2)
-                    items_raw = _mp.get('data', [])[:100]
-                except Exception as _me:
-                    print(f'[PDF-RENDER] MPStats skip: {_me}')
-
+                # Не вызываем MPStats здесь — это гарантирует ответ за 3-5 сек
+                # (MPStats мог занимать до 30 сек и вызывал 502 Railway)
                 import pdf_auto
-                pdf_bytes = pdf_auto.render(level, niche, agents, content_text, items_raw)
+                pdf_bytes = pdf_auto.render(level, niche, agents, content_text, [])
                 niche_slug = niche.get('name', 'report').replace('/', '-').replace(' ', '_')[:40]
                 filename = f'WBAnalyzer-{niche_slug}-{level}.pdf'
                 self.send_response(200)

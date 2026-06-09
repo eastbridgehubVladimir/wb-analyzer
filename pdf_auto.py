@@ -69,6 +69,8 @@ except Exception:
 
 # ── Цвета ─────────────────────────────────────────────────────────────────────
 C_NAVY   = HexColor('#0d1b2a')
+C_DARK   = HexColor('#111827')   # шапка бренда
+C_CYAN   = HexColor('#38bdf8')   # AI-акцент
 C_BLUE   = HexColor('#1d4ed8')
 C_BLUE2  = HexColor('#3b82f6')
 C_GREEN  = HexColor('#16a34a')
@@ -562,12 +564,12 @@ def _chart_revenue_line(items: list, width=COL_W, height=2.5*inch) -> Drawing:
 
 def _sec_cover(niche: dict, level: str) -> list:
     name = niche.get('display_name') or niche.get('name') or 'Анализ ниши'
-    level_names    = {'basic': 'Basic', 'standard': 'Standard', 'deep': 'Deep'}
-    level_colors   = {'basic': HexColor('#475569'), 'standard': C_BLUE, 'deep': HexColor('#7c3aed')}
+    level_names   = {'basic': 'Basic', 'standard': 'Standard', 'deep': 'Deep'}
+    level_colors  = {'basic': HexColor('#475569'), 'standard': C_BLUE, 'deep': HexColor('#7c3aed')}
     level_subtitles = {
-        'basic':    'Базовый анализ ниши · метрики, топ-5 товаров, мастер-анализ AI',
-        'standard': 'Расширенный анализ · юнит-экономика, реклама, топ-20 товаров, все графики',
-        'deep':     'Полный профессиональный анализ · все разделы, поставщики, карточка товара',
+        'basic':    'Базовый анализ · метрики, топ-5 товаров, мастер-анализ',
+        'standard': 'Расширенный анализ · юнит-экономика, реклама, все графики',
+        'deep':     'Полный профессиональный анализ · все разделы',
     }
     lname = level_names.get(level, level.capitalize())
     lcol  = level_colors.get(level, C_BLUE)
@@ -575,35 +577,27 @@ def _sec_cover(niche: dict, level: str) -> list:
     from datetime import date
     els = []
 
-    # ── Шапка бренда ────────────────────────────────────────────────────────
-    brand_inner = Table([[
-        _p('WBAnalyzer', size=20, bold=True, color=WHITE, align=TA_LEFT,
-           space_before=0, space_after=0),
-        _p('AI · Аналитика нового поколения', size=8,
-           color=HexColor('#94a3b8'), align=TA_RIGHT,
-           space_before=0, space_after=0),
-    ]], colWidths=[COL_W * 0.55, COL_W * 0.45])
-    brand_inner.setStyle(TableStyle([
-        ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING',    (0,0), (-1,-1), 0),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
-        ('LEFTPADDING',   (0,0), (-1,-1), 0),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 0),
-    ]))
-    brand_wrap = Table([[brand_inner]], colWidths=[COL_W])
+    # ── Шапка бренда (тёмная) ────────────────────────────────────────────────
+    brand_content = [
+        _p('WBAnalyzer', size=22, bold=True, color=WHITE, align=TA_LEFT,
+           space_before=0, space_after=2),
+        _p('◆ AI Platform · Аналитика нового поколения', size=8,
+           color=C_CYAN, align=TA_LEFT, space_before=0, space_after=0),
+    ]
+    brand_wrap = Table([[brand_content]], colWidths=[COL_W])
     brand_wrap.setStyle(TableStyle([
-        ('BACKGROUND',    (0,0), (-1,-1), C_NAVY),
+        ('BACKGROUND',    (0,0), (-1,-1), C_DARK),
         ('TOPPADDING',    (0,0), (-1,-1), 13),
         ('BOTTOMPADDING', (0,0), (-1,-1), 13),
-        ('LEFTPADDING',   (0,0), (-1,-1), 14),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 14),
+        ('LEFTPADDING',   (0,0), (-1,-1), 16),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 16),
     ]))
     els.append(brand_wrap)
 
-    # Цветная акцент-полоска (цвет уровня)
-    accent = Table([['']], colWidths=[COL_W], rowHeights=[4])
-    accent.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,-1), lcol)]))
-    els.append(accent)
+    # Тонкая голубая линия под шапкой
+    cyan_line = Table([['']], colWidths=[COL_W], rowHeights=[3])
+    cyan_line.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,-1), C_CYAN)]))
+    els.append(cyan_line)
     els.append(_sp(0.4))
 
     # ── Название ниши ────────────────────────────────────────────────────────
@@ -672,15 +666,11 @@ def _sec_metrics(niche: dict) -> list:
     profit     = float(n.get('profit_pct', 0))
     turnover   = float(n.get('turnover', 0))
     avg_price  = float(n.get('avg_price', 0))
-    lost_rev   = float(n.get('lost_revenue', 0))
-    lost_pct   = float(n.get('lost_revenue_pct', 0))
     commission = float(n.get('commission', 0))
 
-    act_pct       = round(sws / sellers * 100) if sellers else 0
-    # Если orders явно передан и разумен — используем его, иначе вычисляем из revenue/price
-    orders_display = orders if orders > 100 else (round(revenue / avg_price) if avg_price > 0 else orders)
-    orders_per_day = round(orders_display / 30) if orders_display > 0 else 0
-    avg_rev_seller = round(revenue / sws) if sws > 0 else 0
+    act_pct        = round(sws / sellers * 100) if sellers else 0
+    # Используем raw orders как есть — не пересчитываем
+    orders_per_day = round(orders / 30) if orders > 0 else 0
 
     els = [_h2('Ключевые показатели ниши'), _hr()]
 
@@ -691,32 +681,21 @@ def _sec_metrics(niche: dict) -> list:
             _p(sub,   size=7, color=C_GRAY, space_before=0, space_after=2),
         ]
 
+    # Ряд 1: Выручка, Заказы, Продавцы
+    orders_sub = f'≈ {orders_per_day} в день' if orders_per_day else ''
     row1 = [
-        _card('ВЫРУЧКА НИШИ / МЕС', _rub(revenue), 'суммарная по всем товарам', C_NAVY),
-        _card('ЗАКАЗОВ / МЕС', _num(orders_display),
-              f'≈ {orders_per_day} заказов в день', C_BLUE2),
-        _card('ПРОДАВЦОВ', f'{sellers} / {sws} акт.',
-              f'{act_pct}% имеют продажи', C_GREEN),
+        _card('ВЫРУЧКА НИШИ', _rub(revenue), 'по данным MPStats', C_NAVY),
+        _card('ЗАКАЗОВ / МЕС', _num(orders), orders_sub, C_BLUE2),
+        _card('ПРОДАВЦОВ', f'{sellers} / {sws} акт.', f'{act_pct}% с продажами', C_GREEN),
     ]
 
-    turn_col = C_GREEN if turnover <= 45 else (C_AMBER if turnover <= 90 else C_RED)
-    turn_sub = ('отлично' if turnover <= 45 else
-                ('приемлемо' if turnover <= 90 else '⚠ высокий риск заморозки'))
-    prof_col = C_GREEN if profit >= 0.3 else (C_AMBER if profit >= 0.15 else C_RED)
-
-    row2 = [
-        _card('ВЫКУП', _pct(buyout), 'доля выкупленных заказов',
-              C_GREEN if buyout >= 0.7 else (C_AMBER if buyout >= 0.5 else C_RED)),
-        _card('ОБОРАЧИВАЕМОСТЬ', f'{turnover:.0f} дней', turn_sub, turn_col),
-        _card('МАРЖА (по WB)', _pct(profit), 'выручка минус затраты WB', prof_col),
-    ]
-
+    # Ряд 2: Выкуп, Средний чек, Комиссия (оборачиваемость и маржа — в блоке ниже)
+    buy_col  = C_GREEN if buyout >= 0.7 else (C_AMBER if buyout >= 0.5 else C_RED)
     comm_str = _pct(commission) if commission > 0 else '~20–25%'
-    row3 = [
-        _card('СРЕДНИЙ ЧЕК', _rub(avg_price), 'средняя цена единицы товара', C_NAVY),
-        _card('ВЫРУЧКА / ПРОДАВЕЦ', _rub(avg_rev_seller),
-              'среди активных продавцов/мес', C_BLUE2),
-        _card('КОМИССИЯ WB', comm_str, 'по данной категории товара', C_GRAY),
+    row2 = [
+        _card('ВЫКУП', _pct(buyout), 'доля выкупленных заказов', buy_col),
+        _card('СРЕДНИЙ ЧЕК', _rub(avg_price), 'средняя цена единицы', C_NAVY),
+        _card('КОМИССИЯ WB', comm_str, 'по категории товара', C_GRAY),
     ]
 
     cw = COL_W / 3
@@ -740,28 +719,34 @@ def _sec_metrics(niche: dict) -> list:
     els.append(_cards_tbl(row1))
     els.append(_sp(0.05))
     els.append(_cards_tbl(row2))
-    els.append(_sp(0.05))
-    els.append(_cards_tbl(row3))
 
-    # ── Пояснительный блок ────────────────────────────────────────────────────
+    # ── Оборачиваемость и Маржа — отдельным блоком с пояснениями ─────────────
+    turn_col  = C_GREEN if turnover <= 45 else (C_AMBER if turnover <= 90 else C_RED)
+    turn_icon = '✅' if turnover <= 45 else '⚠'
+
     notes = []
-    if turnover > 90:
-        notes.append(f'⚠ <b>Оборачиваемость {turnover:.0f} дней</b> — ваши деньги будут заморожены более 3 месяцев. Начинайте строго с FBS-схемы и минимальной тестовой партии чтобы не рисковать капиталом.')
-    elif turnover > 45:
-        notes.append(f'ℹ <b>Оборачиваемость {turnover:.0f} дней</b> — умеренная. Следите за остатками и не допускайте затоваривания.')
+    if turnover:
+        if turnover > 90:
+            turn_text = f'{turn_icon} <b>Оборачиваемость: {turnover:.0f} дней</b> — ваши деньги будут заморожены более 3 месяцев. Работайте строго по FBS-схеме с минимальной партией на старте.'
+        elif turnover > 45:
+            turn_text = f'ℹ <b>Оборачиваемость: {turnover:.0f} дней</b> — умеренная. Следите за остатками, не допускайте затоваривания.'
+        else:
+            turn_text = f'✅ <b>Оборачиваемость: {turnover:.0f} дней</b> — отлично, товар быстро оборачивается.'
+        notes.append(turn_text)
+
     if profit > 0:
-        notes.append(f'ℹ <b>Маржа {_pct(profit)} (данные MPStats)</b> — это выручка минус комиссия и логистика Wildberries, но <b>без учёта себестоимости товара</b>. Реальная чистая прибыль обычно в 2–3 раза ниже: при марже 80% по WB ваша фактическая прибыль составит 20–35%.')
-    if lost_rev > 0 or lost_pct > 0:
-        lr_val = _rub(lost_rev) if lost_rev > 0 else _pct(lost_pct)
-        notes.append(f'ℹ <b>Упущенная выручка {lr_val}</b> — продажи, которые не состоялись из-за нехватки остатков у продавцов. Высокое значение = недозаполненный спрос = ваша точка входа.')
-    if not commission:
-        notes.append('ℹ <b>Комиссия WB</b> — для точного значения уточните в личном кабинете WB в разделе «Комиссии» для вашей категории. Влияет на юнит-экономику.')
+        notes.append(
+            f'ℹ <b>Маржа по WB: {_pct(profit)}</b> — это выручка ниши минус комиссия и логистика Wildberries, '
+            f'но <b>без вычета себестоимости товара</b>. '
+            f'Реальная чистая прибыль обычно 20–35% — уточняйте в разделе «Юнит-экономика».'
+        )
+
     if notes:
         els.append(_sp(0.1))
         inner = []
         for note in notes:
             inner.append(_p(note, size=8, color=HexColor('#374151'),
-                            space_before=3, space_after=3))
+                            space_before=4, space_after=4))
         notes_tbl = Table([[inner]], colWidths=[COL_W])
         notes_tbl.setStyle(TableStyle([
             ('BACKGROUND',    (0,0), (-1,-1), HexColor('#fefce8')),
@@ -773,7 +758,7 @@ def _sec_metrics(niche: dict) -> list:
         ]))
         els.append(notes_tbl)
 
-    els.append(_sp(0.15))
+    els.append(_sp(0.12))
     return els
 
 
@@ -931,7 +916,7 @@ def _sec_deep(r: dict) -> list:
 def _sec_unit(r: dict) -> list:
     if not r:
         return []
-    els = [PageBreak(), _h2('Юнит-экономика'), _hr()]
+    els = [_sp(0.1), _hr(), _h2('Юнит-экономика'), _hr()]
 
     rec = r.get('recommendation') or {}
     if rec.get('title'):
@@ -977,7 +962,7 @@ def _sec_unit(r: dict) -> list:
 def _sec_ads(r: dict) -> list:
     if not r:
         return []
-    els = [PageBreak(), _h2('Рекламная стратегия'), _hr()]
+    els = [_sp(0.1), _hr(), _h2('Рекламная стратегия'), _hr()]
 
     load = str(r.get('load_level', ''))
     load_labels = {'low': 'Низкая', 'medium': 'Средняя', 'high': 'Высокая'}
@@ -1228,9 +1213,11 @@ def _sec_upsell(current_level: str) -> list:
     """Блок апсейла в конце PDF."""
     if current_level == 'deep':
         return []
-    els = [PageBreak()]
+    els = []
 
     if current_level == 'basic':
+        els.append(_sp(0.1))
+        els.append(_hr())
         els.append(_h2('Получите полный анализ — PDF Standard и Deep'))
         els.append(_hr())
         els.append(_body('Этот отчёт — Basic версия. Сравните, что содержит каждый уровень:'))
@@ -1272,9 +1259,11 @@ def _sec_upsell(current_level: str) -> list:
                       size=9, color=C_GRAY, align=TA_CENTER))
 
     elif current_level == 'standard':
+        els.append(_sp(0.1))
+        els.append(_hr())
         els.append(_h2('PDF Deep — полный профессиональный анализ'))
         els.append(_hr())
-        els.append(_body('В этом отчёте (Standard) уже есть метрики, графики, юнит-экономика и реклама. PDF Deep дополнительно включает:'))
+        els.append(_body('При заказе PDF Deep вы дополнительно получите:'))
         els.append(_sp(0.1))
         deep_extras = [
             ('🔬 Глубокий анализ',        'Детальный анализ конкурентной среды, свободных сегментов, ROI на 12 месяцев.'),
@@ -1503,8 +1492,8 @@ def _sec_browser_charts(charts: dict, level: str, niche: dict = None) -> list:
 
     chart_order = {
         'basic':    ['revenueChart', 'salesChart'],
-        'standard': ['revenueChart', 'salesChart', 'priceChart', 'trendChart', 'sellersChart', 'forecastChart'],
-        'deep':     ['revenueChart', 'salesChart', 'priceChart', 'trendChart', 'sellersChart', 'forecastChart'],
+        'standard': ['revenueChart', 'salesChart', 'priceChart', 'trendChart', 'forecastChart'],
+        'deep':     ['revenueChart', 'salesChart', 'priceChart', 'trendChart', 'forecastChart'],
     }.get(level, list(chart_meta.keys()))
 
     els = [_h2('Графики ниши'), _hr()]

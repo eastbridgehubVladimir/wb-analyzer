@@ -832,20 +832,59 @@ def _sec_metrics(niche: dict) -> list:
     return els
 
 
-def _sec_top_products(items: list, limit: int = 20) -> list:
+def _sec_top_products(items: list, limit: int = 20, level: str = 'standard') -> list:
     if not items:
         return []
-    els = [_h2(f'Топ-{min(limit, len(items))} товаров'), _hr()]
-    rows = [['#', 'Название', 'Бренд', 'Цена, ₽', 'Выручка', 'Рейт.']]
-    for i, it in enumerate(items[:limit], 1):
-        name = str(it.get('name') or it.get('title') or '')[:45]
-        brand = str(it.get('brand') or '')[:18]
-        price = _rub(it.get('price') or it.get('final_price') or 0)
-        rev = _rub(it.get('revenue') or 0)
-        rating = f"{float(it.get('rating') or 0):.1f}" if it.get('rating') else '—'
-        rows.append([str(i), name, brand, price, rev, rating])
-    cw = [0.35*inch, 2.7*inch, 1.2*inch, 0.8*inch, 0.95*inch, 0.5*inch]
-    els.append(_tbl(rows, col_widths=cw))
+    count = min(limit, len(items))
+    els = [_h2(f'Топ-{count} товаров ниши'), _hr()]
+
+    # Вычисляем суммарную выручку для доли рынка
+    total_rev = sum(float(it.get('revenue') or 0) for it in items)
+
+    if level == 'basic':
+        # Basic: компактная таблица с 5 товарами
+        rows = [['#', 'Название товара', 'Цена, ₽', 'Выручка/мес', 'Отзывы', 'WB']]
+        for i, it in enumerate(items[:limit], 1):
+            name  = str(it.get('name') or it.get('title') or '')[:40]
+            price = _rub(it.get('price') or it.get('final_price') or 0)
+            rev   = _rub(it.get('revenue') or 0)
+            fb    = str(int(it.get('feedbacks') or it.get('reviews') or
+                             it.get('reviews_count') or 0))
+            sku   = str(it.get('sku') or it.get('wb_sku') or it.get('id') or '—')
+            link  = f'→ {sku}' if sku != '—' else '—'
+            rows.append([str(i), name, price, rev, fb, link])
+        cw = [0.28*inch, 2.8*inch, 0.8*inch, 0.95*inch, 0.6*inch, 0.9*inch]
+    else:
+        # Standard/Deep: таблица с 20 товарами + доля рынка, компактная
+        rows = [['#', 'Название товара', 'Цена, ₽', 'Выручка/мес', 'Отзывы', 'Доля, %', 'WB']]
+        for i, it in enumerate(items[:limit], 1):
+            name  = str(it.get('name') or it.get('title') or '')[:38]
+            price = _rub(it.get('price') or it.get('final_price') or 0)
+            rev   = _rub(it.get('revenue') or 0)
+            fb    = str(int(it.get('feedbacks') or it.get('reviews') or
+                             it.get('reviews_count') or 0))
+            item_rev = float(it.get('revenue') or 0)
+            share = f'{item_rev / total_rev * 100:.1f}%' if total_rev else '—'
+            sku   = str(it.get('sku') or it.get('wb_sku') or it.get('id') or '—')
+            link  = f'→{sku}' if sku != '—' else '—'
+            rows.append([str(i), name, price, rev, fb, share, link])
+        cw = [0.25*inch, 2.45*inch, 0.7*inch, 0.85*inch, 0.55*inch, 0.6*inch, 0.7*inch]
+
+    # Компактный стиль для Standard/Deep (меньше padding)
+    t = _tbl(rows, col_widths=cw)
+    if level != 'basic':
+        t.setStyle(TableStyle([
+            ('BACKGROUND',    (0, 0), (-1, 0), C_NAVY),
+            ('FONTSIZE',      (0, 0), (-1, -1), 7.5),
+            ('TOPPADDING',    (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 4),
+            ('GRID',          (0, 0), (-1, -1), 0.3, C_BORDER),
+            ('ROWBACKGROUNDS',(0, 1), (-1, -1), [WHITE, C_TABLE_ODD]),
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+    els.append(t)
     els.append(_sp(0.1))
     return els
 
@@ -853,7 +892,7 @@ def _sec_top_products(items: list, limit: int = 20) -> list:
 def _sec_master(r: dict) -> list:
     if not r:
         return []
-    els = [PageBreak(), _h2('Мастер-анализ'), _hr()]
+    els = [_h2('Мастер-анализ'), _hr()]
 
     verdict = str(r.get('final_verdict', ''))
     vc = r.get('verdict_color', '#d97706')
@@ -986,7 +1025,7 @@ def _sec_deep(r: dict) -> list:
 def _sec_unit(r: dict) -> list:
     if not r:
         return []
-    els = [_sp(0.1), _hr(), _h2('Юнит-экономика'), _hr()]
+    els = [_h2('Юнит-экономика'), _hr()]
 
     rec = r.get('recommendation') or {}
     if rec.get('title'):
@@ -1032,7 +1071,7 @@ def _sec_unit(r: dict) -> list:
 def _sec_ads(r: dict) -> list:
     if not r:
         return []
-    els = [_sp(0.1), _hr(), _h2('Рекламная стратегия'), _hr()]
+    els = [_h2('Рекламная стратегия'), _hr()]
 
     load = str(r.get('load_level', ''))
     load_labels = {'low': 'Низкая', 'medium': 'Средняя', 'high': 'Высокая'}
@@ -1078,6 +1117,20 @@ def _sec_ads(r: dict) -> list:
                      str(cpm.get('comment',''))])
         els.append(_tbl(rows, col_widths=[1.5*inch, 1.5*inch, 3.6*inch]))
 
+    _KPI_EXPAND = {
+        'CTR':    'CTR (кликабельность, %)',
+        'CR':     'CR (конверсия в заказ, %)',
+        'DRR':    'DRR (доля рекламных расходов, %)',
+        'ДРР':    'ДРР (доля рекламных расходов, %)',
+        'Pos':    'Позиция в выдаче',
+        'Orders': 'Заказов в месяц',
+    }
+    def _expand_kpi(s: str) -> str:
+        for abbr, full in _KPI_EXPAND.items():
+            if s.startswith(abbr + ':') or s.startswith(abbr + ' '):
+                return full + s[len(abbr):]
+        return s
+
     forecast = r.get('forecast') or {}
     for mkey, mlabel in [('month1','Месяц 1 KPI'),('month2','Месяц 2 KPI')]:
         m = forecast.get(mkey) or {}
@@ -1085,7 +1138,7 @@ def _sec_ads(r: dict) -> list:
         if metrics:
             els.append(_h3(mlabel))
             for metric in metrics:
-                els.append(_bullet(str(metric)))
+                els.append(_bullet(_expand_kpi(str(metric))))
 
     els.append(_sp(0.1))
     return els
@@ -1195,6 +1248,15 @@ def _sec_warehouse(r: dict) -> list:
     if detail:
         els.append(_body(detail))
         els.append(_sp(0.1))
+
+    # Нейтральная рекомендация по складам (независимо от AI-агента)
+    els.append(_info(
+        '<b>Выбор склада:</b> ориентируйтесь на ваш регион и скорость приёмки. '
+        'Топ складов WB: <b>Коледино</b> (Московская обл.), <b>Подольск</b>, '
+        '<b>Электросталь</b>, <b>Казань</b>, <b>Краснодар</b>, <b>Екатеринбург</b>. '
+        'Для поставщиков из Беларуси: Смоленск и транзит через белорусские склады.'
+    ))
+    els.append(_sp(0.08))
 
     tips = list(r.get('warehouse_tips') or [])
     if tips:
@@ -1501,6 +1563,82 @@ def _sec_upsell(current_level: str) -> list:
     return els
 
 
+def _sec_glossary() -> list:
+    """Словарь терминов — одна страница перед финалом."""
+    els = [_h2('Словарь терминов'), _hr()]
+    els.append(_body('Расшифровка аббревиатур и терминов, использованных в этом отчёте.'))
+    els.append(_sp(0.1))
+
+    terms = [
+        ('FBO (Fulfillment by Operator)',
+         'Хранение и отправка товара со склада Wildberries. '
+         'Вы отгружаете партию на склад WB, далее WB сам упаковывает и доставляет заказы.'),
+        ('FBS (Fulfillment by Seller)',
+         'Хранение у продавца, отправка самостоятельно. '
+         'Вы держите товар у себя и передаёте его в WB только после получения заказа.'),
+        ('FBO BY',
+         'Схема FBO с хранением на складе Wildberries в Беларуси. '
+         'Актуально для поставщиков из РБ или при выгодных условиях хранения.'),
+        ('DRR / ДРР',
+         'Доля рекламных расходов от выручки, в %. '
+         'Формула: бюджет рекламы / выручка × 100. Норма для WB — 10–15%.'),
+        ('CPM',
+         'Стоимость 1 000 показов рекламного объявления, в рублях. '
+         'Чем выше CPM — тем дороже трафик. Типичный диапазон для WB: 200–600 ₽.'),
+        ('CTR',
+         'Кликабельность: процент пользователей, кликнувших на товар после просмотра. '
+         'Нормальный CTR на WB: 3–6%. Зависит от главного фото карточки.'),
+        ('CR',
+         'Конверсия: процент пользователей, оформивших заказ после открытия карточки. '
+         'Нормальный CR на WB: 5–12%. Зависит от описания, фото, цены, отзывов.'),
+        ('ROI',
+         'Возврат на инвестиции. Формула: (прибыль − затраты) / затраты × 100%. '
+         'ROI 100% означает, что каждый вложенный рубль принёс ещё один рубль прибыли.'),
+        ('MOQ',
+         'Минимальный объём заказа (Minimum Order Quantity) у поставщика. '
+         'Чем ниже MOQ — тем меньше рисковый тестовый заказ.'),
+        ('Оборачиваемость',
+         'Среднее число дней, за которое распродаётся товарный запас. '
+         'До 45 дней — быстро. 45–90 дней — умеренно. Свыше 90 дней — медленно.'),
+    ]
+
+    rows = [['Термин', 'Значение']]
+    for term, definition in terms:
+        rows.append([term, definition])
+
+    els.append(_tbl(rows, col_widths=[1.9 * inch, COL_W - 1.9 * inch]))
+    els.append(_sp(0.1))
+    return els
+
+
+def _sec_toc_deep(sections: list) -> list:
+    """Компактное содержание документа для Deep-уровня."""
+    els = [_h2('Содержание документа'), _hr()]
+    ts = ParagraphStyle('_toc', fontName=FN, fontSize=9, textColor=C_TEXT, leading=14)
+    tb = ParagraphStyle('_tocb', fontName=FB, fontSize=9, textColor=C_NAVY, leading=14)
+    rows = [['Раздел', 'Стр.']]
+    for name, page_approx in sections:
+        rows.append([name, f'~{page_approx}'])
+    t = Table(rows, colWidths=[COL_W - 0.7 * inch, 0.7 * inch])
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, 0), C_NAVY),
+        ('FONTNAME',      (0, 0), (-1, 0), FB),
+        ('FONTSIZE',      (0, 0), (-1, -1), 8.5),
+        ('FONTNAME',      (0, 1), (-1, -1), FN),
+        ('TEXTCOLOR',     (0, 0), (-1, 0), WHITE),
+        ('GRID',          (0, 0), (-1, -1), 0.4, C_BORDER),
+        ('TOPPADDING',    (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
+        ('ROWBACKGROUNDS',(0, 1), (-1, -1), [WHITE, C_TABLE_ODD]),
+        ('ALIGN',         (-1, 0), (-1, -1), 'CENTER'),
+    ]))
+    els.append(t)
+    els.append(_sp(0.1))
+    return els
+
+
 def _sec_finale(level: str, agents: dict = None) -> list:
     """Финальная страница на тёмном фоне (фон через PageTemplate)."""
     accent   = LEVEL_ACCENT.get(level, C_ACCENT)
@@ -1702,7 +1840,7 @@ def generate(level: str, niche: dict, chart_items: list = None) -> bytes:
                 els.append(d3)
                 els.append(_sp(0.1))
 
-    els += _sec_top_products(items, limit=top_limit)
+    els += _sec_top_products(items, limit=top_limit, level=level)
     els += _sec_master(agents.get('master', {}))
 
     if level in ('standard', 'deep'):
@@ -1822,7 +1960,7 @@ def _sec_browser_charts(charts: dict, level: str, niche: dict = None) -> list:
             _header, b64 = data_url.split(',', 1)
             img_bytes = __import__('base64').b64decode(b64)
             img_buf = io.BytesIO(img_bytes)
-            img = Image(img_buf, width=COL_W, height=3.2*inch)
+            img = Image(img_buf, width=COL_W, height=2.4*inch)
             img.hAlign = 'CENTER'
             els.append(_p(meta['label'], size=10, bold=True, color=C_NAVY,
                           align=TA_CENTER, space_before=8, space_after=2))
@@ -1925,6 +2063,25 @@ def render(level: str, niche: dict, agents: dict,
     els.append(NextPageTemplate('Content'))
     els.append(PageBreak())
 
+    # Deep: Содержание документа в начале
+    if level == 'deep':
+        deep_toc = [
+            ('Ключевые показатели ниши',   2),
+            ('Графики ниши',               3),
+            ('Топ-20 товаров ниши',        4),
+            ('Мастер-анализ AI',           5),
+            ('Юнит-экономика',             6),
+            ('Рекламная стратегия',        7),
+            ('Глубокий анализ ниши',       8),
+            ('Поиск поставщиков',          9),
+            ('Документы и сертификаты',   10),
+            ('Стратегия поставок',        11),
+            ('Создание карточки товара',  12),
+            ('Итоговый вывод',            13),
+            ('Словарь терминов',          14),
+        ]
+        els += _sec_toc_deep(deep_toc)
+
     # Контентные страницы
     els += _sec_metrics(niche)
 
@@ -1939,7 +2096,7 @@ def render(level: str, niche: dict, agents: dict,
             d2 = _chart_price_bar(items)
             if d2: els += [_h2('Распределение цен'), d2, _sp(0.1)]
 
-    els += _sec_top_products(items, limit=top_limit)
+    els += _sec_top_products(items, limit=top_limit, level=level)
     els += _sec_master(agents.get('master') or {})
 
     if level in ('standard', 'deep'):
@@ -1954,6 +2111,9 @@ def render(level: str, niche: dict, agents: dict,
         els += _sec_content(content_text)
 
     els += _sec_conclusion(level, agents)
+
+    # Словарь терминов
+    els += _sec_glossary()
 
     # Финальная тёмная страница
     els.append(NextPageTemplate('Finale'))

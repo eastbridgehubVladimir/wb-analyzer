@@ -1879,11 +1879,11 @@ async function loadCharts(name) {
     if (revenueChartInstance) revenueChartInstance.destroy();
     if (salesChartInstance) salesChartInstance.destroy();
     
-    const gridColor = '#1e2433';
-    const tickColor = '#555';
+    const gridColor = '#2a3347';
+    const tickColor = '#666';
     const commonScales = {
       x: { ticks: { color: tickColor, font: { size: 11 } }, grid: { color: gridColor } },
-      y: { ticks: { color: tickColor, font: { size: 11 } }, grid: { color: gridColor } }
+      y: { ticks: { color: tickColor, font: { size: 11 }, maxTicksLimit: 10 }, grid: { color: gridColor } }
     };
     
     const maxRev = Math.max(...data.revenue);
@@ -1962,8 +1962,8 @@ async function loadCharts(name) {
           responsive: true,
           plugins: { legend: { display: false } },
           scales: {
-            x: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1e2433' } },
-            y: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1e2433' } }
+            x: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#2a3347' } },
+            y: { ticks: { color: '#666', font: { size: 10 }, maxTicksLimit: 10 }, grid: { color: '#2a3347' } }
           }
         }
       });
@@ -2181,12 +2181,12 @@ async function loadCharts(name) {
             {
               label: 'Факт (млн ' + fcSym + ')',
               data: allRevenueConverted,
-              borderColor: '#ffffff',
-              backgroundColor: '#ffffff10',
+              borderColor: '#94a3b8',
+              backgroundColor: '#94a3b815',
               fill: true,
               tension: 0.4,
               pointRadius: 3,
-              pointBackgroundColor: '#ffffff',
+              pointBackgroundColor: '#94a3b8',
               borderWidth: 2
             },
             {
@@ -2213,8 +2213,8 @@ async function loadCharts(name) {
             tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y + ' млн ₽' } }
           },
           scales: {
-            x: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1e2433' } },
-            y: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1e2433' } }
+            x: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#2a3347' } },
+            y: { ticks: { color: '#666', font: { size: 10 }, maxTicksLimit: 10 }, grid: { color: '#2a3347' } }
           }
         }
       });
@@ -2255,8 +2255,8 @@ async function loadCharts(name) {
           responsive: true,
           plugins: { legend: { display: false } },
           scales: {
-            x: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1e2433' } },
-            y: { ticks: { color: '#555', font: { size: 10 } }, grid: { color: '#1e2433' } }
+            x: { ticks: { color: '#666', font: { size: 10 } }, grid: { color: '#2a3347' } },
+            y: { ticks: { color: '#666', font: { size: 10 }, maxTicksLimit: 10 }, grid: { color: '#2a3347' } }
           }
         }
       });

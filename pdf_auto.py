@@ -302,27 +302,20 @@ def _run_master(n: dict, level: str = 'standard') -> dict:
             "Ты аналитик WB. Сделай КРАТКИЙ обзор ниши для базового отчёта.\n\n"
             + base +
             "Правила:\n"
-            "- market_analysis: 2-3 предложения, общий вывод без имён конкурентов и конкретных бюджетов. "
-            "Заканчивай фразой: Подробный разбор — в PDF Standard.\n"
-            "- competitive_landscape: 1-2 предложения общими словами о конкуренции. "
-            "Заканчивай: Детальный анализ конкурентов — в PDF Standard.\n"
-            "- entry_strategy: 1-2 предложения без конкретного бюджета и шагов. "
-            "Заканчивай: Стратегия с цифрами — в PDF Standard.\n"
-            "- final_recommendation: 2-3 предложения общего вывода, без конкретики. "
-            "Заканчивай: Для полного анализа с цифрами получите PDF Standard.\n"
+            "- market_analysis: 3-4 предложения — насколько ниша привлекательна, объём, динамика. "
+            "Без имён конкурентов и конкретных бюджетов.\n"
+            "- competitive_landscape: 2-3 предложения — общий уровень конкуренции, плотность рынка.\n"
+            "- final_recommendation: ОДНО предложение-вердикт — стоит ли входить и почему.\n"
+            "- seasonal_plan: конкретные месяцы для пика, спада, закупки и старта рекламы.\n"
             "Ответь ONLY JSON:\n"
             '{"final_verdict":"ВХОДИТЬ|ТЕСТИРОВАТЬ|НЕ ВХОДИТЬ",'
             '"verdict_color":"#16a34a|#d97706|#dc2626",'
-            '"market_analysis":"...",'
-            '"competitive_landscape":"...",'
-            '"entry_strategy":"...",'
-            '"financial_model":{"test_batch_units":20,"test_batch_cost":220000,'
-            '"monthly_ad_budget":45000,"breakeven_units":9,"roi_3months":"38%","payback_months":5},'
-            '"opportunities":["возможность 1","возможность 2"],'
-            '"risks":[{"risk":"риск","probability":"средняя","mitigation":"решение"}],'
-            '"final_recommendation":"..."}'
+            '"market_analysis":"3-4 предложения",'
+            '"competitive_landscape":"2-3 предложения",'
+            '"final_recommendation":"одно предложение-вердикт",'
+            '"seasonal_plan":{"peak":"месяц–месяц","low":"месяц–месяц","buy_date":"месяц","ad_date":"месяц"}}'
         )
-        return _json(_claude(prompt, 1200))
+        return _json(_claude(prompt, 800))
 
     if level == 'deep':
         prompt = (
@@ -986,17 +979,23 @@ def _sec_master(r: dict) -> list:
         els.append(_sp(0.1))
 
     if level == 'basic':
-        # Краткий обзор: только market_analysis + final_recommendation
+        # Три коротких раздела — без конкретики и финансов
         for field, label in [
-            ('market_analysis',      'Обзор рынка'),
-            ('competitive_landscape', 'Конкурентная среда'),
-            ('entry_strategy',        'Стратегия входа'),
-            ('final_recommendation',  'Итоговый вывод'),
+            ('market_analysis',      'Обзор ниши'),
+            ('competitive_landscape', 'Конкуренция'),
+            ('final_recommendation',  'Вердикт'),
         ]:
             txt = str(r.get(field, ''))
             if txt:
                 els.append(_h3(label))
                 els.append(_body(txt))
+        # Серая курсивная подсказка
+        upsell_s = ParagraphStyle('_mu', fontName=FN, fontSize=8.5,
+                                   textColor=C_GRAY, alignment=TA_CENTER,
+                                   leading=13, spaceBefore=8, spaceAfter=4)
+        els.append(Paragraph(
+            '<i>Детальный разбор конкурентов, стратегия входа и финансовая модель — в PDF Standard</i>',
+            upsell_s))
     else:
         # Standard / Deep: полный набор разделов
         for field, label in [
@@ -1028,18 +1027,19 @@ def _sec_master(r: dict) -> list:
                 rows.append([str(risk.get('risk', '')), prob_cell, str(risk.get('mitigation', ''))])
             els.append(_tbl(rows, col_widths=[2.5*inch, 1.1*inch, 3.0*inch]))
 
-    # Финансовая модель — во всех уровнях, с каноническими значениями как база
-    fm = r.get('financial_model') or {}
-    fm_merged = {**_FM_CANONICAL, **{k: v for k, v in fm.items() if v is not None and str(v).strip()}}
-    els.append(_h3('Финансовая модель'))
-    rows = [['Показатель', 'Значение']]
-    for k, lbl in [('test_batch_units','Тестовая партия, шт'), ('test_batch_cost','Стоимость партии, ₽'),
-                   ('monthly_ad_budget','Бюджет рекламы/мес'), ('breakeven_units','Точка безубыточности, шт'),
-                   ('roi_3months','ROI за 3 мес'), ('payback_months','Окупаемость, мес')]:
-        v = fm_merged.get(k)
-        if v is not None:
-            rows.append([lbl, _rub(v) if 'cost' in k or 'budget' in k else str(v)])
-    els.append(_tbl(rows, col_widths=[3.5*inch, 3.1*inch]))
+    # Финансовая модель — только в Standard и Deep
+    if level != 'basic':
+        fm = r.get('financial_model') or {}
+        fm_merged = {**_FM_CANONICAL, **{k: v for k, v in fm.items() if v is not None and str(v).strip()}}
+        els.append(_h3('Финансовая модель'))
+        rows = [['Показатель', 'Значение']]
+        for k, lbl in [('test_batch_units','Тестовая партия, шт'), ('test_batch_cost','Стоимость партии, ₽'),
+                       ('monthly_ad_budget','Бюджет рекламы/мес'), ('breakeven_units','Точка безубыточности, шт'),
+                       ('roi_3months','ROI за 3 мес'), ('payback_months','Окупаемость, мес')]:
+            v = fm_merged.get(k)
+            if v is not None:
+                rows.append([lbl, _rub(v) if 'cost' in k or 'budget' in k else str(v)])
+        els.append(_tbl(rows, col_widths=[3.5*inch, 3.1*inch]))
 
     if level != 'basic':
         sp = r.get('seasonal_plan') or {}
@@ -1382,6 +1382,33 @@ def _sec_content(text: str) -> list:
             els.append(_body(line))
     els.append(_sp(0.1))
     return els
+
+
+def _sec_seasonal_plan(r: dict) -> list:
+    """Сезонный план — простая 4-строчная таблица для Basic."""
+    sp = r.get('seasonal_plan') or {}
+    rows = [
+        ['Пик продаж',    str(sp.get('peak', '—'))],
+        ['Период спада',  str(sp.get('low',  '—'))],
+        ['Когда закупать', str(sp.get('buy_date', '—'))],
+        ['Старт рекламы', str(sp.get('ad_date', '—'))],
+    ]
+    t = Table(rows, colWidths=[2.2*inch, COL_W - 2.2*inch])
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (0, -1), C_NAVY),
+        ('TEXTCOLOR',     (0, 0), (0, -1), WHITE),
+        ('FONTNAME',      (0, 0), (0, -1), FB),
+        ('BACKGROUND',    (1, 0), (1, -1), C_TABLE_ODD),
+        ('FONTNAME',      (1, 0), (1, -1), FN),
+        ('FONTSIZE',      (0, 0), (-1, -1), 9.5),
+        ('TOPPADDING',    (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
+        ('GRID',          (0, 0), (-1, -1), 0.4, C_BORDER),
+        ('ROWBACKGROUNDS',(0, 0), (-1, -1), [WHITE, C_TABLE_ODD]),
+    ]))
+    return [_h2('Сезонный план'), _hr(), t, _sp(0.1)]
 
 
 def _sec_conclusion(level: str, agents: dict) -> list:
@@ -1784,73 +1811,84 @@ def _sec_finale(level: str, agents: dict = None) -> list:
     els.append(_wp(PLATFORM_URL, size=9, color=accent))
 
     # ── Апсейл для Basic и Standard ──────────────────────────────────────────
-    upsell = LEVEL_UPSELL_NEXT.get(level)
-    if upsell:
-        next_name, next_desc, next_bg = upsell
-        els.append(_sp(0.5))
+    if level in ('basic', 'standard'):
+        gold = HexColor('#f59e0b')
+        grey_s = ParagraphStyle('_fgr', fontName=FN, fontSize=8,
+                                 textColor=HexColor('#94a3b8'), leading=12)
+        head_s = ParagraphStyle('_fh2', fontName=FB, fontSize=11, textColor=WHITE,
+                                 alignment=TA_CENTER, leading=16)
+        bull_s = ParagraphStyle('_fbl', fontName=FB, fontSize=10, textColor=WHITE,
+                                 leading=15, leftIndent=4)
+        cta_s  = ParagraphStyle('_fcta', fontName=FB, fontSize=9.5, textColor=gold,
+                                 alignment=TA_CENTER, leading=14)
+        tri_s  = ParagraphStyle('_ftri', fontName=FB, fontSize=10, textColor=gold,
+                                 alignment=TA_CENTER, leading=14)
 
-        # Плашка "Хотите больше?"
-        bump_s = ParagraphStyle('_bmp', fontName=FB, fontSize=9,
-                                 textColor=HexColor('#0d1b2a'), alignment=TA_CENTER)
-        bump = Table([[Paragraph('▲ БОЛЬШЕ ДАННЫХ — ЛУЧШЕ РЕШЕНИЕ ▲', bump_s)]],
-                     colWidths=[COL_W])
-        bump.setStyle(TableStyle([
-            ('BACKGROUND',    (0,0), (-1,-1), accent),
-            ('TOPPADDING',    (0,0), (-1,-1), 7),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 7),
-        ]))
-        els.append(bump)
+        els.append(_sp(0.45))
 
-        # Блок с предложением
         if level == 'basic':
-            bullets = [
-                'Все 3 графика ниши с подробными описаниями',
-                'Топ-20 товаров с полной аналитикой',
-                'Юнит-экономика в 3 сценариях (FBO BY / FBS / FBO RU)',
-                'Рекламная стратегия с прогнозом KPI',
+            tri_text   = '▲  ВЫ ВИДЕЛИ ТОЛЬКО НАЧАЛО  ▲'
+            main_head  = 'Перейдите на PDF Standard — полный анализ ниши'
+            items_data = [
+                ('Все 5 графиков с подробными описаниями',
+                 'Динамика выручки, сезонность, распределение цен,\nтренд ниши и прогноз на 3 месяца вперёд'),
+                ('Топ-20 товаров ниши с полной аналитикой',
+                 'Названия, цены, выручка, количество отзывов\nи прямые ссылки на каждый товар'),
+                ('Развёрнутый мастер-анализ AI',
+                 'Конкретные имена конкурентов, их слабые места,\nточные ценовые диапазоны для входа\nи пошаговая стратегия с цифрами'),
+                ('Юнит-экономика в 3 сценариях',
+                 'FBO Беларусь / FBS / FBO Россия —\nприбыль и ROI по каждому варианту работы'),
+                ('Рекламная стратегия с прогнозом KPI',
+                 'Бюджеты по фазам, прогноз CPM, CTR и CR\nна первые 2 месяца работы'),
             ]
+            cta_text = 'Откройте WBAnalyzer и нажмите кнопку «PDF Standard»'
         else:  # standard
-            bullets = [
-                'Глубокий анализ конкурентной среды и ROI на 12 месяцев',
-                'Поиск поставщиков: цены Alibaba/1688, MOQ, прямые ссылки',
-                'Полный список документов и сертификатов для WB',
-                'Стратегия поставок FBS/FBO + объём первой партии',
-                'Готовый AI-текст карточки товара для SEO-продвижения',
+            tri_text   = '▲  ХОТИТЕ ВОЙТИ В НИШУ УВЕРЕННО?  ▲'
+            main_head  = 'PDF Deep — ваш полный стартовый пакет'
+            items_data = [
+                ('Глубокий анализ каждого конкурента',
+                 'Топ-игроки по отдельности: выручка, слабые места,\nкакие запросы они не закрывают — ваши точки входа'),
+                ('Поиск поставщиков: готовые данные',
+                 'Цены с Alibaba и 1688, MOQ, маржа и ROI\nпо каждой площадке — бери и звони'),
+                ('Документы и сертификаты для WB',
+                 'Полный список что нужно оформить,\nсколько стоит и где получить'),
+                ('Стратегия поставок FBS/FBO',
+                 'Расчёт первой партии, план закупок\nпо месяцам под сезонные пики'),
+                ('Готовый AI-текст карточки товара',
+                 'SEO-заголовок, описание, буллеты,\nрекомендации по фото и видео —\nпросто скопируй и загрузи на WB'),
             ]
+            cta_text = 'Откройте WBAnalyzer и нажмите кнопку «PDF Deep»'
 
-        head_s  = ParagraphStyle('_fh', fontName=FB, fontSize=14, textColor=WHITE,
-                                  alignment=TA_CENTER, leading=20)
-        body_s  = ParagraphStyle('_fb', fontName=FN, fontSize=9,
-                                  textColor=HexColor('#cbd5e1'), leading=14)
-        bull_s  = ParagraphStyle('_fbl', fontName=FN, fontSize=9.5,
-                                  textColor=WHITE, leading=14)
+        # Строим блок
+        inner_rows = [
+            [Paragraph(tri_text, tri_s)],
+            [Spacer(1, 5)],
+            [Paragraph(main_head, head_s)],
+            [Spacer(1, 12)],
+        ]
+        for title, desc in items_data:
+            inner_rows.append([Paragraph(f'✓  {title}', bull_s)])
+            for line in desc.split('\n'):
+                inner_rows.append([Paragraph(f'   {line}', grey_s)])
+            inner_rows.append([Spacer(1, 6)])
+        inner_rows.append([Spacer(1, 4)])
+        inner_rows.append([Paragraph(cta_text, cta_s)])
 
-        inner_rows = [[Paragraph(f'Перейдите на {next_name}', head_s)]]
-        inner_rows.append([Spacer(1, 6)])
-        for b in bullets:
-            inner_rows.append([Paragraph(f'✓  {b}', bull_s)])
-        inner_rows.append([Spacer(1, 10)])
-        inner_rows.append([Paragraph(
-            f'Откройте WBAnalyzer и нажмите кнопку «{next_name}»',
-            ParagraphStyle('_fcta', fontName=FB, fontSize=10,
-                            textColor=accent, alignment=TA_CENTER, leading=14)
-        )])
-
-        blk = Table(inner_rows, colWidths=[COL_W - 32])
+        blk = Table(inner_rows, colWidths=[COL_W - 40])
         blk.setStyle(TableStyle([
-            ('TOPPADDING',    (0,0), (-1,-1), 4),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('TOPPADDING',    (0,0), (-1,-1), 2),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 2),
             ('LEFTPADDING',   (0,0), (-1,-1), 0),
             ('RIGHTPADDING',  (0,0), (-1,-1), 0),
         ]))
         wrap = Table([[blk]], colWidths=[COL_W])
         wrap.setStyle(TableStyle([
-            ('BACKGROUND',    (0,0), (-1,-1), HexColor('#1e293b')),
-            ('TOPPADDING',    (0,0), (-1,-1), 18),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 18),
-            ('LEFTPADDING',   (0,0), (-1,-1), 16),
-            ('RIGHTPADDING',  (0,0), (-1,-1), 16),
-            ('BOX',           (0,0), (-1,-1), 1.5, accent),
+            ('BACKGROUND',    (0,0), (-1,-1), HexColor('#0f1e35')),
+            ('TOPPADDING',    (0,0), (-1,-1), 20),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 20),
+            ('LEFTPADDING',   (0,0), (-1,-1), 20),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 20),
+            ('BOX',           (0,0), (-1,-1), 1.5, gold),
         ]))
         els.append(wrap)
 
@@ -2209,6 +2247,10 @@ def render(level: str, niche: dict, agents: dict,
     els += _sec_top_products(items, limit=top_limit, level=level)
     els += _sec_master(agents.get('master') or {})
 
+    # Сезонный план — только в Basic (как отдельный раздел)
+    if level == 'basic':
+        els += _sec_seasonal_plan(agents.get('master') or {})
+
     if level in ('standard', 'deep'):
         els += _sec_unit(agents.get('unit') or {})
         els += _sec_ads(agents.get('ads') or {})
@@ -2222,8 +2264,9 @@ def render(level: str, niche: dict, agents: dict,
 
     els += _sec_conclusion(level, agents)
 
-    # Словарь терминов
-    els += _sec_glossary()
+    # Словарь терминов — только в Standard и Deep
+    if level != 'basic':
+        els += _sec_glossary()
 
     # Финальная тёмная страница
     els.append(NextPageTemplate('Finale'))

@@ -2586,19 +2586,25 @@ async function downloadReport(level) {
     turnover: niche.turnover || 0, commission: niche.commission || 0,
     lost_revenue: niche.lost_revenue || 0, lost_revenue_pct: niche.lost_revenue_pct || 0,
     avg_rating: niche.avg_rating || 0,
+    prepared_for: (typeof window.currentUserLabel !== 'undefined' && window.currentUserLabel)
+      ? window.currentUserLabel
+      : (document.querySelector('[data-user-label]') || {}).dataset?.userLabel || '',
   };
 
-  // Захватываем графики из браузера (canvas → JPEG 75%, max 700px ширина)
+  // Захватываем графики из браузера (canvas → JPEG, высокое разрешение для PDF)
   const charts = {};
   ['revenueChart','salesChart','priceChart','trendChart','sellersChart','forecastChart'].forEach(function(id) {
     try {
       var c = document.getElementById(id);
       if (!c || c.tagName !== 'CANVAS') return;
+      // Сохраняем оригинальное разрешение canvas (Chart.js с devicePixelRatio даёт 2x)
+      // Ограничиваем только сверху чтобы не раздувать размер запроса
       var tc = document.createElement('canvas');
-      tc.width = Math.min(c.width, 700); tc.height = Math.min(c.height, 300);
+      tc.width  = Math.min(c.width,  1200);
+      tc.height = Math.min(c.height, 700);
       tc.getContext('2d').drawImage(c, 0, 0, tc.width, tc.height);
-      var dataUrl = tc.toDataURL('image/jpeg', 0.75);
-      if (dataUrl && dataUrl.length > 100) charts[id] = dataUrl;
+      var dataUrl = tc.toDataURL('image/jpeg', 0.85);
+      if (dataUrl && dataUrl.length > 200) charts[id] = dataUrl;
     } catch(e) {}
   });
 

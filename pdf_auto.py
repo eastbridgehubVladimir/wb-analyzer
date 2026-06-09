@@ -156,17 +156,24 @@ def _tbl(rows, col_widths=None, header_bg=C_NAVY, row_bg=True):
     n_cols = max(len(r) for r in rows)
     if col_widths is None:
         col_widths = [COL_W / n_cols] * n_cols
-    t = Table(rows, colWidths=col_widths)
+    _th_s = ParagraphStyle('_th', fontName=FB, fontSize=8, textColor=WHITE,   leading=11)
+    _td_s = ParagraphStyle('_td', fontName=FN, fontSize=8, textColor=C_TEXT,  leading=11)
+    wrapped = []
+    for ri, row in enumerate(rows):
+        crow = []
+        for cell in row:
+            if isinstance(cell, str):
+                crow.append(Paragraph(cell, _th_s if ri == 0 else _td_s))
+            else:
+                crow.append(cell)
+        wrapped.append(crow)
+    t = Table(wrapped, colWidths=col_widths)
     cmds = [
-        ('BACKGROUND', (0, 0), (-1, 0), header_bg),
-        ('TEXTCOLOR',  (0, 0), (-1, 0), WHITE),
-        ('FONTNAME',   (0, 0), (-1, 0), FB),
-        ('FONTSIZE',   (0, 0), (-1, -1), 8),
-        ('FONTNAME',   (0, 1), (-1, -1), FN),
-        ('GRID',       (0, 0), (-1, -1), 0.4, C_LIGHT2),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BACKGROUND',    (0, 0), (-1, 0), header_bg),
+        ('GRID',          (0, 0), (-1, -1), 0.4, C_LIGHT2),
+        ('TOPPADDING',    (0, 0), (-1, -1), 5),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('VALIGN',     (0, 0), (-1, -1), 'MIDDLE'),
+        ('VALIGN',        (0, 0), (-1, -1), 'TOP'),
     ]
     if row_bg:
         cmds.append(('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, C_LIGHT]))
@@ -554,91 +561,162 @@ def _chart_revenue_line(items: list, width=COL_W, height=2.5*inch) -> Drawing:
 # ── PDF секции ─────────────────────────────────────────────────────────────────
 
 def _sec_cover(niche: dict, level: str) -> list:
-    name = niche.get('name') or niche.get('display_name') or 'Анализ ниши'
-    level_names = {'basic': 'Basic', 'standard': 'Standard', 'deep': 'Deep'}
-    level_colors = {'basic': C_GRAY, 'standard': C_BLUE2, 'deep': HexColor('#7c3aed')}
+    name = niche.get('display_name') or niche.get('name') or 'Анализ ниши'
+    level_names    = {'basic': 'Basic', 'standard': 'Standard', 'deep': 'Deep'}
+    level_colors   = {'basic': HexColor('#475569'), 'standard': C_BLUE, 'deep': HexColor('#7c3aed')}
+    level_subtitles = {
+        'basic':    'Базовый анализ ниши · метрики, топ-5 товаров, мастер-анализ AI',
+        'standard': 'Расширенный анализ · юнит-экономика, реклама, топ-20 товаров, все графики',
+        'deep':     'Полный профессиональный анализ · все разделы, поставщики, карточка товара',
+    }
     lname = level_names.get(level, level.capitalize())
-    lcol  = level_colors.get(level, C_BLUE2)
-
-    from reportlab.platypus import Frame, BaseDocTemplate
-    els = []
-    # Logo / brand
-    els.append(_p('WBAnalyzer', name='logo', size=24, bold=True, color=C_NAVY,
-                  align=TA_CENTER, space_before=20, space_after=4))
-    els.append(_p('Аналитическая платформа для продавцов Wildberries',
-                  name='tagline', size=10, color=C_GRAY, align=TA_CENTER,
-                  space_before=0, space_after=20))
-    els.append(_hr())
-    els.append(_sp(0.3))
-    els.append(_p(name, name='niche_title', size=22, bold=True, color=C_NAVY,
-                  align=TA_CENTER, space_before=8, space_after=8))
-
-    # Level badge via table
-    badge = Table([[_p(f'PDF {lname}', size=12, bold=True, color=WHITE, align=TA_CENTER)]],
-                  colWidths=[1.5*inch])
-    badge.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), lcol),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-        ('LEFTPADDING', (0,0), (-1,-1), 10),
-        ('RIGHTPADDING', (0,0), (-1,-1), 10),
-    ]))
-    from reportlab.platypus import HRFlowable
-    els.append(Table([[badge]], colWidths=[COL_W]))
-    els.append(_sp(0.2))
-
+    lcol  = level_colors.get(level, C_BLUE)
+    lsub  = level_subtitles.get(level, '')
     from datetime import date
-    els.append(_p(f'Дата: {date.today().strftime("%d.%m.%Y")}',
-                  size=9, color=C_GRAY, align=TA_CENTER))
-    els.append(_sp(0.5))
+    els = []
+
+    # ── Шапка бренда ────────────────────────────────────────────────────────
+    brand_inner = Table([[
+        _p('WBAnalyzer', size=20, bold=True, color=WHITE, align=TA_LEFT,
+           space_before=0, space_after=0),
+        _p('AI · Аналитика нового поколения', size=8,
+           color=HexColor('#94a3b8'), align=TA_RIGHT,
+           space_before=0, space_after=0),
+    ]], colWidths=[COL_W * 0.55, COL_W * 0.45])
+    brand_inner.setStyle(TableStyle([
+        ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING',    (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+        ('LEFTPADDING',   (0,0), (-1,-1), 0),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 0),
+    ]))
+    brand_wrap = Table([[brand_inner]], colWidths=[COL_W])
+    brand_wrap.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (-1,-1), C_NAVY),
+        ('TOPPADDING',    (0,0), (-1,-1), 13),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 13),
+        ('LEFTPADDING',   (0,0), (-1,-1), 14),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 14),
+    ]))
+    els.append(brand_wrap)
+
+    # Цветная акцент-полоска (цвет уровня)
+    accent = Table([['']], colWidths=[COL_W], rowHeights=[4])
+    accent.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,-1), lcol)]))
+    els.append(accent)
+    els.append(_sp(0.4))
+
+    # ── Название ниши ────────────────────────────────────────────────────────
+    els.append(_p(name, size=26, bold=True, color=C_NAVY, align=TA_CENTER,
+                  space_before=0, space_after=4))
+    els.append(_sp(0.08))
+
+    # ── Бейдж уровня + дата ──────────────────────────────────────────────────
+    badge = Table(
+        [[_p(f'PDF {lname}', size=10, bold=True, color=WHITE, align=TA_CENTER)]],
+        colWidths=[1.7*inch]
+    )
+    badge.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (-1,-1), lcol),
+        ('TOPPADDING',    (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('LEFTPADDING',   (0,0), (-1,-1), 10),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 10),
+    ]))
+    badge_row = Table(
+        [[badge, _p(date.today().strftime('%d.%m.%Y'), size=9, color=C_GRAY, align=TA_RIGHT)]],
+        colWidths=[2.0*inch, COL_W - 2.0*inch]
+    )
+    badge_row.setStyle(TableStyle([
+        ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING',    (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+    ]))
+    els.append(badge_row)
+    if lsub:
+        els.append(_sp(0.06))
+        els.append(_p(lsub, size=8, color=C_GRAY, align=TA_LEFT,
+                      space_before=0, space_after=0))
+
+    # ── Персональный идентификатор ───────────────────────────────────────────
+    prepared_for = str(niche.get('prepared_for', '')).strip()
+    if prepared_for:
+        els.append(_sp(0.12))
+        pf_tbl = Table(
+            [[_p(f'Подготовлено персонально для: {prepared_for}', size=9,
+                 color=HexColor('#1e40af'), align=TA_CENTER)]],
+            colWidths=[COL_W]
+        )
+        pf_tbl.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), HexColor('#eff6ff')),
+            ('TOPPADDING',    (0,0), (-1,-1), 7),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 7),
+            ('LEFTPADDING',   (0,0), (-1,-1), 10),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 10),
+            ('BOX',           (0,0), (-1,-1), 0.5, HexColor('#bfdbfe')),
+        ]))
+        els.append(pf_tbl)
+
+    els.append(_sp(0.28))
     els.append(_hr())
     return els
 
 
 def _sec_metrics(niche: dict) -> list:
     n = niche
-    revenue = float(n.get('revenue', 0))
-    orders = int(n.get('orders', 0))
-    sellers = int(n.get('sellers', 0))
-    sws = int(n.get('sellers_with_sales', 0))
-    buyout = float(n.get('buyout_pct', 0))
-    profit = float(n.get('profit_pct', 0))
-    turnover = float(n.get('turnover', 0))
-    avg_price = float(n.get('avg_price', 0))
-    lost_rev_pct = float(n.get('lost_revenue_pct', 0))
-    lost_rev = float(n.get('lost_revenue', 0))
+    revenue    = float(n.get('revenue', 0))
+    orders     = int(n.get('orders', 0))
+    sellers    = int(n.get('sellers', 0))
+    sws        = int(n.get('sellers_with_sales', 0))
+    buyout     = float(n.get('buyout_pct', 0))
+    profit     = float(n.get('profit_pct', 0))
+    turnover   = float(n.get('turnover', 0))
+    avg_price  = float(n.get('avg_price', 0))
+    lost_rev   = float(n.get('lost_revenue', 0))
+    lost_pct   = float(n.get('lost_revenue_pct', 0))
     commission = float(n.get('commission', 0))
-    avg_rating = float(n.get('avg_rating', 0))
+
+    act_pct       = round(sws / sellers * 100) if sellers else 0
+    # Если orders явно передан и разумен — используем его, иначе вычисляем из revenue/price
+    orders_display = orders if orders > 100 else (round(revenue / avg_price) if avg_price > 0 else orders)
+    orders_per_day = round(orders_display / 30) if orders_display > 0 else 0
+    avg_rev_seller = round(revenue / sws) if sws > 0 else 0
 
     els = [_h2('Ключевые показатели ниши'), _hr()]
 
-    # 3 большие карточки в ряд
     def _card(label, value, sub='', color=C_BLUE2):
         return [
-            _p(label, size=8, color=C_GRAY, space_before=2, space_after=1),
+            _p(label, size=7, color=C_GRAY, space_before=2, space_after=1),
             _p(value, size=14, bold=True, color=color, space_before=0, space_after=1),
-            _p(sub, size=8, color=C_GRAY, space_before=0, space_after=2),
+            _p(sub,   size=7, color=C_GRAY, space_before=0, space_after=2),
         ]
 
     row1 = [
         _card('ВЫРУЧКА НИШИ / МЕС', _rub(revenue), 'суммарная по всем товарам', C_NAVY),
-        _card('ЗАКАЗОВ / МЕС', _num(orders), '', C_BLUE2),
-        _card('ПРОДАВЦОВ', f'{sellers} / {sws} акт.', f'{round(sws/sellers*100) if sellers else 0}% с продажами', C_GREEN),
+        _card('ЗАКАЗОВ / МЕС', _num(orders_display),
+              f'≈ {orders_per_day} заказов в день', C_BLUE2),
+        _card('ПРОДАВЦОВ', f'{sellers} / {sws} акт.',
+              f'{act_pct}% имеют продажи', C_GREEN),
     ]
+
+    turn_col = C_GREEN if turnover <= 45 else (C_AMBER if turnover <= 90 else C_RED)
+    turn_sub = ('отлично' if turnover <= 45 else
+                ('приемлемо' if turnover <= 90 else '⚠ высокий риск заморозки'))
+    prof_col = C_GREEN if profit >= 0.3 else (C_AMBER if profit >= 0.15 else C_RED)
+
     row2 = [
         _card('ВЫКУП', _pct(buyout), 'доля выкупленных заказов',
               C_GREEN if buyout >= 0.7 else (C_AMBER if buyout >= 0.5 else C_RED)),
-        _card('ОБОРАЧИВАЕМОСТЬ', f'{turnover:.0f} дней', 'сколько дней до продажи',
-              C_GREEN if turnover <= 45 else (C_AMBER if turnover <= 90 else C_RED)),
-        _card('МАРЖИНАЛЬНОСТЬ', _pct(profit), 'до вычета себестоимости',
-              C_GREEN if profit >= 0.3 else (C_AMBER if profit >= 0.15 else C_RED)),
+        _card('ОБОРАЧИВАЕМОСТЬ', f'{turnover:.0f} дней', turn_sub, turn_col),
+        _card('МАРЖА (по WB)', _pct(profit), 'выручка минус затраты WB', prof_col),
     ]
+
+    comm_str = _pct(commission) if commission > 0 else '~20–25%'
     row3 = [
-        _card('СРЕДНИЙ ЧЕК', _rub(avg_price), 'средняя цена товара', C_NAVY),
-        _card('УПУЩ. ВЫРУЧКА', _pct(lost_rev_pct) if lost_rev_pct else _rub(lost_rev),
-              'потенциал при заполнении спроса',
-              C_GREEN if lost_rev_pct > 0.2 else C_GRAY),
-        _card('КОМИССИЯ WB', _pct(commission) if commission else '~25%', '', C_GRAY),
+        _card('СРЕДНИЙ ЧЕК', _rub(avg_price), 'средняя цена единицы товара', C_NAVY),
+        _card('ВЫРУЧКА / ПРОДАВЕЦ', _rub(avg_rev_seller),
+              'среди активных продавцов/мес', C_BLUE2),
+        _card('КОМИССИЯ WB', comm_str, 'по данной категории товара', C_GRAY),
     ]
 
     cw = COL_W / 3
@@ -647,23 +725,54 @@ def _sec_metrics(niche: dict) -> list:
         cells = [[Spacer(1, 2)] + c for c in row]
         t = Table([cells], colWidths=[cw]*3)
         t.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,-1), C_LIGHT),
-            ('BOX', (0,0), (0,-1), 1, C_LIGHT2),
-            ('BOX', (1,0), (1,-1), 1, C_LIGHT2),
-            ('BOX', (2,0), (2,-1), 1, C_LIGHT2),
-            ('TOPPADDING', (0,0), (-1,-1), 8),
+            ('BACKGROUND',    (0,0), (-1,-1), C_LIGHT),
+            ('BOX',           (0,0), (0,-1), 1, C_LIGHT2),
+            ('BOX',           (1,0), (1,-1), 1, C_LIGHT2),
+            ('BOX',           (2,0), (2,-1), 1, C_LIGHT2),
+            ('TOPPADDING',    (0,0), (-1,-1), 8),
             ('BOTTOMPADDING', (0,0), (-1,-1), 8),
-            ('LEFTPADDING', (0,0), (-1,-1), 8),
-            ('RIGHTPADDING', (0,0), (-1,-1), 8),
-            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('LEFTPADDING',   (0,0), (-1,-1), 8),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 8),
+            ('VALIGN',        (0,0), (-1,-1), 'TOP'),
         ]))
         return t
 
     els.append(_cards_tbl(row1))
-    els.append(_sp(0.08))
+    els.append(_sp(0.05))
     els.append(_cards_tbl(row2))
-    els.append(_sp(0.08))
+    els.append(_sp(0.05))
     els.append(_cards_tbl(row3))
+
+    # ── Пояснительный блок ────────────────────────────────────────────────────
+    notes = []
+    if turnover > 90:
+        notes.append(f'⚠ <b>Оборачиваемость {turnover:.0f} дней</b> — ваши деньги будут заморожены более 3 месяцев. Начинайте строго с FBS-схемы и минимальной тестовой партии чтобы не рисковать капиталом.')
+    elif turnover > 45:
+        notes.append(f'ℹ <b>Оборачиваемость {turnover:.0f} дней</b> — умеренная. Следите за остатками и не допускайте затоваривания.')
+    if profit > 0:
+        notes.append(f'ℹ <b>Маржа {_pct(profit)} (данные MPStats)</b> — это выручка минус комиссия и логистика Wildberries, но <b>без учёта себестоимости товара</b>. Реальная чистая прибыль обычно в 2–3 раза ниже: при марже 80% по WB ваша фактическая прибыль составит 20–35%.')
+    if lost_rev > 0 or lost_pct > 0:
+        lr_val = _rub(lost_rev) if lost_rev > 0 else _pct(lost_pct)
+        notes.append(f'ℹ <b>Упущенная выручка {lr_val}</b> — продажи, которые не состоялись из-за нехватки остатков у продавцов. Высокое значение = недозаполненный спрос = ваша точка входа.')
+    if not commission:
+        notes.append('ℹ <b>Комиссия WB</b> — для точного значения уточните в личном кабинете WB в разделе «Комиссии» для вашей категории. Влияет на юнит-экономику.')
+    if notes:
+        els.append(_sp(0.1))
+        inner = []
+        for note in notes:
+            inner.append(_p(note, size=8, color=HexColor('#374151'),
+                            space_before=3, space_after=3))
+        notes_tbl = Table([[inner]], colWidths=[COL_W])
+        notes_tbl.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), HexColor('#fefce8')),
+            ('TOPPADDING',    (0,0), (-1,-1), 8),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+            ('LEFTPADDING',   (0,0), (-1,-1), 10),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 10),
+            ('BOX',           (0,0), (-1,-1), 0.5, HexColor('#fde68a')),
+        ]))
+        els.append(notes_tbl)
+
     els.append(_sp(0.15))
     return els
 
@@ -728,14 +837,18 @@ def _sec_master(r: dict) -> list:
     risks = list(r.get('risks') or [])
     if risks:
         els.append(_h3('Риски'))
+        _prob_colors = {'высокая': C_RED, 'средняя': C_AMBER, 'низкая': C_GREEN}
         rows = [['Риск', 'Вероятность', 'Решение']]
         for risk in risks:
+            prob_str = str(risk.get('probability', '')).lower().strip()
+            prob_cell = _p(prob_str.capitalize(), size=8, bold=True,
+                           color=_prob_colors.get(prob_str, C_GRAY), align=TA_CENTER)
             rows.append([
                 str(risk.get('risk', '')),
-                str(risk.get('probability', '')),
+                prob_cell,
                 str(risk.get('mitigation', '')),
             ])
-        els.append(_tbl(rows, col_widths=[2.5*inch, 1.2*inch, 2.9*inch]))
+        els.append(_tbl(rows, col_widths=[2.5*inch, 1.1*inch, 3.0*inch]))
 
     fm = r.get('financial_model') or {}
     if fm:
@@ -752,10 +865,16 @@ def _sec_master(r: dict) -> list:
     sp = r.get('seasonal_plan') or {}
     if sp:
         els.append(_h3('Сезонный план'))
-        rows = [['Пик', 'Спад', 'Закупка', 'Реклама']]
-        rows.append([str(sp.get('peak','')), str(sp.get('low','')),
-                     str(sp.get('buy_date','')), str(sp.get('ad_date',''))])
-        els.append(_tbl(rows, col_widths=[1.6*inch]*4))
+        sp_items = [
+            ('Пик продаж',        sp.get('peak', '')),
+            ('Период спада',      sp.get('low', '')),
+            ('Когда закупать',    sp.get('buy_date', '')),
+            ('Старт рекламы',     sp.get('ad_date', '')),
+        ]
+        for lbl, val in sp_items:
+            if str(val).strip():
+                els.append(_p(f'<b>{lbl}:</b> {val}', size=9,
+                              space_before=2, space_after=2))
 
     els.append(_sp(0.1))
     return els
@@ -1068,44 +1187,122 @@ def _sec_content(text: str) -> list:
     return els
 
 
-def _sec_upsell(current_level: str) -> list:
-    """Блок продажи в Basic PDF."""
-    if current_level != 'basic':
+def _sec_conclusion(level: str, agents: dict) -> list:
+    """Итоговый вывод — выделенный блок в конце аналитического контента."""
+    master  = agents.get('master') or {}
+    verdict = str(master.get('final_verdict', '')).strip()
+    rec     = str(master.get('final_recommendation', '')).strip()
+    vc      = str(master.get('verdict_color', '#d97706')).strip()
+    if not (verdict or rec):
         return []
-    els = [PageBreak(), _h2('Хотите больше данных?'), _hr()]
-    els.append(_body('Этот отчёт — Basic версия. Для полного анализа перед входом в нишу:'))
-    els.append(_sp(0.1))
 
-    rows = [
-        ['', 'PDF Standard', 'PDF Deep'],
-        ['Ключевые метрики', '✅', '✅'],
-        ['Графики', '✅', '✅'],
-        ['Топ-20 товаров', '✅', '✅'],
-        ['Юнит-экономика', '✅', '✅'],
-        ['Рекламная стратегия', '✅', '✅'],
-        ['Глубокий анализ', '—', '✅'],
-        ['Выбор поставщиков', '—', '✅'],
-        ['Документы и сертификация', '—', '✅'],
-        ['Стратегия поставок', '—', '✅'],
-        ['Создание карточки', '—', '✅'],
-    ]
-    t = Table(rows, colWidths=[3.5*inch, 1.5*inch, 1.6*inch])
-    t.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), C_NAVY),
-        ('TEXTCOLOR',  (0,0), (-1,0), WHITE),
-        ('FONTNAME',   (0,0), (-1,0), FB),
-        ('FONTSIZE',   (0,0), (-1,-1), 9),
-        ('FONTNAME',   (0,1), (-1,-1), FN),
-        ('GRID',       (0,0), (-1,-1), 0.4, C_LIGHT2),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [WHITE, C_LIGHT]),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-        ('ALIGN',      (1,0), (-1,-1), 'CENTER'),
+    if '#16a34a' in vc or '#22c55e' in vc:
+        bg, bord, tc = HexColor('#f0fdf4'), C_GREEN,  C_GREEN
+    elif '#dc2626' in vc or '#ef4444' in vc:
+        bg, bord, tc = HexColor('#fef2f2'), C_RED,    C_RED
+    else:
+        bg, bord, tc = HexColor('#fffbeb'), C_AMBER,  C_AMBER
+
+    inner = []
+    inner.append(_p('Итоговый вывод', size=10, bold=True, color=tc,
+                    space_before=0, space_after=4))
+    if verdict:
+        inner.append(_p(f'Решение: {verdict}', size=13, bold=True, color=tc,
+                        space_before=2, space_after=4))
+    if rec:
+        inner.append(_p(rec, size=9, color=C_TEXT, space_before=2, space_after=2))
+
+    tbl = Table([[inner]], colWidths=[COL_W])
+    tbl.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (-1,-1), bg),
+        ('TOPPADDING',    (0,0), (-1,-1), 12),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+        ('LEFTPADDING',   (0,0), (-1,-1), 14),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 14),
+        ('BOX',           (0,0), (-1,-1), 1.5, bord),
     ]))
-    els.append(t)
-    els.append(_sp(0.15))
-    els.append(_p('Откройте WBAnalyzer и нажмите PDF Standard или PDF Deep для получения полного отчёта.',
-                  size=9, color=C_GRAY))
+    return [_hr(), _sp(0.05), tbl, _sp(0.15)]
+
+
+def _sec_upsell(current_level: str) -> list:
+    """Блок апсейла в конце PDF."""
+    if current_level == 'deep':
+        return []
+    els = [PageBreak()]
+
+    if current_level == 'basic':
+        els.append(_h2('Получите полный анализ — PDF Standard и Deep'))
+        els.append(_hr())
+        els.append(_body('Этот отчёт — Basic версия. Сравните, что содержит каждый уровень:'))
+        els.append(_sp(0.1))
+        rows = [
+            ['Раздел анализа',           'Basic', 'Standard', 'Deep'],
+            ['Ключевые метрики ниши',    '✅',    '✅',       '✅'],
+            ['2 ключевых графика',        '✅',    '—',        '—'],
+            ['Все 6 графиков ниши',       '—',     '✅',       '✅'],
+            ['Топ-5 товаров',             '✅',    '—',        '—'],
+            ['Топ-20 товаров',            '—',     '✅',       '✅'],
+            ['Мастер-анализ AI',          '✅',    '✅',       '✅'],
+            ['Юнит-экономика (3 сценария)','—',   '✅',       '✅'],
+            ['Рекламная стратегия',       '—',     '✅',       '✅'],
+            ['Глубокий анализ ниши',      '—',     '—',        '✅'],
+            ['Поиск поставщиков + цены',  '—',     '—',        '✅'],
+            ['Документы и сертификаты',   '—',     '—',        '✅'],
+            ['Стратегия поставок WB',     '—',     '—',        '✅'],
+            ['Карточка товара (AI-текст)','—',     '—',        '✅'],
+        ]
+        t = Table(rows, colWidths=[3.1*inch, 1.1*inch, 1.1*inch, 1.3*inch])
+        t.setStyle(TableStyle([
+            ('BACKGROUND',     (0,0), (-1,0), C_NAVY),
+            ('TEXTCOLOR',      (0,0), (-1,0), WHITE),
+            ('FONTNAME',       (0,0), (-1,0), FB),
+            ('FONTSIZE',       (0,0), (-1,-1), 8.5),
+            ('FONTNAME',       (0,1), (-1,-1), FN),
+            ('GRID',           (0,0), (-1,-1), 0.4, C_LIGHT2),
+            ('ROWBACKGROUNDS', (0,1), (-1,-1), [WHITE, C_LIGHT]),
+            ('TOPPADDING',     (0,0), (-1,-1), 6),
+            ('BOTTOMPADDING',  (0,0), (-1,-1), 6),
+            ('ALIGN',          (1,0), (-1,-1), 'CENTER'),
+            ('BACKGROUND',     (2,1), (2,-1), HexColor('#eff6ff')),
+            ('BACKGROUND',     (3,1), (3,-1), HexColor('#f5f3ff')),
+        ]))
+        els.append(t)
+        els.append(_sp(0.15))
+        els.append(_p('Нажмите кнопку PDF Standard или PDF Deep в WBAnalyzer для полного отчёта.',
+                      size=9, color=C_GRAY, align=TA_CENTER))
+
+    elif current_level == 'standard':
+        els.append(_h2('PDF Deep — полный профессиональный анализ'))
+        els.append(_hr())
+        els.append(_body('В этом отчёте (Standard) уже есть метрики, графики, юнит-экономика и реклама. PDF Deep дополнительно включает:'))
+        els.append(_sp(0.1))
+        deep_extras = [
+            ('🔬 Глубокий анализ',        'Детальный анализ конкурентной среды, свободных сегментов, ROI на 12 месяцев.'),
+            ('🏭 Поиск поставщиков',      'Закупочные цены на Alibaba и 1688, расчёт маржи, MOQ, прямые ссылки на площадки.'),
+            ('📋 Документы и сертификаты','Полный список обязательных документов для выхода на WB: стоимость и сроки оформления.'),
+            ('📦 Стратегия поставок',      'Анализ FBS vs FBO, расчёт объёма первой поставки, выбор складов WB.'),
+            ('✍️ Карточка товара',        'Готовый AI-текст: заголовок, развёрнутое описание, характеристики, ключевые слова для SEO.'),
+        ]
+        rows = [['Раздел', 'Что получаете']]
+        for lbl, desc in deep_extras:
+            rows.append([lbl, desc])
+        t = Table(rows, colWidths=[2.1*inch, COL_W - 2.1*inch])
+        t.setStyle(TableStyle([
+            ('BACKGROUND',     (0,0), (-1,0), HexColor('#7c3aed')),
+            ('TEXTCOLOR',      (0,0), (-1,0), WHITE),
+            ('FONTNAME',       (0,0), (-1,0), FB),
+            ('FONTSIZE',       (0,0), (-1,-1), 8.5),
+            ('FONTNAME',       (0,1), (-1,-1), FN),
+            ('GRID',           (0,0), (-1,-1), 0.4, C_LIGHT2),
+            ('ROWBACKGROUNDS', (0,1), (-1,-1), [WHITE, HexColor('#f5f3ff')]),
+            ('TOPPADDING',     (0,0), (-1,-1), 7),
+            ('BOTTOMPADDING',  (0,0), (-1,-1), 7),
+        ]))
+        els.append(t)
+        els.append(_sp(0.15))
+        els.append(_p('Нажмите кнопку PDF Deep в WBAnalyzer для полного профессионального анализа.',
+                      size=9, color=C_GRAY, align=TA_CENTER))
+
     return els
 
 
@@ -1215,6 +1412,7 @@ def generate(level: str, niche: dict, chart_items: list = None) -> bytes:
         els += _sec_warehouse(agents.get('warehouse', {}))
         els += _sec_content(content_text)
 
+    els += _sec_conclusion(level, agents)
     els += _sec_upsell(level)
 
     doc.build(els)
@@ -1249,52 +1447,92 @@ def run_agent(name: str, niche: dict):
     return result if isinstance(result, dict) else {}
 
 
-def _sec_browser_charts(charts: dict, level: str) -> list:
-    """Вставляет графики из браузера (base64 data-URL → Image в PDF)."""
+def _sec_browser_charts(charts: dict, level: str, niche: dict = None) -> list:
+    """Вставляет графики из браузера — полная ширина, одна на строку, с пояснением."""
     if not charts:
         return []
-    els = [_h2('Графики ниши'), _hr()]
-    chart_labels = {
-        'revenueChart': 'Динамика выручки и продаж',
-        'salesChart':   'Сезонность заказов',
-        'priceChart':   'Распределение цен',
-        'trendChart':   'Тренд ниши',
-        'sellersChart': 'Доля продавцов',
-        'forecastChart':'Прогноз выручки',
+    n = niche or {}
+    revenue   = float(n.get('revenue', 0))
+    avg_price = float(n.get('avg_price', 0))
+    sellers   = int(n.get('sellers', 0))
+    sws       = int(n.get('sellers_with_sales', 0))
+    turnover  = float(n.get('turnover', 0))
+    act_pct   = round(sws / sellers * 100) if sellers else 0
+
+    chart_meta = {
+        'revenueChart': {
+            'label': 'Динамика выручки',
+            'desc': (f'Изменение месячной выручки ниши за последние 12 месяцев. '
+                     f'Среднемесячный объём рынка — {_rub(revenue)}. '
+                     'Растущие столбцы указывают на расширение ниши.'),
+        },
+        'salesChart': {
+            'label': 'Сезонность заказов',
+            'desc': ('Динамика заказов по месяцам — ключ к планированию закупок и рекламных бюджетов. '
+                     + (f'Оборачиваемость {turnover:.0f} дней: ' +
+                        ('товар продаётся быстро.' if turnover <= 45 else
+                         'продажи идут умеренно.' if turnover <= 90 else
+                         'медленные продажи, планируйте запасы осторожно.')
+                        if turnover else 'Закупайте товар заблаговременно перед пиком спроса.')),
+        },
+        'priceChart': {
+            'label': 'Распределение цен',
+            'desc': (f'Количество товаров в каждом ценовом диапазоне. '
+                     f'Средний чек ниши — {_rub(avg_price)}. '
+                     'Входите в диапазон с наибольшим количеством товаров — там концентрируется основной спрос.'),
+        },
+        'trendChart': {
+            'label': 'Тренд ниши',
+            'desc': ('Долгосрочный тренд изменения спроса. '
+                     'Восходящий тренд — рынок растёт, это благоприятное время для входа. '
+                     'Нисходящий — рынок сжимается, требуется осторожность.'),
+        },
+        'sellersChart': {
+            'label': 'Доля продавцов',
+            'desc': (f'Распределение выручки между продавцами. '
+                     f'Активных продавцов {sws} из {sellers} ({act_pct}%). '
+                     + ('Рынок высококонцентрирован: 3–5 игроков доминируют.' if act_pct < 15 else
+                        'Рынок умеренно распределён — есть место для нового игрока.')),
+        },
+        'forecastChart': {
+            'label': 'Прогноз выручки',
+            'desc': ('Прогноз объёма ниши на ближайшие 3 месяца на основе исторической динамики. '
+                     'Используйте как ориентир при планировании бюджета закупок и рекламы.'),
+        },
     }
-    row_imgs = []
-    for chart_id, label in chart_labels.items():
+
+    chart_order = {
+        'basic':    ['revenueChart', 'salesChart'],
+        'standard': ['revenueChart', 'salesChart', 'priceChart', 'trendChart', 'sellersChart', 'forecastChart'],
+        'deep':     ['revenueChart', 'salesChart', 'priceChart', 'trendChart', 'sellersChart', 'forecastChart'],
+    }.get(level, list(chart_meta.keys()))
+
+    els = [_h2('Графики ниши'), _hr()]
+    found = 0
+    for chart_id in chart_order:
         data_url = charts.get(chart_id, '')
         if not data_url:
             continue
+        meta = chart_meta.get(chart_id, {'label': chart_id, 'desc': ''})
         try:
-            # data:image/jpeg;base64,....  или  data:image/png;base64,...
-            header, b64 = data_url.split(',', 1)
+            _header, b64 = data_url.split(',', 1)
             img_bytes = __import__('base64').b64decode(b64)
             img_buf = io.BytesIO(img_bytes)
-            img = Image(img_buf, width=COL_W / 2 - 0.1*inch, height=1.8*inch)
+            img = Image(img_buf, width=COL_W, height=2.6*inch)
             img.hAlign = 'CENTER'
-            row_imgs.append((label, img))
+            els.append(_p(meta['label'], size=10, bold=True, color=C_NAVY,
+                          align=TA_CENTER, space_before=8, space_after=2))
+            els.append(img)
+            if meta.get('desc'):
+                els.append(_p(meta['desc'], size=8, color=C_GRAY,
+                               align=TA_CENTER, space_before=3, space_after=2))
+            els.append(_sp(0.12))
+            found += 1
         except Exception as _e:
             print(f'[PDF] chart {chart_id} skip: {_e}')
 
-    # 2 графика в ряд
-    for i in range(0, len(row_imgs), 2):
-        pair = row_imgs[i:i+2]
-        cells = []
-        for label, img in pair:
-            cells.append([_p(label, size=8, color=C_GRAY, align=TA_CENTER), img])
-        if len(cells) == 1:
-            cells.append([_sp(0.1), _sp(0.1)])
-        t = Table([cells], colWidths=[COL_W/2]*2)
-        t.setStyle(TableStyle([
-            ('ALIGN',  (0,0), (-1,-1), 'CENTER'),
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-            ('TOPPADDING', (0,0), (-1,-1), 4),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-        ]))
-        els.append(t)
-        els.append(_sp(0.08))
+    if found == 0:
+        return []
     return els
 
 
@@ -1320,7 +1558,7 @@ def render(level: str, niche: dict, agents: dict,
     # Графики из браузера (canvas → base64 → Image в PDF)
     browser_charts = dict(charts or {})
     if browser_charts:
-        els += _sec_browser_charts(browser_charts, level)
+        els += _sec_browser_charts(browser_charts, level, niche)
     elif items:
         # Резервный вариант: ReportLab-графики из MPStats
         if len(items) >= 4:
@@ -1347,6 +1585,7 @@ def render(level: str, niche: dict, agents: dict,
         els += _sec_warehouse(agents.get('warehouse') or {})
         els += _sec_content(content_text)
 
+    els += _sec_conclusion(level, agents)
     els += _sec_upsell(level)
 
     doc.build(els)

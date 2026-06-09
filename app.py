@@ -2602,7 +2602,10 @@ async function downloadReport(level) {
       var tc = document.createElement('canvas');
       tc.width  = Math.min(c.width,  1200);
       tc.height = Math.min(c.height, 700);
-      tc.getContext('2d').drawImage(c, 0, 0, tc.width, tc.height);
+      var tctx = tc.getContext('2d');
+      tctx.fillStyle = '#ffffff';
+      tctx.fillRect(0, 0, tc.width, tc.height);
+      tctx.drawImage(c, 0, 0, tc.width, tc.height);
       var dataUrl = tc.toDataURL('image/jpeg', 0.85);
       if (dataUrl && dataUrl.length > 200) charts[id] = dataUrl;
     } catch(e) {}
@@ -5964,7 +5967,7 @@ class Handler(BaseHTTPRequestHandler):
             for i, name in enumerate(agent_seq):
                 _sse({'type': 'progress', 'step': name, 'n': i + 1, 'total': len(agent_seq)})
                 try:
-                    result = pdf_auto.run_agent(name, niche)
+                    result = pdf_auto.run_agent(name, niche, level)
                     if name == 'content': content_text = result.get('text', '')
                     else: agents[name] = result
                 except Exception as _ae:

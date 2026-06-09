@@ -650,6 +650,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
   <div class="result" id="result"></div>
 </div>
 <script>
+// Глобальный плагин: тёмный фон для всех Chart.js графиков.
+// Нужен для PDF-захвата — без него canvas имеет прозрачный/белый фон,
+// который при конвертации в JPEG даёт белый фон вместо тёмного.
+Chart.register({
+  id: 'chartDarkBg',
+  beforeDraw: function(chart) {
+    var ctx = chart.ctx;
+    ctx.save();
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(0, 0, chart.width, chart.height);
+    ctx.restore();
+  }
+});
+
 function getWatchlist(){
   try{return JSON.parse(localStorage.getItem('watchlist')||'[]');}
   catch(e){return[];}
@@ -2601,12 +2615,13 @@ async function downloadReport(level) {
       // Ограничиваем только сверху чтобы не раздувать размер запроса
       // Проверяем что canvas реально отрисован (не пустой)
       if (c.width < 10 || c.height < 10) return;
+      // Тёмный фон уже встроен в canvas через плагин chartDarkBg.
+      // Создаём копию с ограниченным разрешением для PDF.
       var tc = document.createElement('canvas');
       tc.width  = Math.min(c.width,  1400);
       tc.height = Math.min(c.height, 800);
       var tctx = tc.getContext('2d');
-      // Тёмный фон — под цвет chart.js dark theme
-      tctx.fillStyle = '#1e293b';
+      tctx.fillStyle = '#1e293b';          // запасной фон если плагин не сработал
       tctx.fillRect(0, 0, tc.width, tc.height);
       tctx.drawImage(c, 0, 0, tc.width, tc.height);
       var dataUrl = tc.toDataURL('image/jpeg', 0.88);

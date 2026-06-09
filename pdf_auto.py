@@ -279,7 +279,7 @@ def _json(text: str) -> dict:
 
 def _run_master(n: dict, level: str = 'standard') -> dict:
     name = n.get('name', '')
-    revenue = float(n.get('revenue', 0))
+    revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
     avg_price = float(n.get('avg_price', 0))
     profit_pct = float(n.get('profit_pct', 0))
     buyout_pct = float(n.get('buyout_pct', 0))
@@ -325,8 +325,8 @@ def _run_master(n: dict, level: str = 'standard') -> dict:
             "- market_analysis: 5-6 предложений с конкретными цифрами объёма, динамики, сезонности.\n"
             "- competitive_landscape: Детальный разбор топ-3 конкурентов с именами, выручкой, долей рынка, "
             "слабыми местами каждого. 4-5 предложений.\n"
-            "- entry_strategy: Конкретная дорожная карта на 3 месяца — что делать в каждый месяц, "
-            "сколько тратить, какой результат ожидать. 4-5 предложений с цифрами.\n"
+            "- entry_strategy: Дорожная карта — ОБЯЗАТЕЛЬНО начни каждый блок с метки «Месяц 1:», «Месяц 2:», «Месяц 3:». "
+            "Для каждого месяца: что делать, сколько тратить, какой результат ожидать. Цифры обязательны.\n"
             "- final_recommendation: Подробный вывод с ключевыми метриками для масштабирования, "
             "чёткими условиями входа и планом действий. Минимум 5-6 предложений.\n"
             "Ответь ONLY JSON:\n"
@@ -353,8 +353,8 @@ def _run_master(n: dict, level: str = 'standard') -> dict:
         "- market_analysis: 3-4 предложения с конкретными цифрами.\n"
         "- competitive_landscape: Назови конкретных конкурентов по имени, их ценовые диапазоны, доли. "
         "2-3 предложения.\n"
-        "- entry_strategy: Конкретная стратегия входа с ценовым диапазоном и шагами. 3-4 предложения. "
-        "Заканчивай: Поставщики, сертификаты и готовая карточка товара — только в PDF Deep.\n"
+        "- entry_strategy: Стратегия входа — ОБЯЗАТЕЛЬНО начни каждый блок с «Месяц 1:», «Месяц 2:», «Месяц 3:». "
+        "Ценовой диапазон и конкретные шаги. Заканчивай последний блок фразой: Поставщики, сертификаты и готовая карточка товара — только в PDF Deep.\n"
         "- final_recommendation: Полный абзац с чёткими условиями входа и метриками для принятия решения. "
         "4-5 предложений. Заканчивай: Для поиска поставщиков и полного пакета документов — PDF Deep.\n"
         "Ответь ONLY JSON:\n"
@@ -375,7 +375,7 @@ def _run_master(n: dict, level: str = 'standard') -> dict:
 
 def _run_deep(n: dict) -> dict:
     name = n.get('name', '')
-    revenue = float(n.get('revenue', 0))
+    revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
     avg_price = float(n.get('avg_price', 0))
     commission = float(n.get('commission', 0))
     buyout_pct = float(n.get('buyout_pct', 0))
@@ -456,7 +456,7 @@ def _run_unit(n: dict) -> dict:
 def _run_ads(n: dict) -> dict:
     name = n.get('name', '')
     avg_price = float(n.get('avg_price', 0))
-    revenue = float(n.get('revenue', 0))
+    revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
     profit_pct = float(n.get('profit_pct', 0))
     buyout_pct = float(n.get('buyout_pct', 0))
     commission = float(n.get('commission', 0))
@@ -520,7 +520,7 @@ def _run_docs(n: dict) -> dict:
 def _run_warehouse(n: dict) -> dict:
     name = n.get('name', '')
     avg_price = float(n.get('avg_price', 0))
-    revenue = float(n.get('revenue', 0))
+    revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
     turnover = float(n.get('turnover', 0))
     buyout_pct = float(n.get('buyout_pct', 0))
     profit_pct = float(n.get('profit_pct', 0))
@@ -860,33 +860,59 @@ def _sec_metrics(niche: dict) -> list:
     els.append(_sp(0.05))
     els.append(_cards_tbl(row2))
 
-    # ── Оборачиваемость и Маржа — блоки с пояснениями ────────────────────────
+    # ── Оборачиваемость и Маржа — уровень-зависимые блоки ────────────────────
+    _lvl = _CURRENT_LEVEL
     if turnover:
+        els.append(_sp(0.1))
         if turnover > 90:
-            els.append(_sp(0.1))
-            els.append(_warning(
-                f'<b>Оборачиваемость: {turnover:.0f} дней</b> — рекомендуем начать с малой партии '
-                f'и работать по FBS-схеме, чтобы не замораживать капитал в стоке.'
-            ))
+            if _lvl == 'basic':
+                els.append(_warning(f'<b>Оборачиваемость: {turnover:.0f} дн.</b> — высокая, стартуйте с малой партии и FBS.'))
+            elif _lvl == 'standard':
+                els.append(_warning(
+                    f'<b>Оборачиваемость: {turnover:.0f} дней</b> — высокий показатель, товар медленно уходит. '
+                    f'Рекомендуем тестовую партию 20–30 шт и работу по FBS, чтобы не замораживать капитал.'
+                ))
+            else:
+                els.append(_warning(
+                    f'<b>Оборачиваемость: {turnover:.0f} дней</b> — высокий показатель. '
+                    f'Рекомендуем начать с малой партии и работать по FBS-схеме, чтобы не замораживать '
+                    f'капитал в стоке. По мере разгона продаж переходите на FBO для снижения издержек.'
+                ))
         elif turnover > 45:
-            els.append(_sp(0.1))
-            els.append(_info(
-                f'<b>Оборачиваемость: {turnover:.0f} дней</b> — умеренная. '
-                f'Следите за остатками, не допускайте затоваривания.'
-            ))
+            if _lvl == 'basic':
+                els.append(_info(f'<b>Оборачиваемость: {turnover:.0f} дн.</b> — умеренная, следите за остатками.'))
+            elif _lvl == 'standard':
+                els.append(_info(
+                    f'<b>Оборачиваемость: {turnover:.0f} дней</b> — умеренная. '
+                    f'Следите за остатками, не допускайте затоваривания на складе.'
+                ))
+            else:
+                els.append(_info(
+                    f'<b>Оборачиваемость: {turnover:.0f} дней</b> — умеренная. '
+                    f'Поддерживайте запас на 60–90 дней продаж. Следите за остатками, '
+                    f'не допускайте затоваривания: штрафы WB за хранение съедают маржу.'
+                ))
         else:
-            els.append(_sp(0.1))
-            els.append(_info(
-                f'<b>Оборачиваемость: {turnover:.0f} дней</b> — отлично, товар быстро продаётся.'
-            ))
+            if _lvl == 'basic':
+                els.append(_info(f'<b>Оборачиваемость: {turnover:.0f} дн.</b> — отлично, товар быстро продаётся.'))
+            else:
+                els.append(_info(f'<b>Оборачиваемость: {turnover:.0f} дней</b> — отлично, товар быстро продаётся.'))
 
     if profit > 0:
         els.append(_sp(0.06))
-        els.append(_info(
-            f'<b>Маржа по WB: {_pct(profit)}</b> — выручка ниши за вычетом комиссии и логистики WB, '
-            f'но <b>без учёта себестоимости товара</b>. '
-            f'Реальная чистая прибыль обычно 20–35% — уточняйте в разделе «Юнит-экономика».'
-        ))
+        if _lvl == 'basic':
+            els.append(_info(f'<b>Маржа по WB: {_pct(profit)}</b> — до вычета себестоимости товара.'))
+        elif _lvl == 'standard':
+            els.append(_info(
+                f'<b>Маржа по WB: {_pct(profit)}</b> — выручка ниши за вычетом комиссии и логистики WB, '
+                f'без учёта себестоимости. Реальная чистая прибыль обычно 20–35%.'
+            ))
+        else:
+            els.append(_info(
+                f'<b>Маржа по WB: {_pct(profit)}</b> — выручка ниши за вычетом комиссии и логистики WB, '
+                f'но <b>без учёта себестоимости товара</b>. '
+                f'Реальная чистая прибыль обычно 20–35% — подробный расчёт см. в разделе «Юнит-экономика».'
+            ))
 
     els.append(_sp(0.12))
     return els
@@ -1007,7 +1033,10 @@ def _sec_master(r: dict) -> list:
             txt = str(r.get(field, ''))
             if txt:
                 els.append(_h3(label))
-                els.append(_body(txt))
+                if field == 'entry_strategy':
+                    els.extend(_render_entry_strategy(txt))
+                else:
+                    els.append(_body(txt))
 
         opps = list(r.get('opportunities') or [])
         if opps:
@@ -1252,11 +1281,25 @@ def _sec_supplier(r: dict) -> list:
     links = list(r.get('search_links') or [])
     if links:
         els.append(_h3('Площадки для поиска'))
+        _link_s = ParagraphStyle('_lnk', fontName=FN, fontSize=8.5,
+                                  textColor=C_BLUE2, leading=12,
+                                  spaceBefore=2, spaceAfter=2)
+        _desc_s = ParagraphStyle('_ldesc', fontName=FN, fontSize=8.5,
+                                  textColor=C_TEXT, leading=12,
+                                  spaceBefore=0, spaceAfter=0)
+        link_rows = [['Площадка', 'Описание', 'Ссылка']]
         for lk in links:
             platform = str(lk.get('platform', ''))
-            desc = str(lk.get('description', ''))
-            url = str(lk.get('url', ''))
-            els.append(_body(f'{platform}: {desc}'))
+            desc     = str(lk.get('description', ''))
+            url      = str(lk.get('url', '')).strip()
+            if url.startswith('http'):
+                short = (url[:52] + '…') if len(url) > 55 else url
+                link_cell = Paragraph(
+                    f'<link href="{url}"><u>{short}</u></link>', _link_s)
+            else:
+                link_cell = Paragraph(url or '—', _desc_s)
+            link_rows.append([platform, desc, link_cell])
+        els.append(_tbl(link_rows, col_widths=[1.1*inch, 2.0*inch, 3.5*inch]))
 
     els.append(_sp(0.1))
     return els
@@ -1364,22 +1407,96 @@ def _sec_warehouse(r: dict) -> list:
     return els
 
 
+def _render_entry_strategy(text: str) -> list:
+    """Format entry_strategy: detect 'Месяц N:' labels and render as navy header blocks."""
+    import re
+    if not text:
+        return []
+    pattern = re.compile(r'(Месяц\s*\d+)', re.IGNORECASE | re.UNICODE)
+    if not pattern.search(text):
+        return [_body(text)]
+
+    els = []
+    tokens = pattern.split(text)
+    # tokens: [pre_text, 'Месяц 1', 'content 1', 'Месяц 2', 'content 2', ...]
+    if tokens[0].strip():
+        els.append(_body(tokens[0].strip()))
+
+    month_head_s = ParagraphStyle('_mhd', fontName=FB, fontSize=10,
+                                   textColor=WHITE, alignment=TA_LEFT,
+                                   leading=14, spaceBefore=0, spaceAfter=0)
+    i = 1
+    while i + 1 <= len(tokens) - 1:
+        label = tokens[i].strip()
+        content = tokens[i + 1].strip() if i + 1 < len(tokens) else ''
+        # Strip leading colon/dash after the label
+        content = re.sub(r'^[:\-–—\s]+', '', content).strip()
+
+        head_tbl = Table([[Paragraph(f'▸  {label}', month_head_s)]], colWidths=[COL_W])
+        head_tbl.setStyle(TableStyle([
+            ('BACKGROUND',    (0, 0), (-1, -1), C_NAVY),
+            ('TOPPADDING',    (0, 0), (-1, -1), 7),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 14),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
+        ]))
+        els.append(_sp(0.08))
+        els.append(head_tbl)
+        if content:
+            els.append(_body(content))
+        i += 2
+    return els
+
+
+def _md_inline(text: str) -> str:
+    """Convert inline markdown **bold** → <b>bold</b>, strip leftover backticks."""
+    import re
+    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+    text = re.sub(r'`(.+?)`', r'\1', text)
+    return text
+
+
 def _sec_content(text: str) -> list:
     if not text:
         return []
-    els = [PageBreak(), _h2('Создание карточки товара'), _hr()]
+    els = [PageBreak(), _h2('Карточка товара'), _hr()]
     for line in text.split('\n'):
         line = line.strip()
         if not line:
-            els.append(_sp(0.05))
-        elif line[0].isdigit() and len(line) > 2 and line[1] == '.':
-            els.append(_h3(line))
-        elif line.startswith('- ') or line.startswith('• '):
-            els.append(_bullet(line[2:]))
-        elif line.startswith('**') and line.endswith('**'):
-            els.append(_h3(line.strip('**')))
+            els.append(_sp(0.04))
+            continue
+        # Skip pure markdown separators: | --- | --- | or ---
+        stripped_sep = line.replace(' ', '').replace('-', '').replace('|', '').replace(':', '')
+        if not stripped_sep:
+            continue
+        # ## Header / ### Header / # Header
+        if line.startswith('### '):
+            els.append(_h3(line[4:].strip()))
+        elif line.startswith('## '):
+            els.append(_h3(line[3:].strip()))
+        elif line.startswith('# '):
+            els.append(_h3(line[2:].strip()))
+        # Numbered section: "1. SEO ЗАГОЛОВОК" or "1) ..."
+        elif len(line) > 2 and line[0].isdigit() and line[1] in '.':
+            rest = line[2:].strip()
+            els.append(_h3(_md_inline(f'{line[0]}. {rest}') if rest else line))
+        # Markdown table row: | col | col |
+        elif line.startswith('|') and line.endswith('|'):
+            cols = [c.strip() for c in line.strip('|').split('|')]
+            row_text = '   |   '.join(_md_inline(c) for c in cols if c)
+            if row_text:
+                els.append(_body(row_text))
+        # Bullet point: -, •, *
+        elif line[:2] in ('- ', '• ', '* '):
+            els.append(_bullet(_md_inline(line[2:])))
+        # Emoji bullet: lines like "✅ text", "🔹 text"
+        elif len(line) > 2 and ord(line[0]) > 127 and line[1] == ' ':
+            els.append(_bullet(_md_inline(line)))
+        # Standalone **bold** line (header-like)
+        elif line.startswith('**') and line.endswith('**') and len(line) > 4:
+            els.append(_h3(line[2:-2]))
         else:
-            els.append(_body(line))
+            els.append(_body(_md_inline(line)))
     els.append(_sp(0.1))
     return els
 
@@ -1395,18 +1512,22 @@ def _sec_seasonal_plan(r: dict) -> list:
     ]
     t = Table(rows, colWidths=[2.2*inch, COL_W - 2.2*inch])
     t.setStyle(TableStyle([
+        # Left column: always navy
         ('BACKGROUND',    (0, 0), (0, -1), C_NAVY),
         ('TEXTCOLOR',     (0, 0), (0, -1), WHITE),
         ('FONTNAME',      (0, 0), (0, -1), FB),
+        # Right column: alternating rows
         ('BACKGROUND',    (1, 0), (1, -1), C_TABLE_ODD),
+        ('BACKGROUND',    (1, 1), (1, 1), WHITE),
+        ('BACKGROUND',    (1, 3), (1, 3), WHITE),
         ('FONTNAME',      (1, 0), (1, -1), FN),
+        ('TEXTCOLOR',     (1, 0), (1, -1), C_TEXT),
         ('FONTSIZE',      (0, 0), (-1, -1), 9.5),
         ('TOPPADDING',    (0, 0), (-1, -1), 8),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
         ('LEFTPADDING',   (0, 0), (-1, -1), 10),
         ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
         ('GRID',          (0, 0), (-1, -1), 0.4, C_BORDER),
-        ('ROWBACKGROUNDS',(0, 0), (-1, -1), [WHITE, C_TABLE_ODD]),
     ]))
     return [_h2('Сезонный план'), _hr(), t, _sp(0.1)]
 

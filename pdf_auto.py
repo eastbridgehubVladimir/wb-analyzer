@@ -1125,67 +1125,38 @@ def generate(level: str, niche: dict, chart_items: list = None) -> bytes:
     print(f'[PDF] Генерация уровень={level}, ниша={niche.get("name","")}')
     t0 = time.time()
 
-    # ── Запускаем агентов ─────────────────────────────────────────────────────
+    # ── Параллельный запуск агентов (ThreadPoolExecutor — I/O bound) ───────────
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    task_map = {'master': _run_master}
+    if level in ('standard', 'deep'):
+        task_map['unit'] = _run_unit
+        task_map['ads']  = _run_ads
+    if level == 'deep':
+        task_map['deep']      = _run_deep
+        task_map['supplier']  = _run_supplier
+        task_map['docs']      = _run_docs
+        task_map['warehouse'] = _run_warehouse
+        task_map['content']   = _run_content
+
     agents = {}
     content_text = ''
+    print(f'[PDF] Запускаем {len(task_map)} агентов параллельно...')
 
-    try:
-        print('[PDF] master...')
-        agents['master'] = _run_master(niche)
-    except Exception as e:
-        print(f'[PDF] master error: {e}')
-        agents['master'] = {}
-
-    if level in ('standard', 'deep'):
-        try:
-            print('[PDF] unit economy...')
-            agents['unit'] = _run_unit(niche)
-        except Exception as e:
-            print(f'[PDF] unit error: {e}')
-            agents['unit'] = {}
-
-        try:
-            print('[PDF] ads...')
-            agents['ads'] = _run_ads(niche)
-        except Exception as e:
-            print(f'[PDF] ads error: {e}')
-            agents['ads'] = {}
-
-    if level == 'deep':
-        try:
-            print('[PDF] deep analysis...')
-            agents['deep'] = _run_deep(niche)
-        except Exception as e:
-            print(f'[PDF] deep error: {e}')
-            agents['deep'] = {}
-
-        try:
-            print('[PDF] supplier...')
-            agents['supplier'] = _run_supplier(niche)
-        except Exception as e:
-            print(f'[PDF] supplier error: {e}')
-            agents['supplier'] = {}
-
-        try:
-            print('[PDF] docs...')
-            agents['docs'] = _run_docs(niche)
-        except Exception as e:
-            print(f'[PDF] docs error: {e}')
-            agents['docs'] = {}
-
-        try:
-            print('[PDF] warehouse...')
-            agents['warehouse'] = _run_warehouse(niche)
-        except Exception as e:
-            print(f'[PDF] warehouse error: {e}')
-            agents['warehouse'] = {}
-
-        try:
-            print('[PDF] content...')
-            content_text = _run_content(niche)
-        except Exception as e:
-            print(f'[PDF] content error: {e}')
-            content_text = ''
+    with ThreadPoolExecutor(max_workers=len(task_map)) as pool:
+        futs = {pool.submit(fn, niche): name for name, fn in task_map.items()}
+        for fut in as_completed(futs):
+            name = futs[fut]
+            try:
+                result = fut.result(timeout=55)
+                if name == 'content':
+                    content_text = result if isinstance(result, str) else ''
+                else:
+                    agents[name] = result if isinstance(result, dict) else {}
+            except Exception as e:
+                print(f'[PDF] agent {name} error: {e}')
+                if name != 'content':
+                    agents[name] = {}
 
     print(f'[PDF] Агенты готовы за {time.time()-t0:.1f}s, собираем PDF...')
 

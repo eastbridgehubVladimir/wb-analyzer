@@ -9812,5 +9812,12 @@ def handle_master_stream(handler, body):
 
 
 if __name__ == '__main__':
+    # Предварительная установка PDF-зависимостей чтобы первый запрос не тормозил
+    try:
+        import pdf_auto as _pdfmod
+        _pdfmod._ensure_deps()
+        print('[startup] PDF deps OK')
+    except Exception as _e:
+        print(f'[startup] PDF deps warning: {_e}')
     print("🚀 Сервер запущен: http://localhost:8080")
     HTTPServer(('', 8080), Handler).serve_forever()

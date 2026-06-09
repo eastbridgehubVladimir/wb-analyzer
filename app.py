@@ -2650,7 +2650,8 @@ async function downloadReport(level) {
     // Шаг 3: скачиваем готовый PDF
     const link = document.createElement('a');
     link.href = '/pdf-download/' + key;
-    link.download = 'WBAnalyzer-' + nicheName.replace(/[\\/]/g, '-') + '-' + level + '.pdf';
+    var safeNiche = nicheName.replace(/[\\\/:"*?<>|]/g, '').trim();
+    link.download = 'WBAnalyzer ' + safeNiche + ' ' + level + '.pdf';
     document.body.appendChild(link); link.click(); link.remove();
     if (errEl) { errEl.style.display = 'none'; errEl.style.color = ''; }
   } catch(e) {

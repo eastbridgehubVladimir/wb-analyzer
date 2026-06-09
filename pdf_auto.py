@@ -16,6 +16,7 @@ import os, sys, json, re, io, time, subprocess
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_ROOT, 'backend'))
+sys.path.insert(0, _ROOT)
 
 # ── Авто-установка зависимостей ────────────────────────────────────────────────
 def _ensure_deps():
@@ -47,6 +48,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle, Paragraph,
     Spacer, HRFlowable, PageBreak, KeepTogether, Image,
+    BaseDocTemplate, PageTemplate, Frame, NextPageTemplate,
 )
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -67,24 +69,29 @@ try:
 except Exception:
     pass
 
-# ── Цвета ─────────────────────────────────────────────────────────────────────
-C_NAVY   = HexColor('#0d1b2a')
-C_DARK   = HexColor('#111827')   # шапка бренда
-C_CYAN   = HexColor('#38bdf8')   # AI-акцент
-C_BLUE   = HexColor('#1d4ed8')
-C_BLUE2  = HexColor('#3b82f6')
-C_GREEN  = HexColor('#16a34a')
-C_RED    = HexColor('#dc2626')
-C_AMBER  = HexColor('#d97706')
-C_LIGHT  = HexColor('#f1f5f9')
-C_LIGHT2 = HexColor('#e2e8f0')
-C_GRAY   = HexColor('#64748b')
-C_TEXT   = HexColor('#1e293b')
-WHITE    = colors.white
+# ── Стили из pdf_styles.py ────────────────────────────────────────────────────
+from pdf_styles import (
+    C_COVER_BG, C_COVER_SUB, C_NAVY, C_ACCENT, C_BLUE2, C_GREEN, C_RED,
+    C_ORANGE, C_AMBER, C_GOLD, C_TEXT, C_GRAY, C_LIGHT_BG, C_TABLE_ODD,
+    C_BORDER, C_WARN_BG, C_INFO_BG, WHITE,
+    LEVEL_ACCENT, LEVEL_BADGE_BG, LEVEL_NAMES, LEVEL_SUBTITLES,
+    LEVEL_UPSELL_NEXT, PLATFORM_URL, PLATFORM_YEAR,
+    FS_COVER_LOGO, FS_COVER_NICHE, FS_H2, FS_H3, FS_BODY, FS_CAPTION, FS_SMALL,
+)
 
-W, H = A4  # 595, 842 points
+# Алиасы совместимости (для кода, который использует старые имена)
+C_LIGHT   = C_LIGHT_BG
+C_LIGHT2  = C_BORDER
+C_BLUE    = C_ACCENT
+C_DARK    = C_COVER_BG
+C_CYAN    = HexColor('#38bdf8')
+
+W, H = A4
 MARGIN = 0.55 * inch
-COL_W  = W - 2 * MARGIN  # usable width ~6.5 inch
+COL_W  = W - 2 * MARGIN
+
+# Текущий уровень документа (устанавливается в render())
+_CURRENT_LEVEL = 'basic'
 
 # ── Форматирование чисел ──────────────────────────────────────────────────────
 
@@ -131,35 +138,92 @@ def _h1(text):
     return _p(text, name='h1', size=18, bold=True, color=C_NAVY,
               space_before=6, space_after=4)
 
-def _h2(text):
-    return _p(text, name='h2', size=13, bold=True, color=C_NAVY,
-              space_before=10, space_after=4)
+def _h2(text: str):
+    """Заголовок раздела: светлый фон #f1f5f9 + цветная полоска слева."""
+    accent = LEVEL_ACCENT.get(_CURRENT_LEVEL, C_ACCENT)
+    ts = ParagraphStyle('_h2t', fontName=FB, fontSize=FS_H2,
+                        textColor=C_NAVY, leading=18, spaceBefore=0, spaceAfter=0)
+    inner = Table(
+        [[Spacer(5, 20), Paragraph(text, ts)]],
+        colWidths=[5, COL_W - 5]
+    )
+    inner.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, -1), C_LIGHT_BG),
+        ('BACKGROUND',    (0, 0), (0, -1),  accent),
+        ('TOPPADDING',    (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 9),
+        ('LEFTPADDING',   (0, 0), (0, -1),  0),
+        ('LEFTPADDING',   (1, 0), (1, -1),  12),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    return KeepTogether([Spacer(1, 0.15 * inch), inner])
 
-def _h3(text):
-    return _p(text, name='h3', size=10, bold=True, color=C_BLUE,
-              space_before=6, space_after=2)
+def _h3(text: str):
+    return _p(text, name='h3', size=FS_H3, bold=True, color=C_NAVY,
+              space_before=8, space_after=3)
 
-def _body(text):
-    return _p(text, size=9, space_before=2, space_after=2)
+def _body(text: str):
+    return _p(text, size=FS_BODY, space_before=2, space_after=3, leading=FS_BODY * 1.45)
 
-def _bullet(text):
-    return _p(f'• {text}', size=9, space_before=2, space_after=2)
+def _bullet(text: str):
+    return _p(f'• {text}', size=FS_BODY, space_before=2, space_after=2)
 
 def _sp(h=0.1):
     return Spacer(1, h * inch)
 
 def _hr():
-    return HRFlowable(width='100%', thickness=1, color=C_LIGHT2,
+    return HRFlowable(width='100%', thickness=0.5, color=C_BORDER,
                       spaceAfter=4, spaceBefore=2)
 
-def _tbl(rows, col_widths=None, header_bg=C_NAVY, row_bg=True):
+def _warning(text: str):
+    """Блок-предупреждение: оранжевый фон с левой полоской."""
+    s = ParagraphStyle('_warn', fontName=FN, fontSize=FS_CAPTION,
+                       textColor=C_TEXT, leading=12, spaceBefore=0, spaceAfter=0)
+    t = Table([[Spacer(5, 1), Paragraph(f'⚠ {text}', s)]],
+              colWidths=[5, COL_W - 5])
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, -1), C_WARN_BG),
+        ('BACKGROUND',    (0, 0), (0, -1),  C_ORANGE),
+        ('TOPPADDING',    (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING',   (0, 0), (0, -1),  0),
+        ('LEFTPADDING',   (1, 0), (1, -1),  10),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
+        ('VALIGN',        (0, 0), (-1, -1), 'TOP'),
+    ]))
+    return t
+
+def _info(text: str):
+    """Блок-подсказка: синий фон с левой полоской."""
+    s = ParagraphStyle('_info', fontName=FN, fontSize=FS_CAPTION,
+                       textColor=C_TEXT, leading=12, spaceBefore=0, spaceAfter=0)
+    t = Table([[Spacer(5, 1), Paragraph(f'ℹ {text}', s)]],
+              colWidths=[5, COL_W - 5])
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, -1), C_INFO_BG),
+        ('BACKGROUND',    (0, 0), (0, -1),  C_ACCENT),
+        ('TOPPADDING',    (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING',   (0, 0), (0, -1),  0),
+        ('LEFTPADDING',   (1, 0), (1, -1),  10),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
+        ('VALIGN',        (0, 0), (-1, -1), 'TOP'),
+    ]))
+    return t
+
+def _tbl(rows, col_widths=None, header_bg=None, row_bg=True):
     if not rows:
         return _sp(0.05)
+    if header_bg is None:
+        header_bg = C_NAVY
     n_cols = max(len(r) for r in rows)
     if col_widths is None:
         col_widths = [COL_W / n_cols] * n_cols
-    _th_s = ParagraphStyle('_th', fontName=FB, fontSize=8, textColor=WHITE,   leading=11)
-    _td_s = ParagraphStyle('_td', fontName=FN, fontSize=8, textColor=C_TEXT,  leading=11)
+    _th_s = ParagraphStyle('_th', fontName=FB, fontSize=FS_SMALL,
+                            textColor=WHITE, leading=11)
+    _td_s = ParagraphStyle('_td', fontName=FN, fontSize=FS_SMALL,
+                            textColor=C_TEXT, leading=11)
     wrapped = []
     for ri, row in enumerate(rows):
         crow = []
@@ -172,13 +236,15 @@ def _tbl(rows, col_widths=None, header_bg=C_NAVY, row_bg=True):
     t = Table(wrapped, colWidths=col_widths)
     cmds = [
         ('BACKGROUND',    (0, 0), (-1, 0), header_bg),
-        ('GRID',          (0, 0), (-1, -1), 0.4, C_LIGHT2),
+        ('GRID',          (0, 0), (-1, -1), 0.4, C_BORDER),
         ('TOPPADDING',    (0, 0), (-1, -1), 5),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 6),
         ('VALIGN',        (0, 0), (-1, -1), 'TOP'),
     ]
     if row_bg:
-        cmds.append(('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, C_LIGHT]))
+        cmds.append(('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, C_TABLE_ODD]))
     t.setStyle(TableStyle(cmds))
     return t
 
@@ -563,96 +629,109 @@ def _chart_revenue_line(items: list, width=COL_W, height=2.5*inch) -> Drawing:
 # ── PDF секции ─────────────────────────────────────────────────────────────────
 
 def _sec_cover(niche: dict, level: str) -> list:
-    name = niche.get('display_name') or niche.get('name') or 'Анализ ниши'
-    level_names   = {'basic': 'Basic', 'standard': 'Standard', 'deep': 'Deep'}
-    level_colors  = {'basic': HexColor('#475569'), 'standard': C_BLUE, 'deep': HexColor('#7c3aed')}
-    level_subtitles = {
-        'basic':    'Базовый анализ · метрики, топ-5 товаров, мастер-анализ',
-        'standard': 'Расширенный анализ · юнит-экономика, реклама, все графики',
-        'deep':     'Полный профессиональный анализ · все разделы',
-    }
-    lname = level_names.get(level, level.capitalize())
-    lcol  = level_colors.get(level, C_BLUE)
-    lsub  = level_subtitles.get(level, '')
+    """Обложка — контент на тёмном фоне (фон устанавливается через PageTemplate)."""
     from datetime import date
+    name     = niche.get('display_name') or niche.get('name') or 'Анализ ниши'
+    lname    = LEVEL_NAMES.get(level, level.upper())
+    lsub     = LEVEL_SUBTITLES.get(level, '')
+    accent   = LEVEL_ACCENT.get(level, C_ACCENT)
+    badge_bg = LEVEL_BADGE_BG.get(level, HexColor('#1d4ed8'))
+
+    def _wp(text, size=10, bold=False, color=WHITE, align=TA_CENTER,
+            space_before=0, space_after=0):
+        s = ParagraphStyle('_cp', fontName=FB if bold else FN, fontSize=size,
+                            textColor=color, alignment=align,
+                            spaceBefore=space_before, spaceAfter=space_after,
+                            leading=size * 1.35)
+        return Paragraph(str(text), s)
+
     els = []
+    els.append(_sp(1.1))
 
-    # ── Шапка бренда (тёмная) ────────────────────────────────────────────────
-    brand_content = [
-        _p('WBAnalyzer', size=22, bold=True, color=WHITE, align=TA_LEFT,
-           space_before=0, space_after=2),
-        _p('◆ AI Platform · Аналитика нового поколения', size=8,
-           color=C_CYAN, align=TA_LEFT, space_before=0, space_after=0),
-    ]
-    brand_wrap = Table([[brand_content]], colWidths=[COL_W])
-    brand_wrap.setStyle(TableStyle([
-        ('BACKGROUND',    (0,0), (-1,-1), C_DARK),
-        ('TOPPADDING',    (0,0), (-1,-1), 13),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 13),
-        ('LEFTPADDING',   (0,0), (-1,-1), 16),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 16),
+    # ── Логотип WBAnalyzer ──────────────────────────────────────────────────
+    els.append(_wp('WBAnalyzer', size=FS_COVER_LOGO, bold=True, color=WHITE))
+    els.append(_sp(0.1))
+    els.append(_wp('◆ AI Platform · Аналитика нового поколения',
+                    size=10, color=C_COVER_SUB))
+    els.append(_sp(0.35))
+
+    # Акцентная горизонтальная линия
+    acl = Table([['']], colWidths=[3.5 * inch], rowHeights=[2.5])
+    acl.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), accent),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
     ]))
-    els.append(brand_wrap)
-
-    # Тонкая голубая линия под шапкой
-    cyan_line = Table([['']], colWidths=[COL_W], rowHeights=[3])
-    cyan_line.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,-1), C_CYAN)]))
-    els.append(cyan_line)
-    els.append(_sp(0.4))
+    acl_wrap = Table([[acl]], colWidths=[COL_W])
+    acl_wrap.setStyle(TableStyle([
+        ('ALIGN',       (0, 0), (-1, -1), 'CENTER'),
+        ('TOPPADDING',  (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING',(0,0), (-1, -1), 0),
+    ]))
+    els.append(acl_wrap)
+    els.append(_sp(0.5))
 
     # ── Название ниши ────────────────────────────────────────────────────────
-    els.append(_p(name, size=26, bold=True, color=C_NAVY, align=TA_CENTER,
-                  space_before=0, space_after=4))
-    els.append(_sp(0.08))
+    els.append(_wp(name, size=FS_COVER_NICHE, bold=True, color=WHITE,
+                    space_before=0, space_after=0))
+    els.append(_sp(0.55))
 
-    # ── Бейдж уровня + дата ──────────────────────────────────────────────────
+    # ── Бейдж уровня ─────────────────────────────────────────────────────────
     badge = Table(
-        [[_p(f'PDF {lname}', size=10, bold=True, color=WHITE, align=TA_CENTER)]],
-        colWidths=[1.7*inch]
+        [[_wp(lname, size=11, bold=True, color=WHITE)]],
+        colWidths=[2.6 * inch]
     )
     badge.setStyle(TableStyle([
-        ('BACKGROUND',    (0,0), (-1,-1), lcol),
-        ('TOPPADDING',    (0,0), (-1,-1), 6),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-        ('LEFTPADDING',   (0,0), (-1,-1), 10),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 10),
+        ('BACKGROUND',    (0, 0), (-1, -1), badge_bg),
+        ('TOPPADDING',    (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 9),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 20),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 20),
     ]))
-    badge_row = Table(
-        [[badge, _p(date.today().strftime('%d.%m.%Y'), size=9, color=C_GRAY, align=TA_RIGHT)]],
-        colWidths=[2.0*inch, COL_W - 2.0*inch]
-    )
-    badge_row.setStyle(TableStyle([
-        ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING',    (0,0), (-1,-1), 0),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+    badge_wrap = Table([[badge]], colWidths=[COL_W])
+    badge_wrap.setStyle(TableStyle([
+        ('ALIGN',       (0, 0), (-1, -1), 'CENTER'),
+        ('TOPPADDING',  (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING',(0,0), (-1, -1), 0),
     ]))
-    els.append(badge_row)
-    if lsub:
-        els.append(_sp(0.06))
-        els.append(_p(lsub, size=8, color=C_GRAY, align=TA_LEFT,
-                      space_before=0, space_after=0))
+    els.append(badge_wrap)
 
-    # ── Персональный идентификатор ───────────────────────────────────────────
+    if lsub:
+        els.append(_sp(0.14))
+        els.append(_wp(lsub, size=9, color=C_COVER_SUB))
+
+    # ── Дата ─────────────────────────────────────────────────────────────────
+    els.append(_sp(0.6))
+    els.append(_wp(date.today().strftime('%d.%m.%Y'), size=9,
+                    color=HexColor('#64748b'), align=TA_RIGHT))
+
+    # ── Акцентная линия внизу ─────────────────────────────────────────────────
+    els.append(_sp(0.18))
+    bot_line = Table([['']], colWidths=[COL_W], rowHeights=[2])
+    bot_line.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, -1), accent),
+        ('TOPPADDING',    (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    els.append(bot_line)
+
+    # ── Персонализация ───────────────────────────────────────────────────────
     prepared_for = str(niche.get('prepared_for', '')).strip()
     if prepared_for:
-        els.append(_sp(0.12))
-        pf_tbl = Table(
-            [[_p(f'Подготовлено персонально для: {prepared_for}', size=9,
-                 color=HexColor('#1e40af'), align=TA_CENTER)]],
+        els.append(_sp(0.2))
+        pf = Table(
+            [[_wp(f'Подготовлено персонально для: {prepared_for}',
+                  size=9, color=HexColor('#bfdbfe'))]],
             colWidths=[COL_W]
         )
-        pf_tbl.setStyle(TableStyle([
-            ('BACKGROUND',    (0,0), (-1,-1), HexColor('#eff6ff')),
-            ('TOPPADDING',    (0,0), (-1,-1), 7),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 7),
-            ('LEFTPADDING',   (0,0), (-1,-1), 10),
-            ('RIGHTPADDING',  (0,0), (-1,-1), 10),
-            ('BOX',           (0,0), (-1,-1), 0.5, HexColor('#bfdbfe')),
+        pf.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), HexColor('#1e3a5f')),
+            ('TOPPADDING', (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 9),
+            ('BOX', (0, 0), (-1, -1), 0.5, HexColor('#3b82f6')),
         ]))
-        els.append(pf_tbl)
+        els.append(pf)
 
-    els.append(_sp(0.28))
-    els.append(_hr())
     return els
 
 
@@ -721,43 +800,33 @@ def _sec_metrics(niche: dict) -> list:
     els.append(_sp(0.05))
     els.append(_cards_tbl(row2))
 
-    # ── Оборачиваемость и Маржа — отдельным блоком с пояснениями ─────────────
-    turn_col  = C_GREEN if turnover <= 45 else (C_AMBER if turnover <= 90 else C_RED)
-    turn_icon = '✅' if turnover <= 45 else '⚠'
-
-    notes = []
+    # ── Оборачиваемость и Маржа — блоки с пояснениями ────────────────────────
     if turnover:
         if turnover > 90:
-            turn_text = f'{turn_icon} <b>Оборачиваемость: {turnover:.0f} дней</b> — ваши деньги будут заморожены более 3 месяцев. Работайте строго по FBS-схеме с минимальной партией на старте.'
+            els.append(_sp(0.1))
+            els.append(_warning(
+                f'<b>Оборачиваемость: {turnover:.0f} дней</b> — рекомендуем начать с малой партии '
+                f'и работать по FBS-схеме, чтобы не замораживать капитал в стоке.'
+            ))
         elif turnover > 45:
-            turn_text = f'ℹ <b>Оборачиваемость: {turnover:.0f} дней</b> — умеренная. Следите за остатками, не допускайте затоваривания.'
+            els.append(_sp(0.1))
+            els.append(_info(
+                f'<b>Оборачиваемость: {turnover:.0f} дней</b> — умеренная. '
+                f'Следите за остатками, не допускайте затоваривания.'
+            ))
         else:
-            turn_text = f'✅ <b>Оборачиваемость: {turnover:.0f} дней</b> — отлично, товар быстро оборачивается.'
-        notes.append(turn_text)
+            els.append(_sp(0.1))
+            els.append(_info(
+                f'<b>Оборачиваемость: {turnover:.0f} дней</b> — отлично, товар быстро продаётся.'
+            ))
 
     if profit > 0:
-        notes.append(
-            f'ℹ <b>Маржа по WB: {_pct(profit)}</b> — это выручка ниши минус комиссия и логистика Wildberries, '
-            f'но <b>без вычета себестоимости товара</b>. '
+        els.append(_sp(0.06))
+        els.append(_info(
+            f'<b>Маржа по WB: {_pct(profit)}</b> — выручка ниши за вычетом комиссии и логистики WB, '
+            f'но <b>без учёта себестоимости товара</b>. '
             f'Реальная чистая прибыль обычно 20–35% — уточняйте в разделе «Юнит-экономика».'
-        )
-
-    if notes:
-        els.append(_sp(0.1))
-        inner = []
-        for note in notes:
-            inner.append(_p(note, size=8, color=HexColor('#374151'),
-                            space_before=4, space_after=4))
-        notes_tbl = Table([[inner]], colWidths=[COL_W])
-        notes_tbl.setStyle(TableStyle([
-            ('BACKGROUND',    (0,0), (-1,-1), HexColor('#fefce8')),
-            ('TOPPADDING',    (0,0), (-1,-1), 8),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 8),
-            ('LEFTPADDING',   (0,0), (-1,-1), 10),
-            ('RIGHTPADDING',  (0,0), (-1,-1), 10),
-            ('BOX',           (0,0), (-1,-1), 0.5, HexColor('#fde68a')),
-        ]))
-        els.append(notes_tbl)
+        ))
 
     els.append(_sp(0.12))
     return els
@@ -1432,6 +1501,115 @@ def _sec_upsell(current_level: str) -> list:
     return els
 
 
+def _sec_finale(level: str, agents: dict = None) -> list:
+    """Финальная страница на тёмном фоне (фон через PageTemplate)."""
+    accent   = LEVEL_ACCENT.get(level, C_ACCENT)
+    badge_bg = LEVEL_BADGE_BG.get(level, HexColor('#1d4ed8'))
+
+    def _wp(text, size=10, bold=False, color=WHITE, align=TA_CENTER,
+            space_before=0, space_after=0):
+        s = ParagraphStyle('_fp', fontName=FB if bold else FN, fontSize=size,
+                            textColor=color, alignment=align,
+                            spaceBefore=space_before, spaceAfter=space_after,
+                            leading=size * 1.35)
+        return Paragraph(str(text), s)
+
+    els = []
+    els.append(_sp(1.2))
+
+    # Логотип
+    els.append(_wp('WBAnalyzer', size=30, bold=True, color=WHITE))
+    els.append(_sp(0.12))
+    els.append(_wp('◆ AI Platform · Аналитика нового поколения',
+                    size=9, color=C_COVER_SUB))
+    els.append(_sp(0.3))
+
+    # Тонкая акцентная линия
+    acl = Table([['']], colWidths=[COL_W], rowHeights=[1.5])
+    acl.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,-1), accent),
+                               ('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0)]))
+    els.append(acl)
+    els.append(_sp(0.35))
+
+    # Текст
+    els.append(_wp('Анализ подготовлен платформой WBAnalyzer', size=11, color=C_COVER_SUB))
+    els.append(_sp(0.1))
+    els.append(_wp(PLATFORM_URL, size=9, color=accent))
+
+    # ── Апсейл для Basic и Standard ──────────────────────────────────────────
+    upsell = LEVEL_UPSELL_NEXT.get(level)
+    if upsell:
+        next_name, next_desc, next_bg = upsell
+        els.append(_sp(0.5))
+
+        # Плашка "Хотите больше?"
+        bump_s = ParagraphStyle('_bmp', fontName=FB, fontSize=9,
+                                 textColor=HexColor('#0d1b2a'), alignment=TA_CENTER)
+        bump = Table([[Paragraph('▲ БОЛЬШЕ ДАННЫХ — ЛУЧШЕ РЕШЕНИЕ ▲', bump_s)]],
+                     colWidths=[COL_W])
+        bump.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), accent),
+            ('TOPPADDING',    (0,0), (-1,-1), 7),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 7),
+        ]))
+        els.append(bump)
+
+        # Блок с предложением
+        if level == 'basic':
+            bullets = [
+                'Все 5 графиков ниши с подробными описаниями',
+                'Топ-20 товаров с полной аналитикой',
+                'Юнит-экономика в 3 сценариях (FBO BY / FBS / FBO RU)',
+                'Рекламная стратегия с прогнозом KPI',
+            ]
+        else:  # standard
+            bullets = [
+                'Глубокий анализ конкурентной среды и ROI на 12 месяцев',
+                'Поиск поставщиков: цены Alibaba/1688, MOQ, прямые ссылки',
+                'Полный список документов и сертификатов для WB',
+                'Стратегия поставок FBS/FBO + объём первой партии',
+                'Готовый AI-текст карточки товара для SEO-продвижения',
+            ]
+
+        head_s  = ParagraphStyle('_fh', fontName=FB, fontSize=14, textColor=WHITE,
+                                  alignment=TA_CENTER, leading=20)
+        body_s  = ParagraphStyle('_fb', fontName=FN, fontSize=9,
+                                  textColor=HexColor('#cbd5e1'), leading=14)
+        bull_s  = ParagraphStyle('_fbl', fontName=FN, fontSize=9.5,
+                                  textColor=WHITE, leading=14)
+
+        inner_rows = [[Paragraph(f'Перейдите на {next_name}', head_s)]]
+        inner_rows.append([Spacer(1, 6)])
+        for b in bullets:
+            inner_rows.append([Paragraph(f'✓  {b}', bull_s)])
+        inner_rows.append([Spacer(1, 10)])
+        inner_rows.append([Paragraph(
+            f'Откройте WBAnalyzer и нажмите кнопку «{next_name}»',
+            ParagraphStyle('_fcta', fontName=FB, fontSize=10,
+                            textColor=accent, alignment=TA_CENTER, leading=14)
+        )])
+
+        blk = Table(inner_rows, colWidths=[COL_W - 32])
+        blk.setStyle(TableStyle([
+            ('TOPPADDING',    (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('LEFTPADDING',   (0,0), (-1,-1), 0),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 0),
+        ]))
+        wrap = Table([[blk]], colWidths=[COL_W])
+        wrap.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), HexColor('#1e293b')),
+            ('TOPPADDING',    (0,0), (-1,-1), 18),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 18),
+            ('LEFTPADDING',   (0,0), (-1,-1), 16),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 16),
+            ('BOX',           (0,0), (-1,-1), 1.5, accent),
+        ]))
+        els.append(wrap)
+
+    return els
+
+
 # ── Главная функция ───────────────────────────────────────────────────────────
 
 def generate(level: str, niche: dict, chart_items: list = None) -> bytes:
@@ -1669,33 +1847,97 @@ def render(level: str, niche: dict, agents: dict,
     Собирает PDF из готовых результатов агентов — без вызовов Claude.
     charts: словарь {chart_id: base64_data_url} из браузера (canvas.toDataURL).
     """
+    global _CURRENT_LEVEL
+    _CURRENT_LEVEL = level
+
     t0 = time.time()
-    items = chart_items or []
+    items     = chart_items or []
     top_limit = 5 if level == 'basic' else 20
 
+    niche_name = (niche.get('display_name') or niche.get('name') or 'Анализ ниши')[:55]
+    lname      = LEVEL_NAMES.get(level, level.upper())
+    accent     = LEVEL_ACCENT.get(level, C_ACCENT)
+
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4,
-                            rightMargin=MARGIN, leftMargin=MARGIN,
-                            topMargin=0.6*inch, bottomMargin=0.5*inch)
+
+    # ── Зоны страницы ─────────────────────────────────────────────────────────
+    HEADER_ZONE = 0.68 * inch   # резервируется сверху для колонтитула
+    FOOTER_ZONE = 0.52 * inch   # резервируется снизу
+
+    # ── Callbacks для PageTemplate ─────────────────────────────────────────────
+    def _on_dark(canvas, doc):
+        canvas.saveState()
+        canvas.setFillColor(C_COVER_BG)
+        canvas.rect(0, 0, W, H, fill=1, stroke=0)
+        canvas.restoreState()
+
+    def _on_content(canvas, doc):
+        canvas.saveState()
+        # ── Верхний колонтитул
+        hY = H - 0.38 * inch
+        canvas.setFont(FB, 7.5)
+        canvas.setFillColor(C_NAVY)
+        canvas.drawString(MARGIN, hY, f'WBAnalyzer  ·  {niche_name}')
+        canvas.setFont(FN, 7.5)
+        canvas.setFillColor(accent)
+        canvas.drawRightString(W - MARGIN, hY, lname)
+        # Линия под заголовком
+        canvas.setStrokeColor(accent)
+        canvas.setLineWidth(0.7)
+        canvas.line(MARGIN, H - HEADER_ZONE + 0.04 * inch,
+                    W - MARGIN, H - HEADER_ZONE + 0.04 * inch)
+        # ── Нижний колонтитул
+        fY = 0.22 * inch
+        canvas.setFont(FN, 7)
+        canvas.setFillColor(C_GRAY)
+        canvas.drawString(MARGIN, fY,
+                          f'© {PLATFORM_YEAR} WBAnalyzer · {PLATFORM_URL}')
+        # Номер страницы: -1 чтобы обложка не считалась
+        canvas.drawRightString(W - MARGIN, fY, f'Стр. {doc.page - 1}')
+        canvas.setStrokeColor(C_BORDER)
+        canvas.setLineWidth(0.4)
+        canvas.line(MARGIN, fY + 0.13 * inch, W - MARGIN, fY + 0.13 * inch)
+        canvas.restoreState()
+
+    # ── Фреймы ────────────────────────────────────────────────────────────────
+    full_frame = Frame(
+        MARGIN, MARGIN,
+        W - 2 * MARGIN, H - 2 * MARGIN,
+        leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0, id='full'
+    )
+    content_frame = Frame(
+        MARGIN, FOOTER_ZONE,
+        W - 2 * MARGIN, H - HEADER_ZONE - FOOTER_ZONE,
+        leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0, id='content'
+    )
+
+    doc = BaseDocTemplate(buf, pagesize=A4, pageTemplates=[
+        PageTemplate(id='Cover',   frames=[full_frame],    onPage=_on_dark),
+        PageTemplate(id='Content', frames=[content_frame], onPage=_on_content),
+        PageTemplate(id='Finale',  frames=[full_frame],    onPage=_on_dark),
+    ])
+
+    # ── Контент ───────────────────────────────────────────────────────────────
     els = []
+
+    # Обложка
     els += _sec_cover(niche, level)
+    els.append(NextPageTemplate('Content'))
+    els.append(PageBreak())
+
+    # Контентные страницы
     els += _sec_metrics(niche)
 
-    # Графики из браузера (canvas → base64 → Image в PDF)
     browser_charts = dict(charts or {})
     if browser_charts:
         els += _sec_browser_charts(browser_charts, level, niche)
     elif items:
-        # Резервный вариант: ReportLab-графики из MPStats
         if len(items) >= 4:
             d = _chart_revenue_line(items)
-            if d: els += [_h2('Топ товары по выручке'), _hr(), d, _sp(0.1)]
+            if d: els += [_h2('Топ товары по выручке'), d, _sp(0.1)]
         if level in ('standard', 'deep') and len(items) >= 6:
             d2 = _chart_price_bar(items)
-            if d2: els += [_h2('Распределение цен'), _hr(), d2, _sp(0.1)]
-        if level == 'deep' and len(items) >= 8:
-            d3 = _chart_sellers_pie(items)
-            if d3: els += [_h2('Доля продавцов'), _hr(), d3, _sp(0.1)]
+            if d2: els += [_h2('Распределение цен'), d2, _sp(0.1)]
 
     els += _sec_top_products(items, limit=top_limit)
     els += _sec_master(agents.get('master') or {})
@@ -1712,7 +1954,11 @@ def render(level: str, niche: dict, agents: dict,
         els += _sec_content(content_text)
 
     els += _sec_conclusion(level, agents)
-    els += _sec_upsell(level)
+
+    # Финальная тёмная страница
+    els.append(NextPageTemplate('Finale'))
+    els.append(PageBreak())
+    els += _sec_finale(level, agents)
 
     doc.build(els)
     buf.seek(0)

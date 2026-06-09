@@ -1260,38 +1260,174 @@ def _sec_upsell(current_level: str) -> list:
                       size=9, color=C_GRAY, align=TA_CENTER))
 
     elif current_level == 'standard':
-        els.append(_sp(0.1))
-        els.append(_hr())
-        els.append(_h2('PDF Deep — полный профессиональный анализ'))
-        els.append(_hr())
-        els.append(_body('При заказе PDF Deep вы дополнительно получите:'))
-        els.append(_sp(0.1))
-        deep_extras = [
-            ('🔬 Глубокий анализ',        'Детальный анализ конкурентной среды, свободных сегментов, ROI на 12 месяцев.'),
-            ('🏭 Поиск поставщиков',      'Закупочные цены на Alibaba и 1688, расчёт маржи, MOQ, прямые ссылки на площадки.'),
-            ('📋 Документы и сертификаты','Полный список обязательных документов для выхода на WB: стоимость и сроки оформления.'),
-            ('📦 Стратегия поставок',      'Анализ FBS vs FBO, расчёт объёма первой поставки, выбор складов WB.'),
-            ('✍️ Карточка товара',        'Готовый AI-текст: заголовок, развёрнутое описание, характеристики, ключевые слова для SEO.'),
-        ]
-        rows = [['Раздел', 'Что получаете']]
-        for lbl, desc in deep_extras:
-            rows.append([lbl, desc])
-        t = Table(rows, colWidths=[2.1*inch, COL_W - 2.1*inch])
-        t.setStyle(TableStyle([
-            ('BACKGROUND',     (0,0), (-1,0), HexColor('#7c3aed')),
-            ('TEXTCOLOR',      (0,0), (-1,0), WHITE),
-            ('FONTNAME',       (0,0), (-1,0), FB),
-            ('FONTSIZE',       (0,0), (-1,-1), 8.5),
-            ('FONTNAME',       (0,1), (-1,-1), FN),
-            ('GRID',           (0,0), (-1,-1), 0.4, C_LIGHT2),
-            ('ROWBACKGROUNDS', (0,1), (-1,-1), [WHITE, HexColor('#f5f3ff')]),
-            ('TOPPADDING',     (0,0), (-1,-1), 7),
-            ('BOTTOMPADDING',  (0,0), (-1,-1), 7),
+        els.append(_sp(0.25))
+
+        # ── Главный баннер ─────────────────────────────────────────────────────
+        C_GOLD   = HexColor('#f59e0b')
+        C_GOLD2  = HexColor('#fef3c7')
+        C_DEEP   = HexColor('#1e0a3c')
+        C_PURP   = HexColor('#7c3aed')
+        C_PURP2  = HexColor('#ede9fe')
+
+        # Верхняя плашка — «только в Deep»
+        badge_s  = ParagraphStyle('_up_badge', fontName=FB, fontSize=8,
+                                   textColor=C_DEEP, leading=11, alignment=TA_CENTER)
+        badge_p  = Paragraph('◆ ЭКСКЛЮЗИВНО В PDF DEEP ◆', badge_s)
+        badge_t  = Table([[badge_p]], colWidths=[COL_W])
+        badge_t.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), C_GOLD),
+            ('TOPPADDING',    (0,0), (-1,-1), 6),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+            ('LEFTPADDING',   (0,0), (-1,-1), 0),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 0),
         ]))
-        els.append(t)
-        els.append(_sp(0.15))
-        els.append(_p('Нажмите кнопку PDF Deep в WBAnalyzer для полного профессионального анализа.',
-                      size=9, color=C_GRAY, align=TA_CENTER))
+        els.append(badge_t)
+
+        # Основной заголовок на тёмном фоне
+        head_s   = ParagraphStyle('_up_head', fontName=FB, fontSize=18,
+                                   textColor=WHITE, leading=24, alignment=TA_CENTER)
+        sub_s    = ParagraphStyle('_up_sub', fontName=FN, fontSize=10,
+                                   textColor=HexColor('#c4b5fd'), leading=14, alignment=TA_CENTER)
+        head_blk = Table([
+            [Paragraph('Получите PDF Deep —', head_s)],
+            [Paragraph('полный профессиональный анализ ниши', head_s)],
+            [Spacer(1, 4)],
+            [Paragraph('5 дополнительных разделов · Готовые данные для старта · AI-текст карточки', sub_s)],
+        ], colWidths=[COL_W])
+        head_blk.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), C_DEEP),
+            ('TOPPADDING',    (0,0), (-1,-1), 14),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 14),
+            ('LEFTPADDING',   (0,0), (-1,-1), 12),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 12),
+        ]))
+        els.append(head_blk)
+
+        # ── 5 фич в 2 колонки ──────────────────────────────────────────────────
+        feats = [
+            ('🔬', 'Глубокий анализ ниши',
+             'Детальный разбор конкурентной среды, свободных сегментов рынка и ROI на 12 месяцев вперёд'),
+            ('🏭', 'Поиск поставщиков',
+             'Закупочные цены на Alibaba и 1688, расчёт маржи, MOQ и прямые ссылки на проверенных поставщиков'),
+            ('📋', 'Документы и сертификаты',
+             'Полный список обязательных документов для выхода на WB: стоимость и сроки оформления'),
+            ('📦', 'Стратегия поставок',
+             'Анализ FBS vs FBO, расчёт объёма первой поставки и выбор оптимальных складов WB'),
+            ('✍', 'Карточка товара (AI)',
+             'Готовый текст: заголовок, полное описание, характеристики и ключевые слова для SEO-продвижения'),
+        ]
+
+        def _feat_cell(icon, title, desc):
+            icon_s  = ParagraphStyle('_fi', fontName=FB, fontSize=16, textColor=C_GOLD,
+                                      leading=20, alignment=TA_CENTER)
+            title_s = ParagraphStyle('_ft', fontName=FB, fontSize=9, textColor=C_DEEP,
+                                      leading=12, spaceAfter=2)
+            desc_s  = ParagraphStyle('_fd', fontName=FN, fontSize=8, textColor=HexColor('#374151'),
+                                      leading=11)
+            return Table([
+                [Paragraph(icon, icon_s)],
+                [Paragraph(title, title_s)],
+                [Paragraph(desc, desc_s)],
+            ], colWidths=[(COL_W / 2) - 10])
+
+        hw = COL_W / 2 - 8
+        feat_style = TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), WHITE),
+            ('BOX',           (0,0), (-1,-1), 1.5, C_PURP),
+            ('TOPPADDING',    (0,0), (-1,-1), 10),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+            ('LEFTPADDING',   (0,0), (-1,-1), 10),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 10),
+            ('VALIGN',        (0,0), (-1,-1), 'TOP'),
+        ])
+
+        def _feat_box(icon, title, desc):
+            icon_s  = ParagraphStyle('_fi2', fontName=FB, fontSize=14, textColor=C_PURP,
+                                      leading=18, alignment=TA_LEFT)
+            title_s = ParagraphStyle('_ft2', fontName=FB, fontSize=9.5, textColor=C_DEEP,
+                                      leading=13, spaceAfter=3)
+            desc_s  = ParagraphStyle('_fd2', fontName=FN, fontSize=8, textColor=HexColor('#374151'),
+                                      leading=11)
+            inner = Table([
+                [Paragraph(icon + '  ' + title, title_s)],
+                [Paragraph(desc, desc_s)],
+            ], colWidths=[hw])
+            inner.setStyle(TableStyle([
+                ('LEFTPADDING',   (0,0), (-1,-1), 0),
+                ('RIGHTPADDING',  (0,0), (-1,-1), 0),
+                ('TOPPADDING',    (0,0), (-1,-1), 1),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 1),
+            ]))
+            wrap = Table([[inner]], colWidths=[hw + 20])
+            wrap.setStyle(TableStyle([
+                ('BACKGROUND',    (0,0), (-1,-1), WHITE),
+                ('BOX',           (0,0), (-1,-1), 1.5, C_PURP),
+                ('TOPPADDING',    (0,0), (-1,-1), 9),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 9),
+                ('LEFTPADDING',   (0,0), (-1,-1), 10),
+                ('RIGHTPADDING',  (0,0), (-1,-1), 10),
+                ('VALIGN',        (0,0), (-1,-1), 'TOP'),
+            ]))
+            return wrap
+
+        gap = COL_W - 2 * (hw + 20)
+        # Строим 2 колонки: феату 0+1, 2+3, 4 по центру
+        pairs = [
+            (feats[0], feats[1]),
+            (feats[2], feats[3]),
+        ]
+        feat_bg = Table([
+            [_feat_box(*pairs[0][0]), Spacer(gap, 1), _feat_box(*pairs[0][1])],
+            [Spacer(1, 6), '', ''],
+            [_feat_box(*pairs[1][0]), Spacer(gap, 1), _feat_box(*pairs[1][1])],
+        ], colWidths=[hw + 20, gap, hw + 20])
+        feat_bg.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), C_PURP2),
+            ('LEFTPADDING',   (0,0), (-1,-1), 0),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 0),
+            ('TOPPADDING',    (0,0), (-1,-1), 0),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('SPAN',          (0,1), (-1,1)),
+        ]))
+        outer = Table([[feat_bg]], colWidths=[COL_W])
+        outer.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), C_PURP2),
+            ('TOPPADDING',    (0,0), (-1,-1), 12),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('LEFTPADDING',   (0,0), (-1,-1), 12),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 12),
+        ]))
+        els.append(outer)
+
+        # 5-й элемент — полная ширина
+        fifth_box = _feat_box(*feats[4])
+        fifth_outer = Table([[fifth_box]], colWidths=[COL_W])
+        fifth_outer.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), C_PURP2),
+            ('TOPPADDING',    (0,0), (-1,-1), 0),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+            ('LEFTPADDING',   (0,0), (-1,-1), 12),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 12),
+        ]))
+        els.append(fifth_outer)
+
+        # ── CTA-кнопка ─────────────────────────────────────────────────────────
+        cta_s   = ParagraphStyle('_cta', fontName=FB, fontSize=13,
+                                  textColor=C_DEEP, leading=18, alignment=TA_CENTER)
+        cta_sub = ParagraphStyle('_cta2', fontName=FN, fontSize=9,
+                                  textColor=C_DEEP, leading=13, alignment=TA_CENTER)
+        cta_blk = Table([
+            [Paragraph('▶  Нажмите PDF Deep в WBAnalyzer', cta_s)],
+            [Paragraph('и получите полный анализ прямо сейчас', cta_sub)],
+        ], colWidths=[COL_W])
+        cta_blk.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), C_GOLD),
+            ('TOPPADDING',    (0,0), (-1,-1), 12),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+            ('LEFTPADDING',   (0,0), (-1,-1), 12),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 12),
+        ]))
+        els.append(cta_blk)
 
     return els
 
@@ -1508,7 +1644,7 @@ def _sec_browser_charts(charts: dict, level: str, niche: dict = None) -> list:
             _header, b64 = data_url.split(',', 1)
             img_bytes = __import__('base64').b64decode(b64)
             img_buf = io.BytesIO(img_bytes)
-            img = Image(img_buf, width=COL_W, height=2.6*inch)
+            img = Image(img_buf, width=COL_W, height=3.2*inch)
             img.hAlign = 'CENTER'
             els.append(_p(meta['label'], size=10, bold=True, color=C_NAVY,
                           align=TA_CENTER, space_before=8, space_after=2))

@@ -2068,6 +2068,119 @@ def _sec_deep_value_block() -> list:
     return [_sp(0.15), tbl, _sp(0.15)]
 
 
+def _sec_30days() -> list:
+    """Страница «30 дней» в Deep — на тёмном фоне (Finale template)."""
+    gold      = HexColor('#f59e0b')
+    dark_card = HexColor('#1a2d40')
+    sep_line  = HexColor('#2d4a62')
+
+    GAP  = 0.15 * inch
+    COL3 = (COL_W - 2 * GAP) / 3
+
+    def _wp(text, size=10, bold=False, color=WHITE, align=TA_CENTER, sb=0, sa=0):
+        s = ParagraphStyle('_30wp', fontName=FB if bold else FN, fontSize=size,
+                           textColor=color, alignment=align,
+                           spaceBefore=sb, spaceAfter=sa,
+                           leading=size * 1.38)
+        return Paragraph(str(text), s)
+
+    def _card(label, hdr_color, actions):
+        hdr_s  = ParagraphStyle('_30h', fontName=FB, fontSize=9,
+                                textColor=HexColor('#0d1b2a'), alignment=TA_CENTER,
+                                leading=13)
+        item_s = ParagraphStyle('_30i', fontName=FN, fontSize=8.5,
+                                textColor=WHITE, leading=13, spaceBefore=4)
+
+        hdr_tbl = Table([[Paragraph(label, hdr_s)]], colWidths=[COL3])
+        hdr_tbl.setStyle(TableStyle([
+            ('BACKGROUND',    (0, 0), (-1, -1), hdr_color),
+            ('TOPPADDING',    (0, 0), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 9),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
+        ]))
+
+        rows = [[Paragraph(f'☐  {a}', item_s)] for a in actions]
+        body_tbl = Table(rows, colWidths=[COL3])
+        body_tbl.setStyle(TableStyle([
+            ('BACKGROUND',    (0, 0), (-1, -1), dark_card),
+            ('TOPPADDING',    (0, 0), (-1, -1), 7),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
+            ('BOX',           (0, 0), (-1, -1), 1.5, hdr_color),
+            ('LINEBELOW',     (0, 0), (-1, -2), 0.4, sep_line),
+        ]))
+
+        card = Table([[hdr_tbl], [body_tbl]], colWidths=[COL3])
+        card.setStyle(TableStyle([
+            ('TOPPADDING',    (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 0),
+        ]))
+        return card
+
+    card1  = _card('НЕДЕЛЯ 1\nНайти поставщика',
+                   HexColor('#3b82f6'), [
+                       'Найти поставщика на 1688.com или Alibaba',
+                       'Запросить образцы и прайс-лист',
+                       'Зарегистрировать ИП или самозанятость',
+                       'Изучить топ-10 конкурентов в нише',
+                   ])
+    card23 = _card('НЕДЕЛЯ 2–3\nПроверить качество',
+                   HexColor('#f59e0b'), [
+                       'Получить образцы от поставщика',
+                       'Проверить качество и упаковку',
+                       'Заказать тестовую партию',
+                       'Начать сбор документов для WB',
+                   ])
+    card4  = _card('НЕДЕЛЯ 4\nЗапустить продажи',
+                   HexColor('#16a34a'), [
+                       'Подготовить карточку товара',
+                       'Сделать фото и видео контент',
+                       'Зарегистрироваться на WB как продавец',
+                       'Настроить первую рекламную кампанию',
+                   ])
+
+    grid = Table([[card1, '', card23, '', card4]],
+                 colWidths=[COL3, GAP, COL3, GAP, COL3])
+    grid.setStyle(TableStyle([
+        ('TOPPADDING',    (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 0),
+        ('VALIGN',        (0, 0), (-1, -1), 'TOP'),
+    ]))
+
+    acl = Table([['']], colWidths=[COL_W * 0.35], rowHeights=[1.5])
+    acl.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), gold),
+                              ('TOPPADDING', (0, 0), (-1, -1), 0),
+                              ('BOTTOMPADDING', (0, 0), (-1, -1), 0)]))
+    divider = Table([[acl]], colWidths=[COL_W])
+    divider.setStyle(TableStyle([('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                                  ('TOPPADDING', (0, 0), (-1, -1), 0),
+                                  ('BOTTOMPADDING', (0, 0), (-1, -1), 0)]))
+
+    close_s = ParagraphStyle('_30cl', fontName=FB, fontSize=12, textColor=WHITE,
+                              alignment=TA_CENTER, leading=18)
+
+    return [
+        _sp(1.0),
+        _wp('◆ ПЛАН ПЕРВОГО МЕСЯЦА ◆', size=9, bold=True, color=gold),
+        _sp(0.15),
+        _wp('С чего начать завтра утром', size=20, bold=True),
+        _sp(0.08),
+        _wp('Конкретные шаги для входа в нишу', size=9.5, color=C_COVER_SUB),
+        _sp(0.3),
+        divider,
+        _sp(0.32),
+        grid,
+        _sp(0.5),
+        Paragraph('Ниша проанализирована. Решение за вами.', close_s),
+    ]
+
+
 def _sec_finale(level: str, agents: dict = None) -> list:
     """Финальная страница на тёмном фоне (фон через PageTemplate)."""
     accent   = LEVEL_ACCENT.get(level, C_ACCENT)
@@ -2566,6 +2679,12 @@ def render(level: str, niche: dict, agents: dict,
     # Словарь терминов — только в Standard и Deep
     if level != 'basic':
         els += _sec_glossary()
+
+    # Страница «30 дней» — только для Deep
+    if level == 'deep':
+        els.append(NextPageTemplate('Finale'))
+        els.append(PageBreak())
+        els += _sec_30days()
 
     # Финальная тёмная страница
     els.append(NextPageTemplate('Finale'))

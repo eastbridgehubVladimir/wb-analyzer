@@ -28,7 +28,9 @@ for i, arg in enumerate(sys.argv):
     if arg == "--limit" and i + 1 < len(sys.argv):
         LIMIT = int(sys.argv[i + 1])
 
-D1, D2 = "2024-10-01", "2025-03-31"
+from datetime import datetime, timedelta as _td
+D2 = datetime.now().strftime('%Y-%m-%d')
+D1 = (datetime.now() - _td(days=60)).strftime('%Y-%m-%d')
 STOP_WORDS = {'для', 'при', 'под', 'над', 'без', 'про', 'все', 'или', 'типа', 'ниша'}
 
 

@@ -1605,47 +1605,161 @@ def _sec_upsell(current_level: str) -> list:
     els = []
 
     if current_level == 'basic':
-        els.append(_sp(0.1))
-        els.append(_hr())
-        els.append(_h2('Получите полный анализ — PDF Standard и Deep'))
-        els.append(_hr())
-        els.append(_body('Этот отчёт — Basic версия. Сравните, что содержит каждый уровень:'))
-        els.append(_sp(0.1))
-        rows = [
-            ['Раздел анализа',           'Basic', 'Standard', 'Deep'],
-            ['Ключевые метрики ниши',    '✅',    '✅',       '✅'],
-            ['2 ключевых графика',        '✅',    '—',        '—'],
-            ['Все 3 графика ниши',         '—',     '✅',       '✅'],
-            ['Топ-5 товаров',             '✅',    '—',        '—'],
-            ['Топ-20 товаров',            '—',     '✅',       '✅'],
-            ['Мастер-анализ AI',          '✅',    '✅',       '✅'],
-            ['Юнит-экономика (3 сценария)','—',   '✅',       '✅'],
-            ['Рекламная стратегия',       '—',     '✅',       '✅'],
-            ['Глубокий анализ ниши',      '—',     '—',        '✅'],
-            ['Поиск поставщиков + цены',  '—',     '—',        '✅'],
-            ['Документы и сертификаты',   '—',     '—',        '✅'],
-            ['Стратегия поставок WB',     '—',     '—',        '✅'],
-            ['Карточка товара (AI-текст)','—',     '—',        '✅'],
-        ]
-        t = Table(rows, colWidths=[3.1*inch, 1.1*inch, 1.1*inch, 1.3*inch])
-        t.setStyle(TableStyle([
-            ('BACKGROUND',     (0,0), (-1,0), C_NAVY),
-            ('TEXTCOLOR',      (0,0), (-1,0), WHITE),
-            ('FONTNAME',       (0,0), (-1,0), FB),
-            ('FONTSIZE',       (0,0), (-1,-1), 8.5),
-            ('FONTNAME',       (0,1), (-1,-1), FN),
-            ('GRID',           (0,0), (-1,-1), 0.4, C_LIGHT2),
-            ('ROWBACKGROUNDS', (0,1), (-1,-1), [WHITE, C_LIGHT]),
-            ('TOPPADDING',     (0,0), (-1,-1), 6),
-            ('BOTTOMPADDING',  (0,0), (-1,-1), 6),
-            ('ALIGN',          (1,0), (-1,-1), 'CENTER'),
-            ('BACKGROUND',     (2,1), (2,-1), HexColor('#eff6ff')),
-            ('BACKGROUND',     (3,1), (3,-1), HexColor('#f5f3ff')),
+        C_DARK2  = HexColor('#0f1e35')
+        C_GOLD_B = HexColor('#f59e0b')
+        C_BLUE_L = HexColor('#eff6ff')
+        C_GRAY_L = HexColor('#f8fafc')
+
+        els.append(_sp(0.2))
+
+        # ── Главный заголовок «20%» ────────────────────────────────────────────
+        tri_s = ParagraphStyle('_b20t', fontName=FB, fontSize=9,
+                               textColor=C_DARK2, leading=13, alignment=TA_CENTER)
+        h_s   = ParagraphStyle('_b20h', fontName=FB, fontSize=20,
+                               textColor=WHITE, leading=26, alignment=TA_CENTER)
+        sub_s = ParagraphStyle('_b20s', fontName=FN, fontSize=9,
+                               textColor=HexColor('#cbd5e1'), leading=13, alignment=TA_CENTER)
+        hdr_blk = Table([
+            [Paragraph('◆  ВЫ ВИДЕЛИ ТОЛЬКО 20% АНАЛИЗА  ◆', tri_s)],
+            [Spacer(1, 6)],
+            [Paragraph('Хотите знать, выгодна ли эта ниша для вас лично?', h_s)],
+            [Spacer(1, 4)],
+            [Paragraph('PDF Standard покажет реальные цифры с учётом вашей схемы работы', sub_s)],
+        ], colWidths=[COL_W])
+        hdr_blk.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (0,0), C_GOLD_B),
+            ('BACKGROUND',    (0,1), (0,-1), C_DARK2),
+            ('TOPPADDING',    (0,0), (-1,-1), 8),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+            ('LEFTPADDING',   (0,0), (-1,-1), 16),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 16),
         ]))
-        els.append(t)
-        els.append(_sp(0.15))
-        els.append(_p('Нажмите кнопку PDF Standard или PDF Deep в WBAnalyzer для полного отчёта.',
-                      size=9, color=C_GRAY, align=TA_CENTER))
+        els.append(hdr_blk)
+        els.append(_sp(0.12))
+
+        # ── Две колонки: что уже есть vs что откроет Standard ─────────────────
+        col_head_s = ParagraphStyle('_bch', fontName=FB, fontSize=8.5,
+                                    textColor=WHITE, leading=12, alignment=TA_CENTER)
+        col_item_s = ParagraphStyle('_bci', fontName=FN, fontSize=8.5,
+                                    textColor=C_TEXT, leading=13)
+        hw = COL_W / 2 - 4
+
+        def _col_items(items, icon):
+            rows_inner = []
+            for item in items:
+                rows_inner.append([Paragraph(f'{icon}  {item}', col_item_s)])
+            t = Table(rows_inner, colWidths=[hw])
+            t.setStyle(TableStyle([
+                ('TOPPADDING',    (0,0), (-1,-1), 4),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+                ('LEFTPADDING',   (0,0), (-1,-1), 0),
+                ('RIGHTPADDING',  (0,0), (-1,-1), 0),
+            ]))
+            return t
+
+        left_head = Table([[Paragraph('✓  Что вы уже знаете', col_head_s)]],
+                          colWidths=[hw])
+        left_head.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), C_GRAY),
+            ('TOPPADDING', (0,0), (-1,-1), 8), ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+            ('LEFTPADDING', (0,0), (-1,-1), 10), ('RIGHTPADDING', (0,0), (-1,-1), 10),
+        ]))
+        left_items = _col_items([
+            'Ключевые показатели ниши',
+            'Топ-5 товаров ниши',
+            'Мастер-анализ AI',
+            '2 графика ниши',
+        ], '•')
+        left_col = Table([[left_head], [left_items]], colWidths=[hw])
+        left_col.setStyle(TableStyle([
+            ('BACKGROUND',    (0,1), (-1,-1), C_GRAY_L),
+            ('TOPPADDING',    (0,0), (-1,-1), 0), ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('LEFTPADDING',   (0,0), (-1,-1), 10), ('RIGHTPADDING', (0,0), (-1,-1), 10),
+            ('TOPPADDING',    (0,1), (-1,-1), 8), ('BOTTOMPADDING', (0,1), (-1,-1), 10),
+            ('BOX',           (0,0), (-1,-1), 0.5, C_BORDER),
+        ]))
+
+        right_head = Table([[Paragraph('+ Что откроет PDF Standard', col_head_s)]],
+                           colWidths=[hw])
+        right_head.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), C_ACCENT),
+            ('TOPPADDING', (0,0), (-1,-1), 8), ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+            ('LEFTPADDING', (0,0), (-1,-1), 10), ('RIGHTPADDING', (0,0), (-1,-1), 10),
+        ]))
+        right_items = _col_items([
+            'Юнит-экономика — прибыль с каждой единицы',
+            'Рекламная стратегия с прогнозом KPI',
+            'Топ-20 товаров ниши',
+            'Все 6 графиков ниши',
+            'Конкуренты, цены, точка входа',
+        ], '+')
+        right_col = Table([[right_head], [right_items]], colWidths=[hw])
+        right_col.setStyle(TableStyle([
+            ('BACKGROUND',    (0,1), (-1,-1), C_BLUE_L),
+            ('TOPPADDING',    (0,0), (-1,-1), 0), ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('LEFTPADDING',   (0,0), (-1,-1), 10), ('RIGHTPADDING', (0,0), (-1,-1), 10),
+            ('TOPPADDING',    (0,1), (-1,-1), 8), ('BOTTOMPADDING', (0,1), (-1,-1), 10),
+            ('BOX',           (0,0), (-1,-1), 0.5, C_BORDER),
+        ]))
+
+        two_cols = Table([[left_col, Spacer(8, 1), right_col]],
+                         colWidths=[hw, 8, hw])
+        two_cols.setStyle(TableStyle([
+            ('TOPPADDING',    (0,0), (-1,-1), 0),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('LEFTPADDING',   (0,0), (-1,-1), 0),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 0),
+            ('VALIGN',        (0,0), (-1,-1), 'TOP'),
+        ]))
+        els.append(two_cols)
+        els.append(_sp(0.12))
+
+        # ── Фраза про юнит-экономику ───────────────────────────────────────────
+        unit_s = ParagraphStyle('_bue', fontName=FB, fontSize=9.5,
+                                textColor=HexColor('#92400e'), leading=14, alignment=TA_CENTER)
+        unit_sub_s = ParagraphStyle('_bues', fontName=FN, fontSize=8.5,
+                                    textColor=HexColor('#78350f'), leading=13, alignment=TA_CENTER)
+        unit_blk = Table([
+            [Paragraph('В Standard вы получите юнит-экономику — расчёт реальной прибыли с каждой единицы товара.', unit_s)],
+            [Spacer(1, 3)],
+            [Paragraph('Без этого расчёта входить в нишу — значит работать вслепую.', unit_sub_s)],
+        ], colWidths=[COL_W - 32])
+        unit_blk.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), HexColor('#fffbeb')),
+            ('TOPPADDING',    (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('LEFTPADDING',   (0,0), (-1,-1), 0),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 0),
+        ]))
+        unit_wrap = Table([[unit_blk]], colWidths=[COL_W])
+        unit_wrap.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), HexColor('#fffbeb')),
+            ('BOX',           (0,0), (-1,-1), 2, C_GOLD_B),
+            ('TOPPADDING',    (0,0), (-1,-1), 12),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+            ('LEFTPADDING',   (0,0), (-1,-1), 16),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 16),
+        ]))
+        els.append(unit_wrap)
+        els.append(_sp(0.12))
+
+        # ── CTA ────────────────────────────────────────────────────────────────
+        cta_s = ParagraphStyle('_bcta', fontName=FB, fontSize=13,
+                               textColor=C_DARK2, leading=18, alignment=TA_CENTER)
+        cta_sub_s = ParagraphStyle('_bctas', fontName=FN, fontSize=9,
+                                   textColor=C_DARK2, leading=13, alignment=TA_CENTER)
+        cta_blk = Table([
+            [Paragraph('▶  Откройте WBAnalyzer и нажмите PDF Standard', cta_s)],
+            [Paragraph('и получите полный расчёт прямо сейчас', cta_sub_s)],
+        ], colWidths=[COL_W])
+        cta_blk.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), C_GOLD_B),
+            ('TOPPADDING',    (0,0), (-1,-1), 12),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+            ('LEFTPADDING',   (0,0), (-1,-1), 12),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 12),
+        ]))
+        els.append(cta_blk)
 
     elif current_level == 'standard':
         els.append(_sp(0.25))
@@ -2418,6 +2532,7 @@ def render(level: str, niche: dict, agents: dict,
         els += _sec_content(content_text)
 
     els += _sec_conclusion(level, agents)
+    els += _sec_upsell(level)
 
     # Словарь терминов — только в Standard и Deep
     if level != 'basic':

@@ -2663,6 +2663,83 @@ def generate(level: str, niche: dict, chart_items: list = None) -> bytes:
     return buf.getvalue()
 
 
+# ── Валидатор качества PDF ────────────────────────────────────────────────────
+
+def validate_pdf(level: str, niche: dict, agents: dict) -> list[str]:
+    """
+    Проверяет результаты агентов ПЕРЕД рендерингом.
+    Возвращает список предупреждений (пустой список = всё OK).
+    Вызывается из app.py ДО pdf_auto.render().
+    """
+    warnings = []
+
+    # 1. Ниша: критические поля
+    niche_name = (niche.get('display_name') or niche.get('name') or '').strip()
+    if not niche_name:
+        warnings.append('CRITICAL: нет названия ниши — PDF будет без заголовка')
+    if not niche.get('avg_price') or float(niche.get('avg_price', 0)) == 0:
+        warnings.append('WARN: avg_price = 0 — финансовая модель будет нулевой')
+    if not niche.get('revenue') and not niche.get('revenue_annual'):
+        warnings.append('WARN: нет данных о выручке ниши')
+
+    # 2. Мастер-агент — критичен для всех уровней
+    master = agents.get('master') or {}
+    if not master:
+        warnings.append('CRITICAL: master-агент вернул пустой ответ — отчёт не имеет смысла')
+    else:
+        if not master.get('market_analysis'):
+            warnings.append('WARN: master.market_analysis пустой')
+        if not master.get('final_recommendation'):
+            warnings.append('WARN: master.final_recommendation пустой')
+        if not master.get('final_verdict'):
+            warnings.append('WARN: master.final_verdict пустой — не будет вердикта ВХОДИТЬ/НЕ ВХОДИТЬ')
+
+    # 3. Standard-level: юнит-экономика и реклама
+    if level in ('standard', 'deep'):
+        unit = agents.get('unit') or {}
+        if not unit or not unit.get('scenarios'):
+            warnings.append('WARN: unit-агент пустой — раздел «Юнит-экономика» будет пропущен')
+
+        ads = agents.get('ads') or {}
+        if not ads or not ads.get('budget'):
+            warnings.append('WARN: ads-агент пустой — раздел «Рекламная стратегия» будет пропущен')
+
+    # 4. Deep-level: все уникальные разделы
+    if level == 'deep':
+        for agent_name, section_name in [
+            ('deep',        'Глубокий анализ'),
+            ('competitors', 'Анализ конкурентов'),
+            ('supplier',    'Поставщики'),
+            ('docs',        'Документы'),
+            ('warehouse',   'Стратегия поставок'),
+        ]:
+            a = agents.get(agent_name) or {}
+            if not a:
+                warnings.append(f'WARN: {agent_name}-агент пустой — раздел «{section_name}» будет пропущен')
+
+    # 5. Соответствие ниши: нет случайных "test" / "debug" значений
+    low_name = niche_name.lower()
+    for suspicious in ('test', 'debug', 'example', 'тест', 'пример'):
+        if suspicious in low_name:
+            warnings.append(f'WARN: подозрительное название ниши: «{niche_name}» — возможно тестовый запуск')
+            break
+
+    return warnings
+
+
+def log_pdf_quality(level: str, niche_name: str, warnings: list[str]):
+    """Логирует результат валидации."""
+    if not warnings:
+        print(f'[QA] ✅ {level.upper()} «{niche_name}» — проверка пройдена')
+        return
+    critical = [w for w in warnings if w.startswith('CRITICAL')]
+    warn_only = [w for w in warnings if w.startswith('WARN')]
+    status = '⛔ КРИТИЧЕСКИЕ ОШИБКИ' if critical else '⚠️  ПРЕДУПРЕЖДЕНИЯ'
+    print(f'[QA] {status} {level.upper()} «{niche_name}»:')
+    for w in warnings:
+        print(f'[QA]   {w}')
+
+
 # ── Раздельные точки входа (sequential mode) ──────────────────────────────────
 
 _AGENT_FNS = {

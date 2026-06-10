@@ -6000,6 +6000,13 @@ class Handler(BaseHTTPRequestHandler):
                 _ka()
             _sse({'type': 'rendering'})
             try:
+                # Проверка качества перед рендерингом
+                qa_warnings = pdf_auto.validate_pdf(level, niche, agents)
+                pdf_auto.log_pdf_quality(level, niche.get('display_name') or niche.get('name', ''), qa_warnings)
+                critical_qa = [w for w in qa_warnings if w.startswith('CRITICAL')]
+                if critical_qa:
+                    _sse({'type': 'qa_warning', 'warnings': critical_qa})
+
                 pdf_bytes = pdf_auto.render(level, niche, agents, content_text, [], charts)
                 key = _uuid.uuid4().hex
                 _niche_safe = re.sub(r'[\\\/:"*?<>|]', '', niche.get('name', 'report')).strip() or 'report'

@@ -34,6 +34,10 @@ from services.scraper.wb_scraper import ScrapedProduct as ScrapedProductModel
 from services.decision_engine.engine import evaluate_product_opportunity
 from services.decision_engine.base import ProductOpportunityInput
 from services.ai_analyst.analyst import analyze_niche
+from services.metrics_engine.base import (
+    CompetitionLevel as CL,
+    RevenueEstimate, SalesVelocity, CompetitionReport, PriceDistribution,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +146,104 @@ async def export_category_pdf(
 
     # Используем готовые данные из браузера если переданы
     pc = payload.pre_computed or {}
+
+    # Если pre_computed не передан — загружаем из таблицы niches (наша БД с 7127 нишами)
+    if not pc and not stub:
+        lookup = payload.niche_full or payload.category
+        try:
+            res = await db.execute(
+                text("""
+                    SELECT revenue, avg_price, commission, buyout_pct, profit_pct,
+                           sellers_with_sales, orders, products, mpstats_path,
+                           niche_status, turnover, COALESCE(display_name, name)
+                    FROM niches
+                    WHERE LOWER(name) = LOWER(:q)
+                       OR LOWER(COALESCE(display_name, name)) = LOWER(:q)
+                    ORDER BY revenue DESC NULLS LAST LIMIT 1
+                """),
+                {"q": lookup}
+            )
+            niche_row = res.fetchone()
+            if niche_row and niche_row[0] and float(niche_row[0]) > 0:
+                rev     = float(niche_row[0] or 0)
+                price   = float(niche_row[1] or 0)
+                comm    = float(niche_row[2] or 0)
+                buyout  = float(niche_row[3] or 0)
+                profit  = float(niche_row[4] or 0)
+                sws     = int(niche_row[5] or 0)
+                orders  = int(niche_row[6] or 0)
+                turnover= float(niche_row[10] or 0)
+                if sws > 100: comp_level = 'high'
+                elif sws > 20: comp_level = 'medium'
+                else: comp_level = 'low'
+                top_20 = 0.6 if sws > 5 else 0.9
+                pc = {
+                    'monthly_revenue_estimate': rev,
+                    'annual_revenue': rev * 12,
+                    'avg_orders_per_day': round(orders / 30, 1),
+                    'orders_per_month': orders,
+                    'active_sellers': sws,
+                    'sellers_with_sales': sws,
+                    'competition_level': comp_level,
+                    'median_price': price,
+                    'avg_check': price,
+                    'price_iqr': round(price * 0.3),
+                    'top_20pct_revenue_share': top_20,
+                    'top_10_revenue_share': round(top_20 * 0.6, 2),
+                    'score': 50,
+                    'verdict': 'MAYBE',
+                    'summary': lookup,
+                    'buyout_pct': buyout,
+                    'profit_pct': profit,
+                    'commission': comm,
+                    'turnover': turnover,
+                    'lost_revenue_pct': 0,
+                    'lost_revenue': 0,
+                    'avg_rating': 0,
+                }
+                logger.info("Ниша '%s' загружена из БД: rev=%.0f, price=%.0f", lookup, rev, price)
+                # Вычисляем реальный score через decision engine
+                try:
+                    if sws > 200:  _comp = CL.SATURATED
+                    elif sws > 50: _comp = CL.HIGH
+                    elif sws > 10: _comp = CL.MEDIUM
+                    else:          _comp = CL.LOW
+                    _iqr = round(price * 0.3)
+                    _opp = evaluate_product_opportunity(ProductOpportunityInput(
+                        revenue=RevenueEstimate(
+                            category=lookup, period_days=30,
+                            total_revenue=rev, monthly_estimate=rev,
+                            avg_revenue_per_sku=rev / max(sws, 1),
+                            top_20pct_share=top_20,
+                        ),
+                        competition=CompetitionReport(
+                            category=lookup, active_sellers=sws,
+                            level=_comp, avg_reviews=100.0, avg_rating=4.2,
+                            top_10_revenue_share=round(top_20 * 0.6, 2),
+                        ),
+                        velocity=SalesVelocity(
+                            period_days=30,
+                            avg_orders_per_day=round(orders / 30, 1),
+                            peak_orders_per_day=round(orders / 30, 1) * 1.5,
+                            median_orders_per_day=round(orders / 30, 1) * 0.8,
+                            total_orders=orders,
+                        ),
+                        prices=PriceDistribution(
+                            sample_size=max(sws, 10),
+                            min_price=price * 0.4, max_price=price * 2.0,
+                            p25=price * 0.75, median=price, p75=price * 1.25,
+                            std_dev=_iqr * 0.6, iqr=_iqr,
+                        ),
+                    ))
+                    pc['score'] = _opp.score
+                    pc['verdict'] = _opp.verdict.value
+                    pc['summary'] = _opp.summary
+                    logger.info("Score для '%s': %d (%s)", lookup, _opp.score, _opp.verdict.value)
+                except Exception as _se:
+                    logger.warning("Не удалось вычислить score: %s", _se)
+        except Exception as exc:
+            logger.warning("Не удалось загрузить нишу из БД: %s", exc)
+
     if pc or stub:
         if stub:
             pc = {
@@ -221,11 +323,11 @@ async def export_category_pdf(
                                 wb_sku=int(r.get('nm_id') or r.get('nmId') or 0),
                                 name=str(r.get('name') or r.get('brand') or ''),
                                 brand=str(r.get('brand') or 'N/A'),
-                                price=float(r.get('price') or r.get('avg_price') or 0),
+                                price=float(r.get('avg_price') or r.get('avg_price_with_discount') or r.get('price') or 0),
                                 price_with_card=None,
                                 old_price=None,
                                 rating=float(r.get('rating') or 0),
-                                reviews_count=int(r.get('reviews') or r.get('orders') or 0),
+                                reviews_count=int(r.get('orders') or r.get('reviews') or 0),
                                 images=[],
                                 attributes={},
                             )

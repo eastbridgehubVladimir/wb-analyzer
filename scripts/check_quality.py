@@ -73,7 +73,8 @@ def db_audit(conn) -> tuple[list, list]:
             issues.append('no_path')
         if (not revenue or revenue == 0) and nstatus not in ('dead', 'seasonal'):
             issues.append('zero_revenue')
-        if not avg_price or avg_price == 0:
+        rev_val = float(revenue or 0)
+        if (not avg_price or avg_price == 0) and nstatus not in ('dead', 'seasonal', 'no_cat_path') and rev_val >= 500_000:
             issues.append('no_price')
         if not commission or commission == 0:
             issues.append('no_commission')

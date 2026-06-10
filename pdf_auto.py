@@ -1791,10 +1791,10 @@ def _sec_upsell(current_level: str) -> list:
         sub_s    = ParagraphStyle('_up_sub', fontName=FN, fontSize=10,
                                    textColor=HexColor('#c4b5fd'), leading=14, alignment=TA_CENTER)
         head_blk = Table([
-            [Paragraph('Получите PDF Deep —', head_s)],
-            [Paragraph('полный профессиональный анализ ниши', head_s)],
+            [Paragraph('Остался последний шаг —', head_s)],
+            [Paragraph('готовый план старта в нише', head_s)],
             [Spacer(1, 4)],
-            [Paragraph('5 дополнительных разделов · Готовые данные для старта · AI-текст карточки', sub_s)],
+            [Paragraph('PDF Deep · 5 дополнительных разделов · Готовые данные для старта прямо сейчас', sub_s)],
         ], colWidths=[COL_W])
         head_blk.setStyle(TableStyle([
             ('BACKGROUND',    (0,0), (-1,-1), C_DEEP),
@@ -1804,6 +1804,35 @@ def _sec_upsell(current_level: str) -> list:
             ('RIGHTPADDING',  (0,0), (-1,-1), 12),
         ]))
         els.append(head_blk)
+
+        # ── Фраза про карточку товара ──────────────────────────────────────────
+        key_s   = ParagraphStyle('_up_key', fontName=FB, fontSize=9.5,
+                                  textColor=C_DEEP, leading=14, alignment=TA_CENTER)
+        key_sub = ParagraphStyle('_up_ks', fontName=FN, fontSize=8.5,
+                                  textColor=HexColor('#4c1d95'), leading=13, alignment=TA_CENTER)
+        key_blk = Table([
+            [Paragraph('В Deep вы получите готовую карточку товара — скопируйте напрямую на WB.', key_s)],
+            [Spacer(1, 3)],
+            [Paragraph(
+                'Плюс контакты поставщиков с ценами и список документов — '
+                'всё что нужно чтобы начать торговать на следующей неделе.',
+                key_sub)],
+        ], colWidths=[COL_W - 32])
+        key_blk.setStyle(TableStyle([
+            ('TOPPADDING',    (0,0), (-1,-1), 3), ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+            ('LEFTPADDING',   (0,0), (-1,-1), 0), ('RIGHTPADDING',  (0,0), (-1,-1), 0),
+        ]))
+        key_wrap = Table([[key_blk]], colWidths=[COL_W])
+        key_wrap.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,-1), C_PURP2),
+            ('BOX',           (0,0), (-1,-1), 2, C_PURP),
+            ('TOPPADDING',    (0,0), (-1,-1), 12),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 12),
+            ('LEFTPADDING',   (0,0), (-1,-1), 16),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 16),
+        ]))
+        els.append(key_wrap)
+        els.append(_sp(0.1))
 
         # ── 5 фич в 2 колонки ──────────────────────────────────────────────────
         feats = [
@@ -1919,8 +1948,8 @@ def _sec_upsell(current_level: str) -> list:
         cta_sub = ParagraphStyle('_cta2', fontName=FN, fontSize=9,
                                   textColor=C_DEEP, leading=13, alignment=TA_CENTER)
         cta_blk = Table([
-            [Paragraph('▶  Нажмите PDF Deep в WBAnalyzer', cta_s)],
-            [Paragraph('и получите полный анализ прямо сейчас', cta_sub)],
+            [Paragraph('▶  Откройте WBAnalyzer и нажмите PDF Deep', cta_s)],
+            [Paragraph('и получите готовый план старта прямо сейчас', cta_sub)],
         ], colWidths=[COL_W])
         cta_blk.setStyle(TableStyle([
             ('BACKGROUND',    (0,0), (-1,-1), C_GOLD),
@@ -2107,8 +2136,8 @@ def _sec_finale(level: str, agents: dict = None) -> list:
             ]
             cta_text = 'Откройте WBAnalyzer и нажмите кнопку «PDF Standard»'
         else:  # standard
-            tri_text   = '▲  ХОТИТЕ ВОЙТИ В НИШУ УВЕРЕННО?  ▲'
-            main_head  = 'PDF Deep — ваш полный стартовый пакет'
+            tri_text   = '▲  ОСТАЛСЯ ПОСЛЕДНИЙ ШАГ  ▲'
+            main_head  = 'PDF Deep — готовый план старта в нише'
             items_data = [
                 ('Глубокий анализ каждого конкурента',
                  'Топ-игроки по отдельности: выручка, слабые места,\nкакие запросы они не закрывают — ваши точки входа'),

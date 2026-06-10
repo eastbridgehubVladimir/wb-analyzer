@@ -587,6 +587,44 @@ def _run_ads(n: dict) -> dict:
     return result
 
 
+def _run_competitors(n: dict) -> dict:
+    name      = n.get('name', '')
+    revenue   = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
+    avg_price = float(n.get('avg_price', 0))
+    sellers   = int(n.get('sellers', 0))
+    sws       = int(n.get('sellers_with_sales', 0))
+
+    fm = _compute_finance(n)
+
+    prompt = (
+        f"Ты аналитик конкурентной среды на Wildberries.\n\n"
+        f"НИША: {name} | Выручка: {revenue:,.0f} ₽/мес | Средняя цена: {avg_price:,.0f} ₽\n"
+        f"Продавцов: {sellers}, активных: {sws}\n"
+        + _finance_block(fm) +
+        "Правила:\n"
+        "- top_sellers: 10 реальных крупных игроков в этой нише (типичные названия магазинов WB, выручка, рейтинг)\n"
+        "- roi_forecast: период «Мес 1-3» используй entry_budget из ФИНАНСОВЫХ ПАРАМЕТРОВ как investment_rub\n"
+        "- market_share_pct: доли должны суммироваться примерно в 60-80% (остальное — мелкие игроки)\n\n"
+        "ONLY JSON:\n"
+        '{"top_sellers":['
+        '{"name":"Название магазина","revenue_monthly_rub":0,"products_count":0,'
+        '"avg_rating":0.0,"market_share_pct":0.0,"weak_point":"слабое место"}],'
+        '"weak_spots_summary":"общий анализ слабых мест конкурентов — 2-3 предложения",'
+        '"free_segments":["незанятый сегмент 1","сегмент 2","сегмент 3"],'
+        '"entry_window":"когда и как оптимально входить в нишу — 1-2 предложения",'
+        '"roi_forecast":['
+        '{"period":"Мес 1-3 (тест)","investment_rub":0,"revenue_rub":0,"profit_rub":0,"roi_pct":0},'
+        '{"period":"Мес 4-6 (рост)","investment_rub":0,"revenue_rub":0,"profit_rub":0,"roi_pct":0},'
+        '{"period":"Мес 7-12 (масштаб)","investment_rub":0,"revenue_rub":0,"profit_rub":0,"roi_pct":0}]}'
+    )
+    result = _json(_claude(prompt, 2000))
+    # Фиксируем инвестицию тестовой фазы из единой финансовой модели
+    rof = result.get('roi_forecast') or []
+    if rof:
+        rof[0]['investment_rub'] = fm['entry_budget']
+    return result
+
+
 def _run_supplier(n: dict) -> dict:
     name = n.get('name', '')
     avg_price = float(n.get('avg_price', 0))
@@ -1370,6 +1408,84 @@ def _sec_ads(r: dict) -> list:
             els.append(_h3(mlabel))
             for metric in metrics:
                 els.append(_bullet(_expand_kpi(str(metric))))
+
+    els.append(_sp(0.1))
+    return els
+
+
+def _level_divider(label: str, sublabel: str, color) -> list:
+    """Тонкая полоса с меткой уровня — только в Deep PDF, между блоками контента."""
+    s = ParagraphStyle('_ldiv', fontName=FB, fontSize=7.5, textColor=WHITE,
+                       alignment=TA_LEFT, leading=11)
+    tbl = Table([[Paragraph(f'  ▌  {label}  ·  {sublabel}', s)]],
+                colWidths=[COL_W], rowHeights=[18])
+    tbl.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, -1), color),
+        ('TOPPADDING',    (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 6),
+    ]))
+    return [_sp(0.18), tbl, _sp(0.06)]
+
+
+def _sec_competitors(r: dict) -> list:
+    if not r:
+        return []
+    els = [PageBreak(), _h2('Анализ конкурентов'), _hr()]
+
+    # Топ-10 продавцов
+    sellers = list(r.get('top_sellers') or [])
+    if sellers:
+        els.append(_h3('Топ продавцов в нише'))
+        rows = [['Продавец', 'Выручка/мес', 'Товаров', 'Рейтинг', 'Доля рынка', 'Слабое место']]
+        for s in sellers[:10]:
+            rows.append([
+                str(s.get('name', ''))[:22],
+                _rub(s.get('revenue_monthly_rub', 0)),
+                str(s.get('products_count', '—')),
+                str(s.get('avg_rating', '—')),
+                f"{s.get('market_share_pct', 0):.1f}%",
+                str(s.get('weak_point', ''))[:28],
+            ])
+        els.append(_tbl(rows, col_widths=[
+            1.55*inch, 1.1*inch, 0.65*inch, 0.65*inch, 0.85*inch,
+            COL_W - 4.8*inch
+        ]))
+
+    # Слабые места конкурентов
+    weak = str(r.get('weak_spots_summary', ''))
+    if weak:
+        els.append(_h3('Слабые места конкурентов'))
+        els.append(_body(weak))
+
+    # Свободные сегменты
+    segs = list(r.get('free_segments') or [])
+    if segs:
+        els.append(_h3('Свободные сегменты рынка'))
+        for seg in segs:
+            els.append(_bullet(str(seg)))
+
+    # Окно для входа
+    window = str(r.get('entry_window', ''))
+    if window:
+        els.append(_tip(f'<b>Когда входить:</b> {window}'))
+
+    # ROI прогноз 12 месяцев
+    rof = list(r.get('roi_forecast') or [])
+    if rof:
+        els.append(_h3('ROI-прогноз: первые 12 месяцев'))
+        rows = [['Период', 'Инвестиции, ₽', 'Выручка, ₽', 'Прибыль, ₽', 'ROI']]
+        for row in rof:
+            rows.append([
+                str(row.get('period', '')),
+                _rub(row.get('investment_rub', 0)),
+                _rub(row.get('revenue_rub', 0)),
+                _rub(row.get('profit_rub', 0)),
+                f"{row.get('roi_pct', 0)}%",
+            ])
+        els.append(_tbl(rows, col_widths=[1.7*inch, 1.4*inch, 1.4*inch, 1.4*inch,
+                                          COL_W - 5.9*inch]))
 
     els.append(_sp(0.1))
     return els
@@ -2550,14 +2666,15 @@ def generate(level: str, niche: dict, chart_items: list = None) -> bytes:
 # ── Раздельные точки входа (sequential mode) ──────────────────────────────────
 
 _AGENT_FNS = {
-    'master':    (_run_master,    'dict'),
-    'unit':      (_run_unit,      'dict'),
-    'ads':       (_run_ads,       'dict'),
-    'deep':      (_run_deep,      'dict'),
-    'supplier':  (_run_supplier,  'dict'),
-    'docs':      (_run_docs,      'dict'),
-    'warehouse': (_run_warehouse, 'dict'),
-    'content':   (_run_content,   'str'),
+    'master':      (_run_master,      'dict'),
+    'unit':        (_run_unit,        'dict'),
+    'ads':         (_run_ads,         'dict'),
+    'deep':        (_run_deep,        'dict'),
+    'competitors': (_run_competitors, 'dict'),
+    'supplier':    (_run_supplier,    'dict'),
+    'docs':        (_run_docs,        'dict'),
+    'warehouse':   (_run_warehouse,   'dict'),
+    'content':     (_run_content,     'str'),
 }
 
 
@@ -2762,17 +2879,21 @@ def render(level: str, niche: dict, agents: dict,
             ('Юнит-экономика',             6),
             ('Рекламная стратегия',        7),
             ('Глубокий анализ ниши',       8),
-            ('Поиск поставщиков',          9),
-            ('Документы и сертификаты',   10),
-            ('Стратегия поставок',        11),
-            ('Создание карточки товара',  12),
-            ('Итоговый вывод',            13),
-            ('Словарь терминов',          14),
+            ('Анализ конкурентов',         9),
+            ('Поиск поставщиков',         10),
+            ('Документы и сертификаты',   11),
+            ('Стратегия поставок',        12),
+            ('Создание карточки товара',  13),
+            ('Итоговый вывод',            14),
+            ('Словарь терминов',          15),
         ]
         els += _sec_toc_deep(deep_toc)
         els += _sec_deep_value_block()
 
-    # Контентные страницы
+    # ── BASIC — метрики, графики, топ товары, мастер-анализ ─────────────────────
+    if level == 'deep':
+        els += _level_divider('BASIC', 'Базовый анализ ниши', HexColor('#6b7280'))
+
     els += _sec_metrics(niche)
 
     browser_charts = dict(charts or {})
@@ -2793,12 +2914,18 @@ def render(level: str, niche: dict, agents: dict,
     if level == 'basic':
         els += _sec_seasonal_plan(agents.get('master') or {})
 
+    # ── STANDARD — юнит-экономика и реклама ─────────────────────────────────────
     if level in ('standard', 'deep'):
+        if level == 'deep':
+            els += _level_divider('STANDARD', 'Расширенный анализ', HexColor('#2563eb'))
         els += _sec_unit(agents.get('unit') or {})
         els += _sec_ads(agents.get('ads') or {})
 
+    # ── DEEP — эксклюзивные разделы ─────────────────────────────────────────────
     if level == 'deep':
+        els += _level_divider('DEEP', 'Профессиональный анализ — только в этом отчёте', HexColor('#7c3aed'))
         els += _sec_deep(agents.get('deep') or {})
+        els += _sec_competitors(agents.get('competitors') or {})
         els += _sec_supplier(agents.get('supplier') or {})
         els += _sec_docs(agents.get('docs') or {})
         els += _sec_warehouse(agents.get('warehouse') or {})

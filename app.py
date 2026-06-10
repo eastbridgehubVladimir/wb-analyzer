@@ -5986,7 +5986,7 @@ class Handler(BaseHTTPRequestHandler):
             charts = session.get('charts') or {}
             agent_seq = ['master']
             if level in ('standard', 'deep'): agent_seq += ['unit', 'ads']
-            if level == 'deep': agent_seq += ['deep', 'supplier', 'docs', 'warehouse', 'content']
+            if level == 'deep': agent_seq += ['deep', 'competitors', 'supplier', 'docs', 'warehouse', 'content']
             agents = {}; content_text = ''
             import pdf_auto
             for i, name in enumerate(agent_seq):

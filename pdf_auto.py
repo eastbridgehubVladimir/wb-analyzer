@@ -295,6 +295,62 @@ def _json(text: str) -> dict:
         return {}
 
 
+# ── Единая финансовая модель ───────────────────────────────────────────────────
+
+def _compute_finance(n: dict) -> dict:
+    """Детерминированный расчёт — одни цифры для всех агентов и разделов PDF."""
+    avg_price  = max(float(n.get('avg_price', 0)), 1)
+    buyout_pct = float(n.get('buyout_pct', 0.7)) or 0.7
+    comm_raw   = float(n.get('commission', 0.25))
+    commission = comm_raw if comm_raw <= 1 else comm_raw / 100
+
+    cost   = round(avg_price * 0.35)              # себестоимость из Китая
+    stor   = round(avg_price * 0.02)              # хранение WB (как в _run_unit)
+    wb_c   = round(avg_price * commission)         # комиссия WB
+    wb_l   = 120                                   # логистика WB, ₽/ед
+    tax    = round(avg_price * 0.06)               # УСН 6%
+    ret    = round(wb_l * (1 - buyout_pct) * 0.5) # возвраты
+    profit = round(avg_price - cost - stor - wb_c - wb_l - tax - ret)
+    margin = round(profit / avg_price * 100, 1) if avg_price else 0
+
+    test_qty   = 20
+    batch_cost = cost * test_qty
+    entry      = round(batch_cost * 1.25)          # +25%: доставка, упаковка, буфер
+    ad_monthly = max(15_000, round(avg_price * test_qty * 0.08))
+    breakeven  = max(1, round(entry / profit)) if profit > 0 else 0
+    pay_months = max(1, round(entry / (profit * test_qty))) if profit > 0 else 0
+    roi        = round(profit * test_qty / entry * 100) if entry > 0 else 0
+
+    return {
+        'avg_price':         round(avg_price),
+        'cost_per_unit':     cost,
+        'wb_commission_rub': wb_c,
+        'wb_logistics_rub':  wb_l,
+        'tax_rub':           tax,
+        'profit_per_unit':   profit,
+        'margin_pct':        margin,
+        'test_units':        test_qty,
+        'test_batch_cost':   batch_cost,
+        'entry_budget':      entry,
+        'monthly_ad_budget': ad_monthly,
+        'breakeven_units':   breakeven,
+        'payback_months':    pay_months,
+        'roi_pct':           roi,
+        'roi_3months':       f'{roi}%',
+    }
+
+
+def _finance_block(fm: dict) -> str:
+    """Строка с зафиксированными цифрами для инжекции в промпты агентов."""
+    return (
+        f"\nФИНАНСОВЫЕ ПАРАМЕТРЫ (ЗАФИКСИРОВАНЫ — используй в тексте ТОЛЬКО эти цифры):\n"
+        f"Себестоимость: {fm['cost_per_unit']:,} ₽/ед | Прибыль/ед: {fm['profit_per_unit']:,} ₽ | Маржа: {fm['margin_pct']}%\n"
+        f"Тест. партия: {fm['test_units']} шт = {fm['test_batch_cost']:,} ₽ | Бюджет входа (с буфером): {fm['entry_budget']:,} ₽\n"
+        f"Реклама/мес: {fm['monthly_ad_budget']:,} ₽ | Точка безуб.: {fm['breakeven_units']} шт | "
+        f"Окупаемость: {fm['payback_months']} мес | ROI: {fm['roi_3months']}\n"
+    )
+
+
 # ── Агенты (прямые вызовы Claude) ─────────────────────────────────────────────
 
 def _run_master(n: dict, level: str = 'standard') -> dict:
@@ -309,19 +365,33 @@ def _run_master(n: dict, level: str = 'standard') -> dict:
     act = round(sws / sellers * 100) if sellers else 0
     avg_rev = round(revenue / sws) if sws else 0
 
+    fm = _compute_finance(n)
+
     base = (
         f"НИША: {name}\n"
         f"Выручка: {revenue:,.0f} ₽/мес | Средняя цена: {avg_price:,.0f} ₽\n"
         f"Маржа: {profit_pct*100:.0f}% | Выкуп: {buyout_pct*100:.0f}%\n"
         f"Оборачиваемость: {turnover:.0f} дней | Продавцов: {sellers} (активных: {sws}, {act}%)\n"
-        f"Средняя выручка/продавец: {avg_rev:,.0f} ₽/мес\n\n"
+        f"Средняя выручка/продавец: {avg_rev:,.0f} ₽/мес\n"
+        + _finance_block(fm)
     )
+
+    def _inject_fm(result: dict) -> dict:
+        result['financial_model'] = {
+            'test_batch_units':  fm['test_units'],
+            'test_batch_cost':   fm['test_batch_cost'],
+            'monthly_ad_budget': fm['monthly_ad_budget'],
+            'breakeven_units':   fm['breakeven_units'],
+            'roi_3months':       fm['roi_3months'],
+            'payback_months':    str(fm['payback_months']),
+        }
+        return result
 
     if level == 'basic':
         prompt = (
             "Ты аналитик WB. Сделай КРАТКИЙ обзор ниши для базового отчёта.\n\n"
             + base +
-            "Правила:\n"
+            "\nПравила:\n"
             "- market_analysis: 3-4 предложения — насколько ниша привлекательна, объём, динамика. "
             "Без имён конкурентов и конкретных бюджетов.\n"
             "- competitive_landscape: 2-3 предложения — общий уровень конкуренции, плотность рынка.\n"
@@ -341,12 +411,12 @@ def _run_master(n: dict, level: str = 'standard') -> dict:
         prompt = (
             "Ты эксперт-аналитик WB. Сделай МАКСИМАЛЬНО ГЛУБОКИЙ анализ ниши.\n\n"
             + base +
-            "Правила:\n"
+            "\nПравила:\n"
             "- market_analysis: 5-6 предложений с конкретными цифрами объёма, динамики, сезонности.\n"
             "- competitive_landscape: Детальный разбор топ-3 конкурентов с именами, выручкой, долей рынка, "
             "слабыми местами каждого. 4-5 предложений.\n"
             "- entry_strategy: Дорожная карта — ОБЯЗАТЕЛЬНО начни каждый блок с метки «Месяц 1:», «Месяц 2:», «Месяц 3:». "
-            "Для каждого месяца: что делать, сколько тратить, какой результат ожидать. Цифры обязательны.\n"
+            "Для каждого месяца: что делать, сколько тратить (используй цифры из ФИНАНСОВЫХ ПАРАМЕТРОВ), какой результат ожидать.\n"
             "- final_recommendation: Подробный вывод с ключевыми метриками для масштабирования, "
             "чёткими условиями входа и планом действий. Минимум 5-6 предложений.\n"
             "Ответь ONLY JSON:\n"
@@ -355,26 +425,24 @@ def _run_master(n: dict, level: str = 'standard') -> dict:
             '"market_analysis":"...",'
             '"competitive_landscape":"...",'
             '"entry_strategy":"...",'
-            '"financial_model":{"test_batch_units":20,"test_batch_cost":220000,'
-            '"monthly_ad_budget":45000,"breakeven_units":9,"roi_3months":"38%","payback_months":5},'
             '"seasonal_plan":{"peak":"месяцы","low":"месяцы","buy_date":"дата","ad_date":"дата"},'
             '"opportunities":["возможность 1","возможность 2","возможность 3","возможность 4"],'
             '"risks":[{"risk":"риск","probability":"средняя","mitigation":"решение"},'
             '{"risk":"риск2","probability":"низкая","mitigation":"решение2"}],'
             '"final_recommendation":"..."}'
         )
-        return _json(_claude(prompt, 3500))
+        return _inject_fm(_json(_claude(prompt, 3500)))
 
     # standard (default)
     prompt = (
         "Ты старший аналитик WB. Сделай полный развёрнутый анализ ниши.\n\n"
         + base +
-        "Правила:\n"
+        "\nПравила:\n"
         "- market_analysis: 3-4 предложения с конкретными цифрами.\n"
         "- competitive_landscape: Назови конкретных конкурентов по имени, их ценовые диапазоны, доли. "
         "2-3 предложения.\n"
         "- entry_strategy: Стратегия входа — ОБЯЗАТЕЛЬНО начни каждый блок с «Месяц 1:», «Месяц 2:», «Месяц 3:». "
-        "Ценовой диапазон и конкретные шаги. Заканчивай последний блок фразой: Поставщики, сертификаты и готовая карточка товара — только в PDF Deep.\n"
+        "Используй цифры из ФИНАНСОВЫХ ПАРАМЕТРОВ. Заканчивай последний блок: Поставщики, сертификаты и готовая карточка товара — только в PDF Deep.\n"
         "- final_recommendation: Полный абзац с чёткими условиями входа и метриками для принятия решения. "
         "4-5 предложений. Заканчивай: Для поиска поставщиков и полного пакета документов — PDF Deep.\n"
         "Ответь ONLY JSON:\n"
@@ -383,14 +451,12 @@ def _run_master(n: dict, level: str = 'standard') -> dict:
         '"market_analysis":"...",'
         '"competitive_landscape":"...",'
         '"entry_strategy":"...",'
-        '"financial_model":{"test_batch_units":20,"test_batch_cost":220000,'
-        '"monthly_ad_budget":45000,"breakeven_units":9,"roi_3months":"38%","payback_months":5},'
         '"seasonal_plan":{"peak":"месяцы","low":"месяцы","buy_date":"дата","ad_date":"дата"},'
         '"opportunities":["возможность 1","возможность 2","возможность 3"],'
         '"risks":[{"risk":"риск","probability":"средняя","mitigation":"решение"}],'
         '"final_recommendation":"..."}'
     )
-    return _json(_claude(prompt, 2500))
+    return _inject_fm(_json(_claude(prompt, 2500)))
 
 
 def _run_deep(n: dict) -> dict:
@@ -406,24 +472,32 @@ def _run_deep(n: dict) -> dict:
     rt = round(turnover / buyout_pct) if buyout_pct > 0 else round(turnover)
     avg_rev = revenue / sws if sws else 0
 
+    fm = _compute_finance(n)
+
     prompt = (
         f"Ты эксперт по торговле на WB. Глубокий анализ ниши.\n\n"
         f"Ниша: {name} | Выручка: {revenue:,.0f} ₽ | Цена: {avg_price:,.0f} ₽\n"
         f"Продавцов: {sellers}, активных: {sws} | Комиссия: {commission:.0f}%\n"
         f"Выкуп: {buyout_pct*100:.0f}% | Оборачиваемость реальная: {rt} дней\n"
-        f"Маржа: {profit_pct*100:.0f}% | Средняя выручка/продавец: {avg_rev:,.0f} ₽/мес\n\n"
-        "ONLY JSON:\n"
+        f"Маржа: {profit_pct*100:.0f}% | Средняя выручка/продавец: {avg_rev:,.0f} ₽/мес\n"
+        + _finance_block(fm) +
+        "ONLY JSON (entry_budget/ad_budget/breakeven/roi_forecast будут заменены расчётными):\n"
         '{"verdict":"ВХОДИТЬ|ТЕСТИРОВАТЬ|НЕ ВХОДИТЬ",'
         '"verdict_desc":"обоснование 1-2 предложения",'
-        '"entry_budget":0,"ad_budget":0,"breakeven":0,"roi_forecast":"X-Y%",'
-        '"financial_plan":"2-3 предложения",'
+        '"financial_plan":"2-3 предложения с теми же цифрами что в ФИНАНСОВЫХ ПАРАМЕТРАХ",'
         '"competitive_analysis":"2-3 предложения",'
         '"free_segments":"свободные сегменты",'
         '"recommendation":"2-3 предложения",'
         '"season_peak_months":"месяцы пика","season_low_months":"месяцы спада",'
         '"purchase_months":"когда закупать","season_tip":"совет по сезонности"}'
     )
-    return _json(_claude(prompt, 1200))
+    result = _json(_claude(prompt, 1200))
+    # Переопределяем финансовые поля — единые цифры для всех разделов
+    result['entry_budget']  = fm['entry_budget']
+    result['ad_budget']     = fm['monthly_ad_budget']
+    result['breakeven']     = fm['breakeven_units']
+    result['roi_forecast']  = fm['roi_3months']
+    return result
 
 
 def _run_unit(n: dict) -> dict:
@@ -481,10 +555,17 @@ def _run_ads(n: dict) -> dict:
     buyout_pct = float(n.get('buyout_pct', 0))
     commission = float(n.get('commission', 0))
 
+    fm = _compute_finance(n)
+    ad_start   = fm['monthly_ad_budget']
+    ad_growth  = round(ad_start * 1.5)
+    ad_sustain = round(ad_start * 2.0)
+
     prompt = (
         f"Ты рекламный аналитик WB.\n"
         f"НИША: {name} | Цена: {avg_price} ₽ | Выручка: {revenue:,.0f} ₽\n"
-        f"Маржа: {profit_pct*100:.1f}% | Выкуп: {buyout_pct*100:.1f}% | Комиссия: {commission*100:.1f}%\n\n"
+        f"Маржа: {profit_pct*100:.1f}% | Выкуп: {buyout_pct*100:.1f}% | Комиссия: {commission*100:.1f}%\n"
+        f"БЮДЖЕТ РЕКЛАМЫ (ЗАФИКСИРОВАН): Старт: {ad_start:,} ₽ | Рост: {ad_growth:,} ₽ | "
+        f"Поддержание: {ad_sustain:,} ₽ — используй эти суммы в тексте.\n\n"
         "ONLY JSON:\n"
         '{"load_level":"low|medium|high",'
         '"load_analysis":"3-4 предложения",'
@@ -496,7 +577,14 @@ def _run_ads(n: dict) -> dict:
         '"forecast":{"month1":{"metrics":["CTR: X%","CR: X%","DRR: X%","Pos: X","Orders: X"]},'
         '"month2":{"metrics":["CTR: X%","CR: X%","DRR: X%","Pos: X","Orders: X"]}}}'
     )
-    return _json(_claude(prompt, 1500))
+    result = _json(_claude(prompt, 1500))
+    # Переопределяем бюджет — единые цифры для всех разделов
+    b = result.get('budget') or {}
+    b['start_rub']   = ad_start
+    b['growth_rub']  = ad_growth
+    b['sustain_rub'] = ad_sustain
+    result['budget'] = b
+    return result
 
 
 def _run_supplier(n: dict) -> dict:

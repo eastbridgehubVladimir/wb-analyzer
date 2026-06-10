@@ -613,16 +613,21 @@ def _run_docs(n: dict) -> dict:
     avg_price = float(n.get('avg_price', 0))
 
     prompt = (
-        f"Ты эксперт по сертификации для WB. Компания из Беларуси, закупки в Китае.\n"
+        f"Ты эксперт по сертификации для WB. Клиент из Беларуси, закупки в Китае, продажи на WB.RU.\n"
         f"НИША: {name} | Средняя цена: {avg_price:.0f} ₽\n\n"
         "ONLY JSON:\n"
         '{"complexity":"low|medium|high",'
         '"wb_docs":[{"name":"документ","description":"зачем нужен","cost_rub":0,"duration_days":0,"required":true}],'
         '"customs_docs":["документ 1","документ 2"],'
         '"risks":[{"risk":"риск","solution":"как избежать"}],'
+        '"blocking_risk":"ВЫСОКИЙ|СРЕДНИЙ|НИЗКИЙ",'
+        '"blocking_reason":"конкретная причина почему карточку заблокируют без документов — 1-2 предложения",'
+        '"belarus_specifics":{'
+        '"cross_border_note":"особенности трансграничной торговли РБ→РФ через ЕАЭС для этой категории — 2-3 предложения",'
+        '"key_docs":["специфический документ для Беларуси 1","документ 2","документ 3"]},'
         '"total_cost_rub":0,"total_duration_days":0}'
     )
-    return _json(_claude(prompt, 1500))
+    return _json(_claude(prompt, 1800))
 
 
 def _run_warehouse(n: dict) -> dict:
@@ -1434,6 +1439,20 @@ def _sec_docs(r: dict) -> list:
         els.append(_p(comp_labels.get(complexity, complexity),
                       size=11, bold=True, color=comp_colors.get(complexity, C_GRAY)))
 
+    # Предупреждение о блокировке карточки
+    blocking_reason = str(r.get('blocking_reason', ''))
+    block_text = (
+        blocking_reason if blocking_reason else
+        'WB вправе заблокировать карточку в любой момент — даже если продажи уже идут. '
+        'После блокировки восстановление занимает от 3 до 30 дней, продажи встают полностью.'
+    )
+    els.append(_sp(0.08))
+    els.append(_warning(
+        f'<b>Блокировка карточки:</b> {block_text} '
+        '<b>Оформите все обязательные документы ДО первой поставки на склад WB.</b>'
+    ))
+    els.append(_sp(0.08))
+
     wb_docs = list(r.get('wb_docs') or [])
     if wb_docs:
         els.append(_h3('Документы для WB'))
@@ -1463,9 +1482,33 @@ def _sec_docs(r: dict) -> list:
         for risk in risks:
             els.append(_body(f'⚠ {risk.get("risk","")} → {risk.get("solution","")}'))
 
+    # Блок для продавцов из Беларуси
+    by_specs = r.get('belarus_specifics') or {}
+    by_note   = str(by_specs.get('cross_border_note', ''))
+    by_docs   = list(by_specs.get('key_docs') or [])
+
+    by_text = by_note if by_note else (
+        'Продавцы из Беларуси работают в рамках ЕАЭС — товар из Китая растаможивается '
+        'один раз на границе ЕАЭС, затем свободно перемещается в Россию без дополнительной таможни. '
+        'Поставки на склады WB (Смоленск, Коледино) проходят как внутренняя торговля ЕАЭС.'
+    )
+    if not by_docs:
+        by_docs = [
+            'Свидетельство о государственной регистрации ИП/ООО (Республика Беларусь)',
+            'Таможенная декларация импорта товара (Китай → ЕАЭС)',
+            'Договор с ООО «Вайлдберриз» (юрисдикция РФ) — подписывается онлайн',
+        ]
+
+    els.append(_h3('Для продавцов из Беларуси'))
+    els.append(_info(f'<b>Трансграничная торговля РБ → WB.RU (ЕАЭС):</b> {by_text}'))
+    els.append(_sp(0.06))
+    for d in by_docs:
+        els.append(_bullet(str(d)))
+
     total_cost = r.get('total_cost_rub', 0)
     total_days = r.get('total_duration_days', 0)
     if total_cost or total_days:
+        els.append(_sp(0.08))
         rows = [['Итого затраты', 'Итого срок']]
         rows.append([_rub(total_cost), f'{total_days} дней'])
         els.append(_tbl(rows, col_widths=[COL_W * 0.5, COL_W * 0.5]))

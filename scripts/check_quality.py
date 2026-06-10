@@ -53,14 +53,25 @@ def db_audit(conn) -> tuple[list, list]:
     rows = cur.fetchall()
     cur.close()
 
+    # Загружаем niche_status для учёта seasonal/dead/no_cat_path
+    cur2 = conn.cursor()
+    cur2.execute("SELECT name, niche_status FROM niches WHERE niche_status IS NOT NULL")
+    status_map = {r[0]: r[1] for r in cur2.fetchall()}
+    cur2.close()
+
     broken, ok = [], []
     for row in rows:
         name, display, revenue, avg_price, commission, buyout_pct, profit_pct, sws, path = row
+        nstatus = status_map.get(name)
 
         issues = []
-        if not path:
+        # Ниши с известным статусом не считаются критическими:
+        # - dead: подтверждённо мёртвая (0 продаж за 6 мес)
+        # - seasonal: сезонная (0 в 30 дней, но данные есть)
+        # - no_cat_path: есть revenue из subjects, но нет WB-категории для конкурентного анализа
+        if not path and nstatus not in ('dead', 'seasonal', 'no_cat_path'):
             issues.append('no_path')
-        if not revenue or revenue == 0:
+        if (not revenue or revenue == 0) and nstatus not in ('dead', 'seasonal'):
             issues.append('zero_revenue')
         if not avg_price or avg_price == 0:
             issues.append('no_price')
@@ -76,6 +87,7 @@ def db_audit(conn) -> tuple[list, list]:
         record = {
             'name': name,
             'display': display,
+            'niche_status': nstatus or '',
             'revenue': revenue or 0,
             'avg_price': avg_price or 0,
             'commission': commission or 0,
@@ -197,7 +209,7 @@ def save_csv(broken: list, ok: list):
     # Проблемные
     with open('quality_report.csv', 'w', newline='', encoding='utf-8-sig') as f:
         w = csv.DictWriter(f, fieldnames=[
-            'display', 'name', 'revenue', 'avg_price', 'commission',
+            'display', 'name', 'niche_status', 'revenue', 'avg_price', 'commission',
             'buyout_pct', 'profit_pct', 'sellers_with_sales',
             'mpstats_path', 'issues', 'is_critical',
         ])

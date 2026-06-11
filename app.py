@@ -6037,6 +6037,17 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self.send_response(404); self.end_headers()
             return
+        if self.path == '/landing':
+            try:
+                with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'landing.html'), 'rb') as f:
+                    html_bytes = f.read()
+            except Exception:
+                html_bytes = b'<h1>Landing not found</h1>'
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(html_bytes)
+            return
         if self.path == '/login':
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=utf-8')
@@ -6053,7 +6064,7 @@ class Handler(BaseHTTPRequestHandler):
             user_id = self.check_auth()
             if not user_id:
                 self.send_response(302)
-                self.send_header('Location', '/login')
+                self.send_header('Location', '/landing')
                 self.end_headers()
                 return
             self.send_response(200)

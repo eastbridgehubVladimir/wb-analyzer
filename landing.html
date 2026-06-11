@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WBAnalyzer — Аналитика ниш Wildberries с AI</title>
+<meta name="description" content="Анализ прибыльности любой ниши WB за 5 минут. Выручка, конкуренция, маржа, AI-рекомендации. PDF-отчёт с готовым планом входа.">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --bg2: #161b27;
+    --card: #1e2433;
+    --border: #2d3748;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --accent: #4f9cf9;
+    --accent2: #7c3aed;
+    --green: #22c55e;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.6;
+    font-size: 15px;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(15,17,23,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 60px;
+  }
+  .logo { font-size: 18px; font-weight: 700; color: var(--text); text-decoration: none; letter-spacing: -0.3px; }
+  .logo span { color: var(--accent); }
+  .nav-links { display: flex; gap: 8px; }
+  .nav-links a { color: var(--muted); text-decoration: none; padding: 6px 14px; border-radius: 8px; font-size: 14px; transition: all .2s; }
+  .nav-links a:hover { color: var(--text); background: var(--card); }
+  .btn-nav { background: var(--accent); color: #fff !important; font-weight: 600 !important; }
+  .btn-nav:hover { background: #3b82f6 !important; }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+    padding: 100px 24px 60px;
+    background: radial-gradient(ellipse at 50% 0%, rgba(79,156,249,0.12) 0%, transparent 65%);
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(79,156,249,0.12); border: 1px solid rgba(79,156,249,0.3);
+    color: var(--accent); border-radius: 100px; padding: 4px 14px; font-size: 13px;
+    margin-bottom: 24px;
+  }
+  .badge::before { content: ''; display: block; width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    font-weight: 800; line-height: 1.15;
+    letter-spacing: -1px; margin-bottom: 20px;
+    background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  h1 em { font-style: normal; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+  .hero-sub {
+    font-size: clamp(15px, 2.2vw, 18px); color: var(--muted); max-width: 580px;
+    margin: 0 auto 36px;
+  }
+
+  .hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 48px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 26px; border-radius: 12px; font-weight: 600; font-size: 15px; cursor: pointer; transition: all .2s; text-decoration: none; border: none; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; box-shadow: 0 4px 24px rgba(79,156,249,0.35); }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 32px rgba(79,156,249,0.45); }
+  .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .hero-stats { display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; }
+  .stat { text-align: center; }
+  .stat-num { font-size: 28px; font-weight: 800; color: var(--text); }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* ── SECTION COMMONS ── */
+  section { padding: 80px 24px; max-width: 1100px; margin: 0 auto; }
+  .section-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 12px; }
+  h2 { font-size: clamp(1.6rem, 3.5vw, 2.2rem); font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; }
+  .section-sub { color: var(--muted); font-size: 16px; max-width: 520px; margin-bottom: 48px; }
+
+  /* ── QUIZ ── */
+  .quiz-wrap {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 20px;
+    padding: 40px; max-width: 680px; margin: 0 auto;
+  }
+  .quiz-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .quiz-sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+  .quiz-progress { height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 32px; overflow: hidden; }
+  .quiz-progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; transition: width .4s ease; }
+  .quiz-step { display: none; }
+  .quiz-step.active { display: block; }
+  .quiz-q { font-size: 17px; font-weight: 600; margin-bottom: 20px; }
+  .quiz-options { display: flex; flex-direction: column; gap: 10px; }
+  .quiz-opt {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 14px 18px; cursor: pointer; transition: all .2s;
+    font-size: 14px;
+  }
+  .quiz-opt:hover { border-color: var(--accent); background: rgba(79,156,249,0.07); }
+  .quiz-opt.selected { border-color: var(--accent); background: rgba(79,156,249,0.12); }
+  .quiz-opt-icon { font-size: 20px; width: 32px; text-align: center; flex-shrink: 0; }
+  .quiz-opt-label { font-weight: 500; }
+  .quiz-opt-desc { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .quiz-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; }
+  .quiz-back { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 8px 0; }
+  .quiz-back:hover { color: var(--text); }
+  .step-counter { color: var(--muted); font-size: 13px; }
+
+  /* Quiz result */
+  .quiz-result { display: none; text-align: center; }
+  .quiz-result.active { display: block; }
+  .result-icon { font-size: 48px; margin-bottom: 16px; }
+  .result-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .result-desc { color: var(--muted); font-size: 15px; margin-bottom: 28px; max-width: 440px; margin-left: auto; margin-right: auto; }
+  .result-plan {
+    background: var(--card); border: 1.5px solid var(--accent); border-radius: 14px;
+    padding: 20px 24px; text-align: left; margin-bottom: 24px;
+  }
+  .result-plan-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 6px; }
+  .result-plan-name { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .result-plan-price { font-size: 14px; color: var(--muted); margin-bottom: 12px; }
+  .result-features { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .result-features li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .result-features li::before { content: '✓'; color: var(--green); font-weight: 700; }
+
+  /* ── HOW IT WORKS ── */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+  .step-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 28px; position: relative;
+  }
+  .step-num {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 15px; color: #fff; margin-bottom: 16px;
+  }
+  .step-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .step-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .step-arrow { position: absolute; right: -20px; top: 50%; transform: translateY(-50%); color: var(--border); font-size: 20px; display: none; }
+  @media (min-width: 768px) { .step-arrow { display: block; } }
+
+  /* ── COMPETITORS ── */
+  .vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 640px) { .vs-grid { grid-template-columns: 1fr; } }
+  .vs-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+  .vs-card.ours { border-color: var(--accent); background: rgba(79,156,249,0.05); }
+  .vs-tag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 100px; margin-bottom: 14px; }
+  .vs-tag.them { background: rgba(239,68,68,0.15); color: var(--red); }
+  .vs-tag.us { background: rgba(34,197,94,0.15); color: var(--green); }
+  .vs-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 14px; }
+  .vs-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .vs-list li { font-size: 13px; color: var(--muted); display: flex; align-items: flex-start; gap: 8px; line-height: 1.5; }
+  .vs-list li span { flex-shrink: 0; }
+
+  /* ── PRICING ── */
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+  .plan-card {
+    background: var(--card); border: 1.5px solid var(--border); border-radius: 20px;
+    padding: 32px 28px; display: flex; flex-direction: column; position: relative;
+    transition: border-color .2s;
+  }
+  .plan-card:hover { border-color: var(--accent); }
+  .plan-card.popular {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, rgba(79,156,249,0.08) 0%, var(--card) 100%);
+  }
+  .popular-badge {
+    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #fff; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; padding: 4px 16px; border-radius: 100px; white-space: nowrap;
+  }
+  .plan-name { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+  .plan-price { font-size: 36px; font-weight: 800; margin-bottom: 4px; }
+  .plan-price span { font-size: 16px; font-weight: 500; color: var(--muted); }
+  .plan-desc { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+  .plan-features { list-style: none; display: flex; flex-direction: column; gap: 9px; flex: 1; margin-bottom: 28px; }
+  .plan-features li { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; }
+  .plan-features li .check { color: var(--green); font-weight: 700; flex-shrink: 0; }
+  .plan-features li .x { color: var(--border); flex-shrink: 0; }
+  .plan-features li.off { color: var(--muted); }
+  .plan-cta { display: block; text-align: center; padding: 13px; border-radius: 12px; font-weight: 600; font-size: 14px; text-decoration: none; transition: all .2s; cursor: pointer; border: none; }
+  .plan-cta.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+  .plan-cta.primary:hover { opacity: .88; transform: translateY(-1px); }
+  .plan-cta.ghost { background: var(--bg); border: 1.5px solid var(--border); color: var(--text); }
+  .plan-cta.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── WHAT'S INSIDE ── */
+  .report-preview {
+    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+    overflow: hidden;
+  }
+  .report-tabs { display: flex; border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .rtab {
+    padding: 14px 20px; font-size: 13px; font-weight: 500; color: var(--muted);
+    cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all .2s;
+  }
+  .rtab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .report-body { padding: 28px; }
+  .rpanel { display: none; }
+  .rpanel.active { display: block; }
+  .rpanel-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+  .rpanel p { font-size: 14px; color: var(--muted); margin-bottom: 12px; line-height: 1.7; }
+  .metric-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .metric-box { background: var(--bg2); border-radius: 12px; padding: 14px; }
+  .metric-box .val { font-size: 22px; font-weight: 700; }
+  .metric-box .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ── REVIEWS placeholder ── */
+  .reviews { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+  .review-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;
+    opacity: .55; /* placeholder */
+  }
+  .review-card .stars { color: #f59e0b; font-size: 13px; margin-bottom: 10px; }
+  .review-card p { font-size: 13px; color: var(--muted); line-height: 1.6; font-style: italic; }
+  .review-card .author { margin-top: 14px; font-size: 12px; color: var(--muted); font-style: normal; }
+
+  /* ── FAQ ── */
+  .faq { display: flex; flex-direction: column; gap: 12px; max-width: 700px; margin: 0 auto; }
+  .faq-item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .faq-q {
+    padding: 18px 20px; font-size: 14px; font-weight: 600; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    user-select: none;
+  }
+  .faq-q::after { content: '+'; font-size: 20px; color: var(--muted); flex-shrink: 0; transition: transform .2s; }
+  .faq-item.open .faq-q::after { content: '−'; }
+  .faq-a { display: none; padding: 0 20px 18px; font-size: 13px; color: var(--muted); line-height: 1.7; }
+  .faq-item.open .faq-a { display: block; }
+
+  /* ── CTA BLOCK ── */
+  .cta-block {
+    background: linear-gradient(135deg, rgba(79,156,249,0.12), rgba(124,58,237,0.12));
+    border: 1px solid rgba(79,156,249,0.25); border-radius: 24px;
+    padding: 60px 40px; text-align: center;
+  }
+  .cta-block h2 { font-size: clamp(1.4rem, 3vw, 2rem); margin-bottom: 12px; }
+  .cta-block p { color: var(--muted); font-size: 16px; margin-bottom: 32px; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 24px; text-align: center;
+    color: var(--muted); font-size: 13px;
+  }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--accent); }
+
+  /* ── UTILITIES ── */
+  .text-center { text-align: center; }
+  .full-w { max-width: 100%; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="logo" href="/">WB<span>Analyzer</span></a>
+  <div class="nav-links">
+    <a href="#how">Как работает</a>
+    <a href="#pricing">Цены</a>
+    <a href="#faq">FAQ</a>
+    <a href="/login" class="btn-nav">Войти</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="badge">AI-аналитика · 7 000+ ниш Wildberries</div>
+  <h1>Узнайте прибыльность<br>любой ниши <em>за 5 минут</em></h1>
+  <p class="hero-sub">
+    Выручка, конкуренция, маржа и AI-рекомендации по входу —
+    в красивом PDF-отчёте. Без таблиц Excel и ручного сбора данных.
+  </p>
+  <div class="hero-ctas">
+    <a href="#quiz" class="btn btn-primary">🔍 Пройти квиз — найдём нишу</a>
+    <a href="/login" class="btn btn-ghost">Войти в платформу →</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">7 127</div><div class="stat-label">ниш в базе</div></div>
+    <div class="stat"><div class="stat-num">3 уровня</div><div class="stat-label">глубины анализа</div></div>
+    <div class="stat"><div class="stat-num">AI</div><div class="stat-label">Claude Sonnet внутри</div></div>
+    <div class="stat"><div class="stat-num">~5 мин</div><div class="stat-label">время генерации</div></div>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<section id="quiz" style="padding-top:60px;">
+  <div class="text-center" style="margin-bottom:40px;">
+    <div class="section-label">Квиз</div>
+    <h2>Найдём подходящий формат анализа</h2>
+    <p class="section-sub" style="margin:0 auto;">4 вопроса — и мы порекомендуем тариф и ниши которые стоит проверить первыми</p>
+  </div>
+
+  <div class="quiz-wrap">
+    <div class="quiz-title" id="quiz-title">Давайте разберёмся что вам нужно</div>
+    <div class="quiz-sub" id="quiz-sub">Отвечайте честно — от этого зависит рекомендация</div>
+    <div class="quiz-progress"><div class="quiz-progress-bar" id="qbar" style="width:0%"></div></div>
+
+    <!-- Step 1 -->
+    <div class="quiz-step active" id="step-1">
+      <div class="quiz-q">Какой у вас статус на Wildberries?</div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="selectOpt(this, 1, 'new')">
+          <div class="quiz-opt-icon">🌱</div>
+          <div><div class="quiz-opt-label">Ещё не продаю</div><div class="quiz-opt-desc">Изучаю возможности, ищу первую нишу</div></div>
+        </div>
+        <div class="quiz-opt" onclick="selectOpt(this, 1, 'testing')">
+          <div class="quiz-opt-icon">🧪</div>
+          <div><div class="quiz-opt-label">Только начал</div><div class="quiz-opt-desc">Есть 1-2 SKU, ищу куда расширяться</div></div>
+        </div>
+        <div class="quiz-opt" onclick="selectOpt(this, 1, 'active')">
+          <div class="quiz-opt-icon">🚀</div>
+          <div><div class="quiz-opt-label">Активно продаю</div><div class="quiz-opt-desc">Нужен анализ конкурентов и новых ниш</div></div>
+        </div>
+        <div class="quiz-opt" onclick="selectOpt(this, 1, 'agency')">
+          <div class="quiz-opt-icon">🏢</div>
+          <div><div class="quiz-opt-label">Агентство / консультант</div><div class="quiz-opt-desc">Анализирую ниши для клиентов</div></div>
+        </div>
+      </div>
+      <div class="quiz-nav">
+        <span></span>
+        <span class="step-counter">1 из 4</span>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="quiz-step" id="step-2">
+      <div class="quiz-q">Что вам нужно в первую очередь?</div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="selectOpt(this, 2, 'find')">
+          <div class="quiz-opt-icon">🔍</div>
+          <div><div class="quiz-opt-label">Найти прибыльную нишу</div><div class="quiz-opt-desc">Не знаю что продавать, нужны идеи</div></div>
+        </div>
+        <div class="quiz-opt" onclick="selectOpt(this, 2, 'check')">
+          <div class="quiz-opt-icon">✅</div>
+          <div><div class="quiz-opt-label">Проверить конкретную нишу</div><div class="quiz-opt-desc">Уже есть идея, хочу убедиться что она рабочая</div></div>
+        </div>
+        <div class="quiz-opt" onclick="selectOpt(this, 2, 'compete')">
+          <div class="quiz-opt-icon">⚔️</div>
+          <div><div class="quiz-opt-label">Изучить конкурентов</div><div class="quiz-opt-desc">Кто главные игроки, как они работают</div></div>
+        </div>
+      </div>
+      <div class="quiz-nav">
+        <button class="quiz-back" onclick="goBack(2)">← Назад</button>
+        <span class="step-counter">2 из 4</span>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="quiz-step" id="step-3">
+      <div class="quiz-q">Откуда планируете поставки?</div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="selectOpt(this, 3, 'china')">
+          <div class="quiz-opt-icon">🇨🇳</div>
+          <div><div class="quiz-opt-label">Китай (1688, Alibaba)</div><div class="quiz-opt-desc">Нужен расчёт с учётом логистики из Китая</div></div>
+        </div>
+        <div class="quiz-opt" onclick="selectOpt(this, 3, 'ru')">
+          <div class="quiz-opt-icon">🇷🇺</div>
+          <div><div class="quiz-opt-label">Россия / Беларусь</div><div class="quiz-opt-desc">Местные поставщики или собственное производство</div></div>
+        </div>
+        <div class="quiz-opt" onclick="selectOpt(this, 3, 'other')">
+          <div class="quiz-opt-icon">🌍</div>
+          <div><div class="quiz-opt-label">Другие страны / не знаю</div><div class="quiz-opt-desc">Пока не определился с источником</div></div>
+        </div>
+      </div>
+      <div class="quiz-nav">
+        <button class="quiz-back" onclick="goBack(3)">← Назад</button>
+        <span class="step-counter">3 из 4</span>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="quiz-step" id="step-4">
+      <div class="quiz-q">Какой бюджет на один анализ?</div>
+      <div class="quiz-options">
+        <div class="quiz-opt" onclick="selectOpt(this, 4, 'free')">
+          <div class="quiz-opt-icon">🆓</div>
+          <div><div class="quiz-opt-label">Бесплатно</div><div class="quiz-opt-desc">Хочу попробовать перед оплатой</div></div>
+        </div>
+        <div class="quiz-opt" onclick="selectOpt(this, 4, 'mid')">
+          <div class="quiz-opt-icon">💰</div>
+          <div><div class="quiz-opt-label">До 3 000 ₽</div><div class="quiz-opt-desc">Стандартный отчёт с основными метриками</div></div>
+        </div>
+        <div class="quiz-opt" onclick="selectOpt(this, 4, 'full')">
+          <div class="quiz-opt-icon">💎</div>
+          <div><div class="quiz-opt-label">До 7 000 ₽</div><div class="quiz-opt-desc">Полный отчёт с AI и планом на 30 дней</div></div>
+        </div>
+      </div>
+      <div class="quiz-nav">
+        <button class="quiz-back" onclick="goBack(4)">← Назад</button>
+        <span class="step-counter">4 из 4</span>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div class="quiz-result" id="quiz-result">
+      <div class="result-icon" id="result-icon">🎯</div>
+      <div class="result-title" id="result-title">Вам подойдёт Стандартный анализ</div>
+      <div class="result-desc" id="result-desc">Получите все ключевые метрики, ценовое распределение и AI-рекомендации по входу в нишу</div>
+      <div class="result-plan" id="result-plan">
+        <div class="result-plan-label">Рекомендуемый тариф</div>
+        <div class="result-plan-name" id="rp-name">Стандарт</div>
+        <div class="result-plan-price" id="rp-price">2 500 ₽ за отчёт</div>
+        <ul class="result-features" id="rp-features"></ul>
+      </div>
+      <a href="/login" class="btn btn-primary" style="width:100%;justify-content:center;font-size:15px;">
+        Попробовать бесплатно →
+      </a>
+      <p style="margin-top:12px;font-size:12px;color:var(--muted);">Первый анализ бесплатно · Без подписки</p>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-label">Как работает</div>
+  <h2>От идеи до решения — 3 шага</h2>
+  <p class="section-sub">Никаких Excel-таблиц и ручного сбора данных</p>
+  <div class="steps">
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <h3>Введите нишу</h3>
+      <p>Напишите любой запрос — «Кроссовки», «Органайзеры для дома», «Чехлы для iPhone 15». Система найдёт нишу в базе из 7 127 категорий.</p>
+      <div class="step-arrow">→</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <h3>Выберите глубину</h3>
+      <p>Basic — ключевые цифры бесплатно. Standard — ценовой анализ и конкуренты. Deep — AI-стратегия, план 30 дней, документы.</p>
+      <div class="step-arrow">→</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <h3>Получите PDF</h3>
+      <p>Через 3–5 минут скачаете готовый отчёт: выручка ниши, маржинальность, конкуренты, рекомендуемая цена и конкретный план действий.</p>
+    </div>
+  </div>
+</section>
+
+<!-- VS COMPETITORS -->
+<section>
+  <div class="section-label">Сравнение</div>
+  <h2>Почему не MPStats или Sellmonitor?</h2>
+  <p class="section-sub">Мы решаем другую задачу — не мониторинг подписки, а разовый глубокий анализ перед входом</p>
+  <div class="vs-grid">
+    <div class="vs-card">
+      <div class="vs-tag them">Конкуренты</div>
+      <h3>MPStats / Sellmonitor</h3>
+      <ul class="vs-list">
+        <li><span>❌</span> Подписка от 2 000 ₽/мес даже если нужен один анализ</li>
+        <li><span>❌</span> Данные — таблицы без интерпретации</li>
+        <li><span>❌</span> Нет AI-рекомендаций по стратегии входа</li>
+        <li><span>❌</span> Нет PDF-отчёта для представления инвестору или партнёру</li>
+        <li><span>❌</span> Интерфейс перегружен — новичок теряется</li>
+      </ul>
+    </div>
+    <div class="vs-card ours">
+      <div class="vs-tag us">WBAnalyzer</div>
+      <h3>Наш подход</h3>
+      <ul class="vs-list">
+        <li><span>✅</span> Платите только за нужный отчёт, без подписки</li>
+        <li><span>✅</span> AI объясняет что значат цифры и что делать</li>
+        <li><span>✅</span> Конкретный план входа в нишу на 30 дней</li>
+        <li><span>✅</span> Красивый PDF который можно показать партнёру</li>
+        <li><span>✅</span> Понятный интерфейс для новичков и профи</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT'S INSIDE -->
+<section>
+  <div class="section-label">Содержание отчёта</div>
+  <h2>Что внутри PDF</h2>
+  <p class="section-sub">Зависит от выбранного уровня — Basic, Standard или Deep</p>
+  <div class="report-preview">
+    <div class="report-tabs">
+      <div class="rtab active" onclick="showTab('tab-metrics', this)">📊 Метрики ниши</div>
+      <div class="rtab" onclick="showTab('tab-price', this)">💰 Ценовой анализ</div>
+      <div class="rtab" onclick="showTab('tab-ai', this)">🤖 AI-анализ</div>
+      <div class="rtab" onclick="showTab('tab-plan', this)">📋 План 30 дней</div>
+    </div>
+    <div class="report-body">
+      <div class="rpanel active" id="tab-metrics">
+        <div class="rpanel-title">Ключевые показатели ниши</div>
+        <p>Всё что нужно чтобы понять — стоит ли заходить в нишу или нет.</p>
+        <div class="metric-row">
+          <div class="metric-box"><div class="val" style="color:var(--accent)">128 млрд ₽</div><div class="lbl">Выручка ниши / год</div></div>
+          <div class="metric-box"><div class="val" style="color:var(--green)">77 / BUY</div><div class="lbl">Score и вердикт</div></div>
+          <div class="metric-box"><div class="val">9 672</div><div class="lbl">Активных продавцов</div></div>
+          <div class="metric-box"><div class="val" style="color:var(--yellow)">34,5%</div><div class="lbl">Комиссия WB</div></div>
+          <div class="metric-box"><div class="val">62%</div><div class="lbl">Маржинальность</div></div>
+          <div class="metric-box"><div class="val">5 000 ₽</div><div class="lbl">Медианная цена</div></div>
+        </div>
+      </div>
+      <div class="rpanel" id="tab-price">
+        <div class="rpanel-title">Распределение цен и ценовые сегменты</div>
+        <p>Гистограмма цен по нише с медианой, нижним и верхним квартилями. Показываем где сконцентрирован спрос и где есть место для нового игрока.</p>
+        <p>Дополнительно: рекомендуемая цена входа, ценовой сегмент (бюджет / средний / премиум), анализ топ-10 товаров по выручке.</p>
+        <p style="color:var(--accent);font-size:13px;">Доступно в тарифах: Standard и Deep</p>
+      </div>
+      <div class="rpanel" id="tab-ai">
+        <div class="rpanel-title">AI-анализ на базе Claude Sonnet</div>
+        <p>Нейросеть анализирует всю статистику и пишет понятный текст: что происходит в нише, почему одни продавцы зарабатывают а другие нет, какие риски и возможности.</p>
+        <p>Включает: 5–7 ключевых инсайтов, 3–4 гипотезы для проверки, оценку сезонности, рекомендации по позиционированию.</p>
+        <p style="color:var(--accent);font-size:13px;">Доступно в тарифах: Standard и Deep</p>
+      </div>
+      <div class="rpanel" id="tab-plan">
+        <div class="rpanel-title">30-дневный план входа в нишу</div>
+        <p>Не просто цифры — конкретный пошаговый план что делать в первый месяц: поиск поставщика, первая поставка, настройка карточки, первая реклама.</p>
+        <p>Также включает: анализ необходимых документов и сертификатов, список конкурентов для изучения, расчёт unit-экономики для вашей ситуации.</p>
+        <p style="color:var(--accent);font-size:13px;">Доступно только в тарифе: Deep</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing">
+  <div class="text-center" style="margin-bottom:48px;">
+    <div class="section-label">Тарифы</div>
+    <h2>Простые цены без подписки</h2>
+    <p class="section-sub" style="margin:0 auto;">Платите только за нужный отчёт. Никаких ежемесячных списаний.</p>
+  </div>
+  <div class="plans">
+
+    <div class="plan-card">
+      <div class="plan-name">Basic</div>
+      <div class="plan-price">Бесплатно</div>
+      <div class="plan-desc">Экспресс-проверка ниши: ключевые цифры без PDF. Подходит чтобы быстро отсеять нерабочие идеи.</div>
+      <ul class="plan-features">
+        <li><span class="check">✓</span> Выручка ниши и динамика</li>
+        <li><span class="check">✓</span> Уровень конкуренции</li>
+        <li><span class="check">✓</span> Медианная цена</li>
+        <li><span class="check">✓</span> Score 0–100 и вердикт BUY/TEST/SKIP</li>
+        <li class="off"><span class="x">—</span> PDF-отчёт</li>
+        <li class="off"><span class="x">—</span> AI-анализ</li>
+        <li class="off"><span class="x">—</span> Ценовое распределение</li>
+      </ul>
+      <a href="/login" class="plan-cta ghost">Попробовать бесплатно</a>
+    </div>
+
+    <div class="plan-card popular">
+      <div class="popular-badge">⭐ Популярный</div>
+      <div class="plan-name">Standard</div>
+      <div class="plan-price">2 500 <span>₽ / отчёт</span></div>
+      <div class="plan-desc">Полный анализ ниши с AI-рекомендациями и PDF для принятия решения.</div>
+      <ul class="plan-features">
+        <li><span class="check">✓</span> Всё из Basic</li>
+        <li><span class="check">✓</span> PDF-отчёт (~15 страниц)</li>
+        <li><span class="check">✓</span> AI-инсайты и гипотезы</li>
+        <li><span class="check">✓</span> Ценовое распределение</li>
+        <li><span class="check">✓</span> Топ-10 товаров ниши</li>
+        <li><span class="check">✓</span> Рекомендуемая цена входа</li>
+        <li class="off"><span class="x">—</span> 30-дневный план</li>
+      </ul>
+      <a href="/login" class="plan-cta primary">Получить отчёт</a>
+    </div>
+
+    <div class="plan-card">
+      <div class="plan-name">Deep</div>
+      <div class="plan-price">6 000 <span>₽ / отчёт</span></div>
+      <div class="plan-desc">Максимальная глубина: стратегия входа, документы, план на 30 дней, анализ конкурентов.</div>
+      <ul class="plan-features">
+        <li><span class="check">✓</span> Всё из Standard</li>
+        <li><span class="check">✓</span> PDF-отчёт (~25–30 страниц)</li>
+        <li><span class="check">✓</span> 30-дневный план действий</li>
+        <li><span class="check">✓</span> Анализ документов и сертификатов</li>
+        <li><span class="check">✓</span> Полный анализ конкурентов</li>
+        <li><span class="check">✓</span> Unit-экономика под вашу ситуацию</li>
+        <li><span class="check">✓</span> Приоритетная поддержка</li>
+      </ul>
+      <a href="/login" class="plan-cta ghost">Заказать Deep-анализ</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section>
+  <div class="text-center" style="margin-bottom:40px;">
+    <div class="section-label">Отзывы</div>
+    <h2>Что говорят клиенты</h2>
+    <p class="section-sub" style="margin:0 auto;">Первые отзывы появятся после бета-запуска. Хотите быть первым?</p>
+  </div>
+  <div class="reviews">
+    <div class="review-card">
+      <div class="stars">★★★★★</div>
+      <p>«Наконец-то нашёл нишу без конкурентной войны. Отчёт дал чёткую картину — Score 71, вердикт BUY, сразу понял что делать.»</p>
+      <div class="author">— Алексей, Москва · скоро</div>
+    </div>
+    <div class="review-card">
+      <div class="stars">★★★★★</div>
+      <p>«Два часа в MPStats и ноль ясности. Здесь 10 минут — и PDF с конкретным планом. Стоит каждой копейки.»</p>
+      <div class="author">— Ирина, Минск · скоро</div>
+    </div>
+    <div class="review-card">
+      <div class="stars">★★★★★</div>
+      <p>«Использую для клиентов — отправляю PDF сразу после встречи. Очень профессионально выглядит, клиенты довольны.»</p>
+      <div class="author">— Дмитрий, агентство · скоро</div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="text-center" style="margin-bottom:40px;">
+    <div class="section-label">FAQ</div>
+    <h2>Частые вопросы</h2>
+  </div>
+  <div class="faq">
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Насколько актуальны данные?</div>
+      <div class="faq-a">База из 7 127 ниш обновляется регулярно через MPStats API. Данные по выручке, продавцам и ценам — актуальны на момент последнего обновления (обычно не старше 2–4 недель).</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Можно ли вернуть деньги если отчёт не устроит?</div>
+      <div class="faq-a">Да. Если отчёт содержит явные ошибки или ниша отсутствует в базе — возвращаем деньги без вопросов. Напишите нам в Telegram.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Чем отличается от MPStats?</div>
+      <div class="faq-a">MPStats — это подписка ~2000 ₽/мес для постоянного мониторинга. Мы — разовый глубокий анализ перед принятием решения о входе. Разные задачи. Многие используют нас для первичной проверки, и только потом подключают MPStats для мониторинга.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Как оплатить из России / Беларуси?</div>
+      <div class="faq-a">Принимаем перевод на карту (РБ), USDT через Bybit (TRC-20) для РФ. Подробности при оформлении заказа.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Могу ли я попробовать перед оплатой?</div>
+      <div class="faq-a">Да — тариф Basic полностью бесплатный. Вы получите ключевые метрики по любой нише без PDF. Это позволяет убедиться что данные есть, прежде чем платить за полный отчёт.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="toggleFaq(this)">Что такое Score 0–100?</div>
+      <div class="faq-a">Интегральная оценка привлекательности ниши по 4 критериям: объём рынка, уровень конкуренции, скорость продаж, ценовой сегмент. BUY ≥ 70, TEST = 40–69, SKIP &lt; 40.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BLOCK -->
+<section>
+  <div class="cta-block">
+    <h2>Начните с бесплатного анализа</h2>
+    <p>Введите любую нишу — получите Score, выручку и вердикт бесплатно прямо сейчас</p>
+    <a href="/login" class="btn btn-primary" style="font-size:16px;padding:16px 36px;">
+      🚀 Открыть платформу бесплатно
+    </a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p style="margin-bottom:8px;">
+    <a href="/">WBAnalyzer</a> ·
+    <a href="#pricing">Тарифы</a> ·
+    <a href="https://t.me/wbanalyzer" target="_blank">Telegram</a>
+  </p>
+  <p style="color:var(--muted);font-size:12px;">Аналитика ниш Wildberries · Данные через MPStats API</p>
+</footer>
+
+<script>
+// ── QUIZ LOGIC ──
+var answers = {};
+var steps = [1, 2, 3, 4];
+
+function selectOpt(el, step, val) {
+  // Deselect all in this step
+  var opts = el.parentElement.querySelectorAll('.quiz-opt');
+  opts.forEach(function(o) { o.classList.remove('selected'); });
+  el.classList.add('selected');
+  answers['q' + step] = val;
+
+  // Auto-advance after short delay
+  setTimeout(function() { goNext(step); }, 320);
+}
+
+function goNext(step) {
+  if (step < 4) {
+    document.getElementById('step-' + step).classList.remove('active');
+    document.getElementById('step-' + (step + 1)).classList.add('active');
+    document.getElementById('qbar').style.width = (step / 4 * 100) + '%';
+  } else {
+    showResult();
+  }
+}
+
+function goBack(step) {
+  document.getElementById('step-' + step).classList.remove('active');
+  document.getElementById('step-' + (step - 1)).classList.add('active');
+  document.getElementById('qbar').style.width = ((step - 2) / 4 * 100) + '%';
+}
+
+function showResult() {
+  // Hide all steps
+  steps.forEach(function(s) { document.getElementById('step-' + s).classList.remove('active'); });
+  document.getElementById('qbar').style.width = '100%';
+  document.getElementById('quiz-title').textContent = 'Готово!';
+  document.getElementById('quiz-sub').textContent = 'Вот наша рекомендация специально для вас';
+
+  // Compute recommendation
+  var budget = answers.q4;
+  var role = answers.q1;
+  var plan, icon, title, desc, features, price;
+
+  if (budget === 'free' || role === 'new') {
+    plan = 'Basic'; icon = '🌱'; price = 'Бесплатно';
+    title = 'Начните с бесплатного Basic-анализа';
+    desc = 'Это идеальный старт — проверьте несколько ниш бесплатно, убедитесь в качестве данных, и только потом решайте про платный отчёт.';
+    features = ['Выручка и динамика ниши', 'Уровень конкуренции', 'Score и вердикт BUY/TEST/SKIP', 'Медианная цена'];
+  } else if (budget === 'full' || role === 'agency') {
+    plan = 'Deep'; icon = '💎'; price = '6 000 ₽ / отчёт';
+    title = 'Вам нужен Deep — максимальная глубина';
+    desc = 'Судя по вашим ответам, вам важна полная картина: стратегия, документы, конкуренты и план на 30 дней. Deep-отчёт покрывает всё это.';
+    features = ['~25–30 страниц PDF', 'AI-стратегия входа', '30-дневный план действий', 'Анализ документов и сертификатов', 'Полный анализ конкурентов'];
+  } else {
+    plan = 'Standard'; icon = '🎯'; price = '2 500 ₽ / отчёт';
+    title = 'Вам подойдёт Стандартный анализ';
+    desc = 'Получите все ключевые метрики, ценовое распределение и AI-рекомендации по входу в нишу. Оптимальный баланс глубины и цены.';
+    features = ['~15 страниц PDF', 'AI-инсайты и гипотезы', 'Ценовое распределение', 'Топ-10 товаров ниши', 'Рекомендуемая цена входа'];
+  }
+
+  document.getElementById('result-icon').textContent = icon;
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-desc').textContent = desc;
+  document.getElementById('rp-name').textContent = plan;
+  document.getElementById('rp-price').textContent = price;
+
+  var ul = document.getElementById('rp-features');
+  ul.innerHTML = '';
+  features.forEach(function(f) {
+    var li = document.createElement('li');
+    li.textContent = f;
+    ul.appendChild(li);
+  });
+
+  document.getElementById('quiz-result').classList.add('active');
+}
+
+// ── TABS ──
+function showTab(id, el) {
+  document.querySelectorAll('.rpanel').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.rtab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── FAQ ──
+function toggleFaq(el) {
+  el.parentElement.classList.toggle('open');
+}
+</script>
+</body>
+</html>

@@ -367,12 +367,13 @@ def _run_master(n: dict, level: str = 'standard') -> dict:
 
     fm = _compute_finance(n)
 
+    avg_rev_monthly = round(avg_rev / 12) if avg_rev else 0
     base = (
         f"НИША: {name}\n"
-        f"Выручка: {revenue:,.0f} ₽/мес | Средняя цена: {avg_price:,.0f} ₽\n"
+        f"Выручка ниши: {revenue:,.0f} ₽/год ({round(revenue/12):,.0f} ₽/мес) | Средняя цена: {avg_price:,.0f} ₽\n"
         f"Маржа: {profit_pct*100:.0f}% | Выкуп: {buyout_pct*100:.0f}%\n"
         f"Оборачиваемость: {turnover:.0f} дней | Продавцов: {sellers} (активных: {sws}, {act}%)\n"
-        f"Средняя выручка/продавец: {avg_rev:,.0f} ₽/мес\n"
+        f"Средняя выручка/продавец: {avg_rev:,.0f} ₽/год ({avg_rev_monthly:,.0f} ₽/мес)\n"
         + _finance_block(fm)
     )
 
@@ -445,6 +446,7 @@ def _run_master(n: dict, level: str = 'standard') -> dict:
         "Используй цифры из ФИНАНСОВЫХ ПАРАМЕТРОВ. Заканчивай последний блок: Поставщики, сертификаты и готовая карточка товара — только в PDF Deep.\n"
         "- final_recommendation: Полный абзац с чёткими условиями входа и метриками для принятия решения. "
         "4-5 предложений. Заканчивай: Для поиска поставщиков и полного пакета документов — PDF Deep.\n"
+        "ВАЖНО: используй только двойные кавычки в значениях JSON. Внутри строк используй угловые кавычки «» вместо прямых.\n"
         "Ответь ONLY JSON:\n"
         '{"final_verdict":"ВХОДИТЬ|ТЕСТИРОВАТЬ|НЕ ВХОДИТЬ",'
         '"verdict_color":"#16a34a|#d97706|#dc2626",'
@@ -456,10 +458,28 @@ def _run_master(n: dict, level: str = 'standard') -> dict:
         '"risks":[{"risk":"риск","probability":"средняя","mitigation":"решение"}],'
         '"final_recommendation":"..."}'
     )
-    return _inject_fm(_json(_claude(prompt, 2500)))
+    result = _inject_fm(_json(_claude(prompt, 3000)))
+    # Если главные поля пустые — retry с упрощённым промптом
+    if not result.get('market_analysis') and not result.get('final_verdict'):
+        fallback = (
+            f"Ниша WB: {name}. Кратко ответь ONLY JSON (не используй прямые кавычки внутри строк):\n"
+            '{"final_verdict":"ВХОДИТЬ|ТЕСТИРОВАТЬ|НЕ ВХОДИТЬ",'
+            '"verdict_color":"#16a34a|#d97706|#dc2626",'
+            f'"market_analysis":"Выручка ниши {revenue:,.0f} рублей в год. Средняя цена {avg_price:,.0f} рублей. Активных продавцов {sws}.",'
+            '"competitive_landscape":"Конкуренция в нише.",'
+            '"entry_strategy":"Месяц 1: подготовка. Месяц 2: закупка партии. Месяц 3: запуск продаж.",'
+            '"seasonal_plan":{"peak":"","low":"","buy_date":"","ad_date":""},'
+            '"opportunities":[],"risks":[],'
+            '"final_recommendation":"Проверьте юнит-экономику в разделе ниже."}'
+        )
+        try:
+            result = _inject_fm(_json(_claude(fallback, 800)))
+        except Exception:
+            result = _inject_fm({})
+    return result
 
 
-def _run_deep(n: dict) -> dict:
+def _run_deep(n: dict, master_verdict: str = '') -> dict:
     name = n.get('name', '')
     revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
     avg_price = float(n.get('avg_price', 0))
@@ -474,14 +494,20 @@ def _run_deep(n: dict) -> dict:
 
     fm = _compute_finance(n)
 
+    verdict_hint = (
+        f'ВАЖНО: мастер-анализ уже вынес вердикт «{master_verdict}». '
+        f'Твой вердикт ДОЛЖЕН совпадать. Если есть причины расходиться — объясни в verdict_desc.\n'
+    ) if master_verdict else ''
+
     prompt = (
         f"Ты эксперт по торговле на WB. Глубокий анализ ниши.\n\n"
-        f"Ниша: {name} | Выручка: {revenue:,.0f} ₽ | Цена: {avg_price:,.0f} ₽\n"
+        f"Ниша: {name} | Выручка ниши: {revenue:,.0f} ₽/год | Цена: {avg_price:,.0f} ₽\n"
         f"Продавцов: {sellers}, активных: {sws} | Комиссия: {commission:.0f}%\n"
         f"Выкуп: {buyout_pct*100:.0f}% | Оборачиваемость реальная: {rt} дней\n"
-        f"Маржа: {profit_pct*100:.0f}% | Средняя выручка/продавец: {avg_rev:,.0f} ₽/мес\n"
-        + _finance_block(fm) +
-        "ONLY JSON (entry_budget/ad_budget/breakeven/roi_forecast будут заменены расчётными):\n"
+        f"Маржа: {profit_pct*100:.0f}% | Средняя выручка/продавец: {avg_rev:,.0f} ₽/год\n"
+        + _finance_block(fm)
+        + verdict_hint
+        + "ONLY JSON (entry_budget/ad_budget/breakeven/roi_forecast будут заменены расчётными):\n"
         '{"verdict":"ВХОДИТЬ|ТЕСТИРОВАТЬ|НЕ ВХОДИТЬ",'
         '"verdict_desc":"обоснование 1-2 предложения",'
         '"financial_plan":"2-3 предложения с теми же цифрами что в ФИНАНСОВЫХ ПАРАМЕТРАХ",'
@@ -540,10 +566,15 @@ def _run_unit(n: dict) -> dict:
     prompt = (
         f"Ниша WB: {name}. Цена: {avg_price:.0f} ₽. "
         f"Расчётная маржа лучшего сценария: {best['margin_pct']:.1f}%, ROI: {best['roi_pct']:.1f}%.\n"
-        "Дай краткую рекомендацию ONLY JSON:\n"
-        '{"title":"заголовок","detail":"2-3 предложения с цифрами"}'
+        "Оцени ТОЛЬКО финансовую составляющую, не делай выводов о конкурентности ниши.\n"
+        "ONLY JSON: "
+        '{"title":"кратко о прибыльности","detail":"2-3 предложения с цифрами"}'
     )
-    rec = _json(_claude(prompt, 300))
+    try:
+        rec = _json(_claude(prompt, 300))
+    except Exception:
+        rec = {}
+    # Сценарии считаются локально — возвращаем их даже если Claude не ответил
     return {'scenarios': scenarios, 'recommendation': rec}
 
 
@@ -562,7 +593,7 @@ def _run_ads(n: dict) -> dict:
 
     prompt = (
         f"Ты рекламный аналитик WB.\n"
-        f"НИША: {name} | Цена: {avg_price} ₽ | Выручка: {revenue:,.0f} ₽\n"
+        f"НИША: {name} | Цена: {avg_price} ₽ | Выручка ниши: {revenue:,.0f} ₽/год\n"
         f"Маржа: {profit_pct*100:.1f}% | Выкуп: {buyout_pct*100:.1f}% | Комиссия: {commission*100:.1f}%\n"
         f"БЮДЖЕТ РЕКЛАМЫ (ЗАФИКСИРОВАН): Старт: {ad_start:,} ₽ | Рост: {ad_growth:,} ₽ | "
         f"Поддержание: {ad_sustain:,} ₽ — используй эти суммы в тексте.\n\n"
@@ -577,8 +608,11 @@ def _run_ads(n: dict) -> dict:
         '"forecast":{"month1":{"metrics":["CTR: X%","CR: X%","DRR: X%","Pos: X","Orders: X"]},'
         '"month2":{"metrics":["CTR: X%","CR: X%","DRR: X%","Pos: X","Orders: X"]}}}'
     )
-    result = _json(_claude(prompt, 1500))
-    # Переопределяем бюджет — единые цифры для всех разделов
+    try:
+        result = _json(_claude(prompt, 1500))
+    except Exception:
+        result = {}
+    # Бюджет зафиксирован — возвращаем всегда, даже если Claude не ответил
     b = result.get('budget') or {}
     b['start_rub']   = ad_start
     b['growth_rub']  = ad_growth
@@ -598,7 +632,7 @@ def _run_competitors(n: dict) -> dict:
 
     prompt = (
         f"Ты аналитик конкурентной среды на Wildberries.\n\n"
-        f"НИША: {name} | Выручка: {revenue:,.0f} ₽/мес | Средняя цена: {avg_price:,.0f} ₽\n"
+        f"НИША: {name} | Выручка ниши: {revenue:,.0f} ₽/год | Средняя цена: {avg_price:,.0f} ₽\n"
         f"Продавцов: {sellers}, активных: {sws}\n"
         + _finance_block(fm) +
         "Правила:\n"
@@ -1015,7 +1049,18 @@ def _sec_metrics(niche: dict) -> list:
     _lvl = _CURRENT_LEVEL
     if turnover:
         els.append(_sp(0.1))
-        if turnover > 90:
+        if turnover > 365:
+            # Критически высокая оборачиваемость — нужно объяснить что это значит
+            years = round(turnover / 365, 1)
+            warn_text = (
+                f'<b>Оборачиваемость: {turnover:.0f} дней ({years} года)</b> — '
+                f'это среднее время полного оборота склада по нише. '
+                f'Значение выше 365 дней означает перенасыщение: в нише много медленно-продающегося товара. '
+                f'Это НЕ запрет на вход — топ-продавцы могут оборачивать товар за 30–60 дней. '
+                f'Стратегия: FBS + тестовая партия 15–20 шт, выбирайте подниши с активным спросом.'
+            )
+            els.append(_warning(warn_text))
+        elif turnover > 90:
             if _lvl == 'basic':
                 els.append(_tip(
                     f'<b>Оборачиваемость: {turnover:.0f} дн.</b> — оптимальная стратегия для этой ниши: '
@@ -1370,13 +1415,18 @@ def _sec_ads(r: dict) -> list:
     budget = r.get('budget') or {}
     if budget:
         els.append(_h3('Бюджет рекламы'))
-        rows = [['Фаза', 'Бюджет, ₽', 'Комментарий']]
+        rows = [['Фаза', 'Рекомендуемый бюджет, ₽', 'Диапазон по рынку']]
+        ad_ranges = {
+            'start_rub':   '10 000 – 30 000 ₽/мес',
+            'growth_rub':  '30 000 – 80 000 ₽/мес',
+            'sustain_rub': '50 000 – 120 000 ₽/мес',
+        }
         for phase, label in [('start_rub','Старт'),('growth_rub','Рост'),('sustain_rub','Поддержание')]:
             if budget.get(phase):
-                rows.append([label, _rub(budget[phase]), ''])
+                rows.append([label, _rub(budget[phase]), ad_ranges.get(phase, '')])
         if budget.get('comment'):
-            rows.append(['', '', str(budget['comment'])])
-        els.append(_tbl(rows, col_widths=[1.5*inch, 1.5*inch, COL_W - 3.0*inch]))
+            rows.append(['Комментарий', str(budget['comment']), ''])
+        els.append(_tbl(rows, col_widths=[1.3*inch, 1.8*inch, COL_W - 3.1*inch]))
 
     cpm = r.get('cpm_forecast') or {}
     if cpm:
@@ -2755,13 +2805,19 @@ _AGENT_FNS = {
 }
 
 
-def run_agent(name: str, niche: dict, level: str = 'standard'):
+def run_agent(name: str, niche: dict, level: str = 'standard', agents: dict = None):
     """Запускает ОДИН агент. Вызывается из /pdf-stream."""
     entry = _AGENT_FNS.get(name)
     if entry is None:
         return {'error': f'unknown agent: {name}'}
     fn, ret_type = entry
-    result = fn(niche, level) if name == 'master' else fn(niche)
+    if name == 'master':
+        result = fn(niche, level)
+    elif name == 'deep' and agents:
+        master_verdict = (agents.get('master') or {}).get('final_verdict', '')
+        result = fn(niche, master_verdict=master_verdict)
+    else:
+        result = fn(niche)
     if ret_type == 'str':
         return {'text': result if isinstance(result, str) else ''}
     return result if isinstance(result, dict) else {}

@@ -5992,7 +5992,7 @@ class Handler(BaseHTTPRequestHandler):
             for i, name in enumerate(agent_seq):
                 _sse({'type': 'progress', 'step': name, 'n': i + 1, 'total': len(agent_seq)})
                 try:
-                    result = pdf_auto.run_agent(name, niche, level)
+                    result = pdf_auto.run_agent(name, niche, level, agents=agents)
                     if name == 'content': content_text = result.get('text', '')
                     else: agents[name] = result
                 except Exception as _ae:

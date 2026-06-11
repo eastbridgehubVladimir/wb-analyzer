@@ -539,12 +539,19 @@ class PDFReportGenerator:
 
     def _sec_charts(self, data, level):
         products = data.get('products', [])
-        if not products:
+        metrics = data.get('metrics', {})
+        median_price = float(metrics.get('median_price') or 0)
+        price_iqr = float(metrics.get('price_iqr') or 0)
+        # Show chart if we have real product prices OR aggregate stats from DB
+        if not products and not median_price:
             return []
         els = []
         try:
             els += [self._h2("Распределение цен в нише"), self._hr()]
-            els.append(Image(chart_price_distribution(products), width=6*inch, height=2.5*inch))
+            els.append(Image(
+                chart_price_distribution(products, median_price=median_price, price_iqr=price_iqr),
+                width=6*inch, height=2.5*inch,
+            ))
             els.append(self._sp(0.15))
         except Exception:
             pass

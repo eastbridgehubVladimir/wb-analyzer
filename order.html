@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Заказать анализ ниши — WBAnalyzer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --bg2: #161b27; --card: #1e2433; --border: #2d3748;
+    --text: #e2e8f0; --muted: #8892a4;
+    --accent: #4f9cf9; --accent2: #7c3aed;
+    --green: #22c55e; --yellow: #f59e0b; --red: #ef4444;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+
+  nav {
+    border-bottom: 1px solid var(--border); padding: 0 24px; height: 58px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg);
+  }
+  .logo { font-size: 17px; font-weight: 700; color: var(--text); text-decoration: none; }
+  .logo span { color: var(--accent); }
+  .nav-back { color: var(--muted); text-decoration: none; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .nav-back:hover { color: var(--accent); }
+
+  main {
+    flex: 1; display: flex; align-items: flex-start; justify-content: center;
+    padding: 48px 16px 80px; gap: 32px; flex-wrap: wrap;
+  }
+
+  /* ── FORM CARD ── */
+  .form-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+    padding: 36px 32px; width: 100%; max-width: 520px;
+  }
+  .form-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  .form-sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; line-height: 1.6; }
+
+  .field { margin-bottom: 20px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+  label span { color: var(--muted); font-weight: 400; margin-left: 4px; }
+  input[type=text], textarea {
+    width: 100%; background: var(--bg2); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 14px;
+    font-family: inherit; transition: border-color .2s; outline: none;
+  }
+  input[type=text]:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  input::placeholder, textarea::placeholder { color: var(--muted); }
+
+  .level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .level-opt {
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 12px;
+    cursor: pointer; text-align: center; transition: all .2s; background: var(--bg2);
+  }
+  .level-opt:hover { border-color: var(--accent); }
+  .level-opt.selected { border-color: var(--accent); background: rgba(79,156,249,0.1); }
+  .level-opt input { display: none; }
+  .level-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .level-price { font-size: 13px; color: var(--accent); font-weight: 600; }
+  .level-desc { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+
+  .btn-submit {
+    width: 100%; padding: 15px; border-radius: 12px; border: none; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff; font-size: 15px; font-weight: 700; transition: all .2s; margin-top: 8px;
+  }
+  .btn-submit:hover { opacity: .9; transform: translateY(-1px); }
+  .btn-submit:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  .form-note { text-align: center; margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  /* ── SUCCESS STATE ── */
+  .success { display: none; text-align: center; padding: 8px 0; }
+  .success.show { display: block; }
+  .success-icon { font-size: 52px; margin-bottom: 16px; }
+  .success-title { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+  .success-desc { color: var(--muted); font-size: 15px; margin-bottom: 28px; line-height: 1.7; }
+  .order-id-box {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 18px; font-size: 13px; color: var(--muted); margin-bottom: 24px;
+  }
+  .order-id-box strong { color: var(--text); font-family: monospace; }
+
+  /* ── PAYMENT INSTRUCTIONS ── */
+  .payment-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 20px;
+    padding: 28px; width: 100%; max-width: 360px; align-self: flex-start; position: sticky; top: 80px;
+  }
+  .payment-title { font-size: 16px; font-weight: 700; margin-bottom: 18px; }
+  .pay-method {
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 16px;
+    margin-bottom: 12px;
+  }
+  .pay-method-name { font-size: 13px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .pay-method p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .pay-method code {
+    display: block; background: var(--card); border-radius: 7px; padding: 8px 10px;
+    font-size: 12px; color: var(--accent); margin-top: 8px; word-break: break-all; font-family: monospace;
+  }
+
+  .prices-summary { margin-top: 24px; }
+  .prices-summary h4 { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .price-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .price-row:last-child { border-bottom: none; font-weight: 700; }
+  .price-row .price { color: var(--accent); font-weight: 600; }
+  .price-row.free .price { color: var(--green); }
+
+  @media (max-width: 600px) {
+    .payment-card { position: static; }
+    main { padding: 24px 16px 60px; }
+    .form-card { padding: 24px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="/landing">WB<span>Analyzer</span></a>
+  <a class="nav-back" href="/landing">← Назад на главную</a>
+</nav>
+
+<main>
+
+  <!-- FORM -->
+  <div class="form-card" id="form-section">
+    <div class="form-title">Заказать анализ ниши</div>
+    <div class="form-sub">Заполните форму — мы свяжемся с вами в Telegram для подтверждения и оплаты. Обычно отвечаем в течение нескольких часов.</div>
+
+    <form id="order-form" onsubmit="submitOrder(event)">
+
+      <div class="field">
+        <label for="niche-input">Название ниши <span>* обязательно</span></label>
+        <input type="text" id="niche-input" name="niche" placeholder="Например: Кроссовки, Органайзеры, Чехлы для телефонов" required maxlength="200">
+      </div>
+
+      <div class="field">
+        <label>Уровень анализа <span>* выберите один</span></label>
+        <div class="level-grid">
+          <div class="level-opt" onclick="selectLevel(this, 'basic')">
+            <div class="level-name">Basic</div>
+            <div class="level-price">Бесплатно</div>
+            <div class="level-desc">Ключевые метрики без PDF</div>
+          </div>
+          <div class="level-opt selected" onclick="selectLevel(this, 'standard')">
+            <div class="level-name">Standard ⭐</div>
+            <div class="level-price">2 500 ₽</div>
+            <div class="level-desc">PDF + AI-анализ + цены</div>
+          </div>
+          <div class="level-opt" onclick="selectLevel(this, 'deep')">
+            <div class="level-name">Deep</div>
+            <div class="level-price">6 000 ₽</div>
+            <div class="level-desc">Полный отчёт + план 30 дней</div>
+          </div>
+        </div>
+        <input type="hidden" id="level-val" value="standard">
+      </div>
+
+      <div class="field">
+        <label for="contact-input">Ваш Telegram <span>* для связи</span></label>
+        <input type="text" id="contact-input" name="contact" placeholder="@username или +375291234567" required maxlength="200">
+      </div>
+
+      <div class="field">
+        <label for="comment-input">Комментарий <span>необязательно</span></label>
+        <textarea id="comment-input" name="comment" placeholder="Что важно учесть: откуда поставки, бюджет, опыт на WB и т.д." maxlength="500"></textarea>
+      </div>
+
+      <button type="submit" class="btn-submit" id="submit-btn">
+        Отправить заявку →
+      </button>
+    </form>
+
+    <div class="form-note">
+      После отправки мы напишем в Telegram для подтверждения и инструкций по оплате.<br>
+      Возврат если ниша не найдена в базе — без вопросов.
+    </div>
+
+    <!-- SUCCESS -->
+    <div class="success" id="success-block">
+      <div class="success-icon">🎉</div>
+      <div class="success-title">Заявка принята!</div>
+      <div class="success-desc">
+        Напишем вам в Telegram в ближайшее время с подтверждением и инструкцией по оплате.
+        Готовый PDF отправим после получения оплаты.
+      </div>
+      <div class="order-id-box">
+        Номер заявки: <strong id="order-id-display">—</strong>
+      </div>
+      <a href="/landing" style="display:inline-block;padding:12px 28px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);text-decoration:none;font-size:14px;font-weight:600;">
+        ← Вернуться на главную
+      </a>
+    </div>
+  </div>
+
+  <!-- PAYMENT INFO -->
+  <div class="payment-card">
+    <div class="payment-title">💳 Способы оплаты</div>
+
+    <div class="pay-method">
+      <div class="pay-method-name">🇧🇾 Карта (Беларусь)</div>
+      <p>Перевод на карту Беларусбанк / Альфа-банк / А-Коннект. Реквизиты пришлём в Telegram после подтверждения заявки.</p>
+    </div>
+
+    <div class="pay-method">
+      <div class="pay-method-name">₿ USDT TRC-20 (из России)</div>
+      <p>Криптовалюта через Bybit или любой кошелёк. Адрес пришлём в Telegram.</p>
+    </div>
+
+    <div class="pay-method">
+      <div class="pay-method-name">🇷🇺 СБП / перевод (Россия)</div>
+      <p>Уточняем индивидуально — напишите в Telegram.</p>
+    </div>
+
+    <div class="prices-summary">
+      <h4>Прайс</h4>
+      <div class="price-row free">
+        <span>Basic</span>
+        <span class="price">Бесплатно</span>
+      </div>
+      <div class="price-row">
+        <span>Standard ⭐</span>
+        <span class="price">2 500 ₽</span>
+      </div>
+      <div class="price-row">
+        <span>Deep</span>
+        <span class="price">6 000 ₽</span>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.7;">
+      📩 Вопросы? Напишите напрямую:<br>
+      <a href="https://t.me/wbanalyzer" target="_blank" style="color:var(--accent);text-decoration:none;">@wbanalyzer</a>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// Pre-fill niche from URL param
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var n = params.get('niche');
+  if (n) document.getElementById('niche-input').value = n;
+  var l = params.get('level');
+  if (l) {
+    document.querySelectorAll('.level-opt').forEach(function(el) { el.classList.remove('selected'); });
+    var opts = document.querySelectorAll('.level-opt');
+    var map = {basic: 0, standard: 1, deep: 2};
+    if (map[l] !== undefined) opts[map[l]].classList.add('selected');
+    document.getElementById('level-val').value = l;
+  }
+})();
+
+function selectLevel(el, val) {
+  document.querySelectorAll('.level-opt').forEach(function(o) { o.classList.remove('selected'); });
+  el.classList.add('selected');
+  document.getElementById('level-val').value = val;
+}
+
+function submitOrder(e) {
+  e.preventDefault();
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Отправляем...';
+
+  var data = {
+    niche:   document.getElementById('niche-input').value.trim(),
+    level:   document.getElementById('level-val').value,
+    contact: document.getElementById('contact-input').value.trim(),
+    comment: document.getElementById('comment-input').value.trim(),
+  };
+
+  fetch('/api/submit-order', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    if (res.ok) {
+      document.getElementById('order-form').style.display = 'none';
+      document.querySelector('.form-sub').style.display = 'none';
+      document.querySelector('.form-title').textContent = 'Готово!';
+      document.getElementById('order-id-display').textContent = res.order_id;
+      document.getElementById('success-block').classList.add('show');
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Отправить заявку →';
+      alert('Ошибка: ' + (res.error || 'попробуйте ещё раз'));
+    }
+  })
+  .catch(function() {
+    btn.disabled = false;
+    btn.textContent = 'Отправить заявку →';
+    alert('Ошибка сети — попробуйте ещё раз');
+  });
+}
+</script>
+</body>
+</html>

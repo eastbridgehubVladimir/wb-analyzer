@@ -91,6 +91,65 @@
   .stat-num { font-size: 28px; font-weight: 800; color: var(--text); }
   .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
+  /* ── INLINE WIDGET ── */
+  .widget-wrap {
+    max-width: 640px; margin: 0 auto; padding: 0 24px 72px;
+  }
+  .widget-box {
+    background: var(--card); border: 1.5px solid var(--border); border-radius: 20px;
+    padding: 28px 28px 24px; position: relative;
+  }
+  .widget-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent); margin-bottom: 14px; }
+  .widget-row { display: flex; gap: 10px; }
+  .widget-input {
+    flex: 1; background: var(--bg2); border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 13px 16px; color: var(--text); font-size: 15px;
+    font-family: inherit; outline: none; transition: border-color .2s;
+  }
+  .widget-input:focus { border-color: var(--accent); }
+  .widget-input::placeholder { color: var(--muted); }
+  .widget-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 12px; padding: 13px 22px; color: #fff;
+    font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: opacity .2s;
+  }
+  .widget-btn:hover { opacity: .88; }
+  .widget-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .widget-hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+  /* Result panel */
+  .widget-result { display: none; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px; }
+  .widget-result.show { display: block; }
+  .wr-name { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  .wr-name strong { color: var(--text); font-size: 15px; }
+  .wr-score-row { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .wr-score {
+    width: 60px; height: 60px; border-radius: 14px; display: flex; align-items: center;
+    justify-content: center; font-size: 22px; font-weight: 800; flex-shrink: 0;
+  }
+  .wr-score.buy { background: rgba(34,197,94,.15); color: var(--green); }
+  .wr-score.test { background: rgba(245,158,11,.15); color: var(--yellow); }
+  .wr-score.skip { background: rgba(239,68,68,.15); color: var(--red); }
+  .wr-verdict { font-size: 18px; font-weight: 800; }
+  .wr-verdict-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .wr-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .wr-metric { background: var(--bg2); border-radius: 10px; padding: 12px; }
+  .wr-metric .val { font-size: 16px; font-weight: 700; }
+  .wr-metric .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .wr-ctas { display: flex; gap: 10px; flex-wrap: wrap; }
+  .wr-btn-main {
+    flex: 1; text-align: center; padding: 12px 16px; border-radius: 10px; font-size: 13px;
+    font-weight: 700; text-decoration: none; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+  }
+  .wr-btn-ghost {
+    flex: 1; text-align: center; padding: 12px 16px; border-radius: 10px; font-size: 13px;
+    font-weight: 600; text-decoration: none;
+    background: var(--bg2); border: 1.5px solid var(--border); color: var(--text);
+  }
+  .wr-btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .wr-not-found { text-align: center; padding: 16px 0; color: var(--muted); font-size: 14px; }
+
   /* ── SECTION COMMONS ── */
   section { padding: 80px 24px; max-width: 1100px; margin: 0 auto; }
   .section-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 12px; }
@@ -303,6 +362,22 @@
     <div class="stat"><div class="stat-num">3 уровня</div><div class="stat-label">глубины анализа</div></div>
     <div class="stat"><div class="stat-num">AI</div><div class="stat-label">Claude Sonnet внутри</div></div>
     <div class="stat"><div class="stat-num">~5 мин</div><div class="stat-label">время генерации</div></div>
+  </div>
+</div>
+
+<!-- INLINE WIDGET -->
+<div class="widget-wrap">
+  <div class="widget-box">
+    <div class="widget-label">⚡ Быстрая проверка ниши — бесплатно</div>
+    <div class="widget-row">
+      <input class="widget-input" id="w-input" type="text"
+        placeholder="Введите нишу: Кроссовки, Органайзеры..."
+        onkeydown="if(event.key==='Enter') checkNiche()">
+      <button class="widget-btn" id="w-btn" onclick="checkNiche()">Проверить</button>
+    </div>
+    <div class="widget-hint">Score 0–100 · Выручка · Конкуренция · Мгновенно из базы 7 127 ниш</div>
+
+    <div class="widget-result" id="w-result"></div>
   </div>
 </div>
 
@@ -769,6 +844,64 @@ function showTab(id, el) {
 // ── FAQ ──
 function toggleFaq(el) {
   el.parentElement.classList.toggle('open');
+}
+
+// ── INLINE WIDGET ──
+function checkNiche() {
+  var q = document.getElementById('w-input').value.trim();
+  if (!q) return;
+  var btn = document.getElementById('w-btn');
+  var res = document.getElementById('w-result');
+  btn.disabled = true;
+  btn.textContent = '...';
+  res.classList.remove('show');
+
+  fetch('/api/niche-check?q=' + encodeURIComponent(q))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      btn.disabled = false;
+      btn.textContent = 'Проверить';
+      res.classList.add('show');
+
+      if (!d.found) {
+        res.innerHTML = '<div class="wr-not-found">😕 Ниша <strong>"' + q + '"</strong> не найдена в базе.<br><span style="font-size:12px;">Попробуйте другое название или напишите нам — добавим.</span></div>';
+        return;
+      }
+
+      var vclass = d.verdict === 'BUY' ? 'buy' : (d.verdict === 'TEST' ? 'test' : 'skip');
+      var vlabel = d.verdict === 'BUY' ? '✅ Рекомендуем' : (d.verdict === 'TEST' ? '⚠️ Тест' : '❌ Не входить');
+      var vsub   = d.verdict === 'BUY' ? 'Ниша перспективна — стоит изучить глубже'
+                 : d.verdict === 'TEST' ? 'Неоднозначно — нужен детальный анализ'
+                 : 'Высокая конкуренция или маленький рынок';
+
+      function fmtRev(v) {
+        if (v >= 1e9) return (v/1e9).toFixed(1) + ' млрд ₽';
+        if (v >= 1e6) return (v/1e6).toFixed(0) + ' млн ₽';
+        return (v/1e3).toFixed(0) + ' тыс ₽';
+      }
+
+      res.innerHTML =
+        '<div class="wr-name">Результат для: <strong>' + (d.name || q) + '</strong></div>' +
+        '<div class="wr-score-row">' +
+          '<div class="wr-score ' + vclass + '">' + d.score + '</div>' +
+          '<div><div class="wr-verdict">' + vlabel + '</div><div class="wr-verdict-sub">' + vsub + '</div></div>' +
+        '</div>' +
+        '<div class="wr-metrics">' +
+          '<div class="wr-metric"><div class="val">' + fmtRev(d.revenue_monthly) + '</div><div class="lbl">Выручка / мес</div></div>' +
+          '<div class="wr-metric"><div class="val">' + d.sellers.toLocaleString('ru') + '</div><div class="lbl">Продавцов</div></div>' +
+          '<div class="wr-metric"><div class="val">' + (d.avg_price ? d.avg_price.toLocaleString('ru') + ' ₽' : '—') + '</div><div class="lbl">Средняя цена</div></div>' +
+        '</div>' +
+        '<div class="wr-ctas">' +
+          '<a class="wr-btn-main" href="/order?niche=' + encodeURIComponent(d.name || q) + '&level=standard">📄 Получить полный отчёт</a>' +
+          '<a class="wr-btn-ghost" href="#quiz">Пройти квиз →</a>' +
+        '</div>';
+    })
+    .catch(function() {
+      btn.disabled = false;
+      btn.textContent = 'Проверить';
+      res.classList.add('show');
+      res.innerHTML = '<div class="wr-not-found">Ошибка соединения — попробуйте ещё раз</div>';
+    });
 }
 </script>
 </body>

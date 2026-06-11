@@ -6048,6 +6048,100 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(html_bytes)
             return
+
+        if self.path == '/order' or self.path.startswith('/order?'):
+            try:
+                with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'order.html'), 'rb') as f:
+                    html_bytes = f.read()
+            except Exception:
+                html_bytes = b'<h1>Order page not found</h1>'
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(html_bytes)
+            return
+
+        if self.path.startswith('/api/niche-check'):
+            from urllib.parse import parse_qs, urlparse
+            q = parse_qs(urlparse(self.path).query).get('q', [''])[0].strip()
+            if not q:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'empty'}).encode())
+                return
+            try:
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT revenue, avg_price, sellers_with_sales, orders,
+                           profit_pct, buyout_pct, commission, niche_status,
+                           COALESCE(display_name, name)
+                    FROM niches
+                    WHERE LOWER(name) = LOWER(%s)
+                       OR LOWER(COALESCE(display_name, name)) = LOWER(%s)
+                    ORDER BY revenue DESC NULLS LAST LIMIT 1
+                """, (q, q))
+                row = cur.fetchone()
+                cur.close(); conn.close()
+                if not row or not row[0]:
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'found': False, 'query': q}, ensure_ascii=False).encode())
+                    return
+                rev = float(row[0] or 0); price = float(row[1] or 0)
+                sws = int(row[2] or 0); ords = int(row[3] or 0)
+                profit = float(row[4] or 0); status = row[7] or ''; name = row[8] or q
+                # Score (inline simplified engine)
+                if rev >= 5_000_000: rp = 25
+                elif rev >= 1_000_000: rp = 20
+                elif rev >= 300_000: rp = 13
+                elif rev >= 100_000: rp = 7
+                else: rp = 2
+                if sws > 200: cp = 2
+                elif sws > 50: cp = 8
+                elif sws > 10: cp = 18
+                else: cp = 25
+                opd = ords / 30
+                if opd >= 200: vp = 25
+                elif opd >= 50: vp = 20
+                elif opd >= 20: vp = 14
+                elif opd >= 5: vp = 8
+                else: vp = 3
+                if price >= 2000: pp = 20
+                elif price >= 800: pp = 16
+                elif price >= 300: pp = 10
+                else: pp = 4
+                rel_iqr = 0.3
+                if 0.15 <= rel_iqr <= 0.60: pp = min(25, pp + 5)
+                score = rp + cp + vp + pp
+                verdict = 'BUY' if score >= 70 else ('TEST' if score >= 40 else 'SKIP')
+                if sws > 200: comp_label = 'Очень высокая'
+                elif sws > 50: comp_label = 'Высокая'
+                elif sws > 10: comp_label = 'Средняя'
+                else: comp_label = 'Низкая'
+                result = {
+                    'found': True, 'query': q, 'name': name,
+                    'score': score, 'verdict': verdict,
+                    'revenue_monthly': round(rev),
+                    'avg_price': round(price),
+                    'sellers': sws,
+                    'competition': comp_label,
+                    'profit_pct': round(profit * 100, 1) if profit < 1 else round(profit, 1),
+                    'status': status,
+                }
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(result, ensure_ascii=False).encode())
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+            return
+
         if self.path == '/login':
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=utf-8')
@@ -7129,6 +7223,42 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
 
     def do_POST(self):
+        if self.path == '/api/submit-order':
+            try:
+                import datetime as _dt
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                niche   = str(body.get('niche', '')).strip()[:200]
+                level   = str(body.get('level', 'standard')).strip()
+                contact = str(body.get('contact', '')).strip()[:200]
+                comment = str(body.get('comment', '')).strip()[:500]
+                if not niche or not contact:
+                    self.send_response(400)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': 'niche and contact required'}).encode())
+                    return
+                order = {
+                    'id': _dt.datetime.utcnow().strftime('%Y%m%d%H%M%S%f'),
+                    'ts': _dt.datetime.utcnow().isoformat(),
+                    'niche': niche, 'level': level,
+                    'contact': contact, 'comment': comment,
+                    'status': 'new',
+                }
+                orders_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'orders.jsonl')
+                with open(orders_path, 'a', encoding='utf-8') as f:
+                    f.write(json.dumps(order, ensure_ascii=False) + '\n')
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'ok': True, 'order_id': order['id']}, ensure_ascii=False).encode())
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+            return
+
         if self.path == '/auth':
             try:
                 import hashlib, secrets

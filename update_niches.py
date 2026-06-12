@@ -67,6 +67,7 @@ def main():
             float(row.get('purchase', 0) or 0) / 100,
             float(row.get('turnover_days', 0) or 0),
             int(row.get('suppliers_with_sells', 0) or 0),
+            float(row.get('revenue_purchase', 0) or 0),  # выручка после выкупа
         ))
 
     print(f'Подготовлено строк: {len(rows)}')
@@ -84,7 +85,8 @@ def main():
             avg_price NUMERIC,
             buyout_pct NUMERIC,
             turnover NUMERIC,
-            sellers_with_sales INTEGER
+            sellers_with_sales INTEGER,
+            revenue_with_buyout NUMERIC
         ) ON COMMIT DROP
     """)
 
@@ -101,13 +103,14 @@ def main():
     cur.execute("""
         UPDATE niches n
         SET
-            revenue            = u.revenue,
-            orders             = u.sales,
-            avg_price          = u.avg_price,
-            buyout_pct         = u.buyout_pct,
-            turnover           = u.turnover,
-            sellers_with_sales = u.sellers_with_sales,
-            data_updated_at    = %s
+            revenue             = u.revenue,
+            revenue_with_buyout = u.revenue_with_buyout,
+            orders              = u.sales,
+            avg_price           = u.avg_price,
+            buyout_pct          = u.buyout_pct,
+            turnover            = u.turnover,
+            sellers_with_sales  = u.sellers_with_sales,
+            data_updated_at     = %s
         FROM _niche_updates u
         WHERE n.name = u.name
     """, (NOW,))
@@ -146,21 +149,20 @@ def main():
     # Быстрая проверка по Вытяжкам
     conn2 = psycopg2.connect(DB)
     cur2 = conn2.cursor()
-    cur2.execute("SELECT name, orders, revenue, avg_price, data_updated_at FROM niches WHERE name='Вытяжки кухонные'")
-    row = cur2.fetchone()
-    if row:
-        name, orders, revenue, ap, upd = row
-        orders_v = int(orders or 0)
-        revenue_v = float(revenue or 0)
-        ap_v = float(ap or 0)
-        implied = orders_v * ap_v
-        diff = abs(implied - revenue_v) / revenue_v * 100 if revenue_v else 0
-        print(f'\n   Проверка «Вытяжки кухонные»:')
-        print(f'   orders={orders_v:,}  avg_price={ap_v:,.0f}₽')
-        print(f'   implied_revenue={implied:,.0f}  actual_revenue={revenue_v:,.0f}  diff={diff:.0f}%')
-        status = '✅ OK' if diff < 40 else '⚠️ расхождение > 40%'
-        print(f'   {status}')
-        print(f'   data_updated_at={upd}')
+    cur2.execute("""
+        SELECT name, orders, revenue, revenue_with_buyout, avg_price, data_updated_at
+        FROM niches
+        WHERE name IN ('Вытяжки кухонные', 'Кроссовки', 'Платья')
+        ORDER BY revenue DESC
+    """)
+    print(f'\n   {"Ниша":<25} {"orders":>8} {"revenue, млн":>14} {"с выкупом, млн":>16} {"выкуп %":>8}')
+    print(f'   {"-"*75}')
+    for row in cur2.fetchall():
+        name, orders, revenue, rwb, ap, upd = row
+        rev = float(revenue or 0) / 1e6
+        rwb_v = float(rwb or 0) / 1e6
+        pct = rwb_v / rev * 100 if rev else 0
+        print(f'   {name:<25} {int(orders or 0):>8,} {rev:>14,.1f} {rwb_v:>16,.1f} {pct:>7.0f}%')
     cur2.close()
     conn2.close()
 

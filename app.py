@@ -61,7 +61,7 @@ def get_catalog_cached():
         SELECT name, revenue, orders, sellers, sellers_with_sales,
                buyout_pct, profit_pct, turnover,
                COALESCE(display_name, name) as display_name,
-               mpstats_path, data_updated_at
+               mpstats_path, data_updated_at, revenue_with_buyout
         FROM niches
         WHERE revenue IS NOT NULL
         ORDER BY revenue DESC
@@ -83,6 +83,7 @@ def get_catalog_cached():
             'profit_pct': float(r[6] or 0),
             'turnover': float(r[7] or 0),
             'data_updated_at': r[10].strftime('%d.%m.%Y') if r[10] else None,
+            'revenue_annual': (float(r[11] or 0) or float(r[1] or 0)) * 12,
         })
     _catalog_cache = niches
     _catalog_cache_time = now
@@ -135,7 +136,7 @@ def find_niche(query):
         SELECT name, products, products_with_sales, sellers, sellers_with_sales,
                revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders,
                buyout_pct, turnover, profit_pct, avg_rating, rank, commission, avg_price,
-               data_updated_at
+               data_updated_at, revenue_with_buyout
         FROM niches
         WHERE (LOWER(name) LIKE LOWER(%s) OR LOWER(COALESCE(display_name,name)) LIKE LOWER(%s)) AND revenue IS NOT NULL
         ORDER BY CASE WHEN LOWER(name)=LOWER(%s) THEN 0 WHEN LOWER(name) LIKE LOWER(%s) THEN 1 ELSE 2 END, revenue DESC LIMIT 1
@@ -1100,6 +1101,7 @@ async function deepAnalysis(d) {
       name: d.full || d.name, revenue: d.revenue, avg_price: d.avg_price,
       commission: d.commission, buyout_pct: d.buyout_pct, profit_pct: d.profit_pct,
       turnover: d.turnover, sellers: d.sellers, sellers_with_sales: d.sellers_with_sales,
+      revenue_with_buyout: d.revenue_annual ? d.revenue_annual / 12 : d.revenue * d.buyout_pct,
       currency: currentCurrency
     })});
     const reader = r.body.getReader();
@@ -2799,7 +2801,7 @@ function renderResult(d) {
 
     <!-- ЗОНА 1: Метрики -->
     <div class="metrics-grid">
-      <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-tooltip">Суммарная выручка всех продавцов за последние 30 дней × 12. Показывает годовой размер рынка. Данные MPStats обновляются ежемесячно.</div><div class="metric-value">${fmtCurrency(d.revenue_annual || d.revenue * 12)}</div><div class="metric-sub">за 12 мес (оценка)</div></div>
+      <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-tooltip">Реальная выручка ниши после выкупа за 30 дней × 12. Возвраты исключены — это деньги которые остались у продавцов.</div><div class="metric-value">${fmtCurrency(d.revenue_annual || d.revenue * 12)}</div><div class="metric-sub">за 12 мес · после выкупа</div></div>
       <div class="metric-card"><div class="metric-label">Заказов в месяц</div><div class="metric-tooltip">Реальные продажи ниши за 30 дней по данным MPStats (поле sales). Обновляется раз в 2 недели.</div><div class="metric-value">${d.orders.toLocaleString('ru')}</div><div class="metric-sub">${(d.orders/30).toFixed(0)} в день${d.data_updated_at ? ' · <span style="color:#64748b;font-size:10px;">данные на ' + d.data_updated_at + '</span>' : ''}</div></div>
       <div class="metric-card"><div class="metric-label">Продавцов</div><div class="metric-tooltip">Общее число продавцов и тех кто реально продаёт. Низкий % активных = высокая конкуренция среди немногих.</div><div class="metric-value">${d.sellers.toLocaleString('ru')}</div><div class="metric-sub">${d.sellers_with_sales} с продажами</div></div>
       <div class="metric-card"><div class="metric-label">Выкуп</div><div class="metric-tooltip">Процент заказов которые покупатель не вернул. Низкий выкуп = высокие затраты на логистику возвратов.</div><div class="metric-value">${(d.buyout_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.buyout_pct >= 0.8 ? 'отличный' : d.buyout_pct >= 0.6 ? 'хороший' : 'низкий'}</div></div>
@@ -6189,7 +6191,7 @@ class Handler(BaseHTTPRequestHandler):
                            buyout_pct, turnover, profit_pct, lost_revenue_pct,
                            products, products_with_sales, avg_rating,
                            COALESCE(display_name, name) as display_name,
-                           mpstats_path
+                           mpstats_path, revenue_with_buyout
                     FROM niches
                     WHERE revenue IS NOT NULL
                     AND profit_pct > 0.1
@@ -6210,7 +6212,8 @@ class Handler(BaseHTTPRequestHandler):
                 for r in rows:
                     name, revenue, sellers, sellers_with_sales, buyout_pct, \
                     turnover, profit_pct, lost_revenue_pct, products, \
-                    products_with_sales, avg_rating, display_name, mpstats_path = r
+                    products_with_sales, avg_rating, display_name, mpstats_path, \
+                    revenue_with_buyout = r
                     score = calculate_score((
                         name, products, products_with_sales,
                         sellers, sellers_with_sales, revenue,
@@ -6219,11 +6222,12 @@ class Handler(BaseHTTPRequestHandler):
                         avg_rating, None, None, None
                     ))
                     cat = mpstats_path.split('/')[0] if mpstats_path else 'Другое'
+                    _rev_annual = (float(revenue_with_buyout or 0) or float(revenue or 0)) * 12
                     results.append({
                         'name': display_name,
                         'full': name,
                         'revenue': float(revenue or 0),
-                        'revenue_annual': float(revenue or 0) * 12,
+                        'revenue_annual': _rev_annual,
                         'score': score,
                         'category': cat,
                     })
@@ -6329,7 +6333,7 @@ class Handler(BaseHTTPRequestHandler):
                     SELECT name, revenue, orders, sellers, sellers_with_sales,
                            buyout_pct, profit_pct, turnover, lost_revenue_pct,
                            COALESCE(display_name, name) as display_name,
-                           avg_price, commission
+                           avg_price, commission, revenue_with_buyout
                     FROM niches
                     WHERE buyout_pct > 0.70
                     AND turnover BETWEEN 5 AND 45
@@ -6349,17 +6353,18 @@ class Handler(BaseHTTPRequestHandler):
                 conn.close()
                 results = []
                 for r in rows:
-                    name, revenue, orders, sellers, sellers_with_sales,                     buyout_pct, profit_pct, turnover, lost_revenue_pct,                     display_name, avg_price, commission = r
+                    name, revenue, orders, sellers, sellers_with_sales,                     buyout_pct, profit_pct, turnover, lost_revenue_pct,                     display_name, avg_price, commission, revenue_with_buyout = r
                     score = calculate_score((
                         name, None, None, sellers, sellers_with_sales,
                         revenue, None, None, lost_revenue_pct, orders,
                         buyout_pct, turnover, profit_pct, None, None, commission, avg_price
                     ))
+                    _rev_annual = (float(revenue_with_buyout or 0) or float(revenue or 0)) * 12
                     results.append({
                         'name': display_name,
                         'full': name,
                         'revenue': float(revenue or 0),
-                        'revenue_annual': float(revenue or 0) * 12,
+                        'revenue_annual': _rev_annual,
                         'orders': int(orders or 0),
                         'buyout_pct': float(buyout_pct or 0),
                         'profit_pct': float(profit_pct or 0),
@@ -6399,8 +6404,9 @@ class Handler(BaseHTTPRequestHandler):
                 sym = symbols.get(currency, '₽')
 
                 # Считаем базовые показатели для контекста
+                revenue_with_buyout = float(params.get('revenue_with_buyout', [0])[0]) or revenue * buyout_pct
                 real_turnover = round(turnover / buyout_pct) if buyout_pct > 0 else round(turnover)
-                avg_rev_per_seller = revenue / sellers_with_sales if sellers_with_sales > 0 else 0
+                avg_rev_per_seller = revenue_with_buyout / sellers_with_sales if sellers_with_sales > 0 else 0
 
                 # Claude AI глубокий анализ
                 import anthropic as anthr
@@ -6412,7 +6418,7 @@ class Handler(BaseHTTPRequestHandler):
 Курс к рублю: {rate}
 
 ДАННЫЕ НИШИ:
-- Выручка ниши (30 дней): {revenue:,.0f} ₽ (~{revenue*12:,.0f} ₽/год)
+- Выручка ниши (30 дней, после выкупа): {revenue_with_buyout:,.0f} ₽ (~{revenue_with_buyout*12:,.0f} ₽/год)
 - Заказов: {int(revenue/avg_price) if avg_price > 0 else 0}/мес
 - Продавцов всего: {sellers}
 - Продавцов с продажами: {sellers_with_sales} ({round(sellers_with_sales/sellers*100) if sellers > 0 else 0}%)
@@ -7049,7 +7055,7 @@ class Handler(BaseHTTPRequestHandler):
                     name, products, products_with_sales, sellers, sellers_with_sales, \
                     revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders, \
                     buyout_pct, turnover, profit_pct, avg_rating, rank, commission, avg_price, \
-                    data_updated_at = row
+                    data_updated_at, revenue_with_buyout = row
                     sellers_pct = (sellers_with_sales or 0) / (sellers or 1)
                     score = calculate_score(row[:17])
                     verdict = get_verdict(score)
@@ -7084,7 +7090,7 @@ class Handler(BaseHTTPRequestHandler):
                         'data_warning': data_warning,
                         'category': get_category(name),
                         'revenue': float(revenue or 0),
-                        'revenue_annual': float(revenue or 0) * 12,
+                        'revenue_annual': (float(revenue_with_buyout or 0) or float(revenue or 0)) * 12,
                         'orders': int(orders or 0),
                         'sellers': int(sellers or 0),
                         'sellers_with_sales': int(sellers_with_sales or 0),
@@ -9826,19 +9832,20 @@ def handle_deep_stream(handler, body):
     turnover = float(body.get('turnover', 0))
     sellers = int(body.get('sellers', 0))
     sellers_with_sales = int(body.get('sellers_with_sales', 0))
+    revenue_with_buyout = float(body.get('revenue_with_buyout', 0)) or revenue * buyout_pct
     currency = body.get('currency', 'rub')
     rates = {'rub': 1, 'usd': 0.011, 'eur': 0.010, 'byn': 0.036}
     symbols = {'rub': '\u20bd', 'usd': '$', 'eur': '\u20ac', 'byn': 'Br'}
     rate = rates.get(currency, 1)
     sym = symbols.get(currency, '\u20bd')
     real_turnover = round(turnover / buyout_pct) if buyout_pct > 0 else round(turnover)
-    avg_rev_per_seller = revenue / sellers_with_sales if sellers_with_sales > 0 else 0
+    avg_rev_per_seller = revenue_with_buyout / sellers_with_sales if sellers_with_sales > 0 else 0
 
     prompt = (
         f"Ты эксперт по торговле на Wildberries. Сделай глубокий анализ ниши для селлера.\n\n"
         f"Ниша: {name}\nВалюта: {sym}\nКурс к рублю: {rate}\n\n"
         f"ДАННЫЕ НИШИ:\n"
-        f"Выручка за период: {revenue:,.0f} руб\n"
+        f"Выручка ниши за 30 дней (после выкупа): {revenue_with_buyout:,.0f} руб (~{revenue_with_buyout*12:,.0f} руб/год)\n"
         f"Продавцов всего: {sellers}, с продажами: {sellers_with_sales} ({round(sellers_with_sales/sellers*100) if sellers > 0 else 0}%)\n"
         f"Средняя цена: {avg_price:,.0f} руб | Комиссия WB: {commission:.0f}%\n"
         f"Выкуп: {buyout_pct*100:.0f}% | Оборачиваемость: {real_turnover} дней\n"

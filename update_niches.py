@@ -19,7 +19,8 @@ import psycopg2.extras
 from datetime import date, datetime
 from dotenv import load_dotenv
 
-load_dotenv()
+_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(_DIR, '.env'))
 
 TOKEN = os.getenv('MPSTATS_TOKEN')
 DB = os.getenv('DATABASE_URL')

@@ -8930,6 +8930,44 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 self.end_headers()
                 self.wfile.write(json.dumps({'error':str(e)}).encode('utf-8'))
 
+        elif self.path.startswith('/niche-history'):
+            try:
+                from urllib.parse import parse_qs, urlparse, unquote
+                qs = parse_qs(urlparse(self.path).query)
+                niche_name = unquote(qs.get('name', [''])[0])
+                if not niche_name:
+                    raise ValueError('name required')
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT snapshot_date, revenue, sales, avg_price, buyout_pct, turnover, sellers_with_sales
+                    FROM niche_history
+                    WHERE niche_name = %s
+                    ORDER BY snapshot_date
+                """, (niche_name,))
+                rows = cur.fetchall()
+                cur.close()
+                conn.close()
+                history = [{
+                    'date':      str(r[0]),
+                    'revenue':   float(r[1] or 0),
+                    'sales':     int(r[2] or 0),
+                    'avg_price': float(r[3] or 0),
+                    'buyout_pct': float(r[4] or 0),
+                    'turnover':  float(r[5] or 0),
+                    'sellers_with_sales': int(r[6] or 0),
+                } for r in rows]
+                resp = json.dumps({'name': niche_name, 'snapshots': len(history), 'history': history}, ensure_ascii=False).encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(resp)
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+
         elif self.path == '/pdf-prepare':
             # Сохраняет данные ниши и возвращает session_id для SSE-потока
             try:

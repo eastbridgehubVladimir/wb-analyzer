@@ -759,7 +759,7 @@ function renderWatchlist() {
     html += '</div>';
     html += '<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:6px;padding-right:24px;">'+sn+'</div>';
     if (score > 0) html += '<div style="font-size:10px;color:'+scoreColor+';margin-bottom:6px;">'+score+'/100</div>';
-    html += '<div style="font-size:11px;color:#555;margin-bottom:6px;">'+fmt(n.revenue_annual)+'/год</div>';
+    html += '<div style="font-size:11px;color:#555;margin-bottom:6px;">'+fmt(n.revenue_annual || n.revenue * 12)+'/год</div>';
     // Метрики ниши
     if (n.avg_price) {
       html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px;">';
@@ -1749,7 +1749,7 @@ async function showTopNiches() {
         <div onclick="setQuery('${n.full}')" style="background:#1e2433;border:1px solid #2d3748;border-radius:12px;padding:16px;cursor:pointer;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#2d3748'">
           <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:8px">${n.full}</div>
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="font-size:13px;color:#555">${fmt(n.revenue_annual)}/год</div>
+            <div style="font-size:13px;color:#555">${fmt(n.revenue_annual || n.revenue * 12)}/год</div>
             <div style="font-size:18px;font-weight:700;color:${n.score>=65?'#22c55e':n.score>=40?'#eab308':'#ef4444'}">${n.score}</div>
           </div>
         </div>
@@ -1821,7 +1821,7 @@ function filterCatalog() {
       <div>
         <div style="font-size:15px;color:#fff;font-weight:500;margin-bottom:6px;">${activeCatFilter !== 'Все' && n.name.includes(' / ') ? n.name.split(' / ').slice(1).join(' / ') : n.name}</div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
-          <span style="font-size:12px;color:#555;">${fmt(n.revenue_annual)}/год</span>
+          <span style="font-size:12px;color:#555;">${fmt(n.revenue_annual || n.revenue * 12)}/год</span>
           <span style="font-size:12px;color:#555;">${n.sellers} продавцов</span>
           <span style="font-size:12px;color:#555;">выкуп ${Math.round(n.buyout_pct*100)}%</span>
           <span style="font-size:12px;color:#555;">маржа ${Math.round(n.profit_pct*100)}% до себест.</span>

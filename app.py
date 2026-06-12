@@ -6546,6 +6546,8 @@ class Handler(BaseHTTPRequestHandler):
             query = unquote(query)
             try:
                 from datetime import date, timedelta
+                d2_dynamic = date.today().strftime('%Y-%m-%d')
+                d1_dynamic = (date.today() - timedelta(days=730)).strftime('%Y-%m-%d')
                 conn = psycopg2.connect(DB)
                 cur = conn.cursor()
                 cur.execute("SELECT mpstats_path, name, COALESCE(path_verified, FALSE) FROM niches WHERE name ILIKE %s ORDER BY CASE WHEN LOWER(name)=LOWER(%s) THEN 0 ELSE 1 END LIMIT 1", (f'%{query}%', query))
@@ -6603,7 +6605,7 @@ class Handler(BaseHTTPRequestHandler):
 
                 for try_path in paths_to_try:
                     try:
-                        d_mp = get_mpstats_cached(try_path, '2024-04-01', '2026-04-14')
+                        d_mp = get_mpstats_cached(try_path, d1_dynamic, d2_dynamic)
                         items_try = d_mp.get('data', [])
                         if not items_try:
                             print(f'[CHARTS] Путь {try_path!r} → 0 товаров')
@@ -6659,7 +6661,7 @@ class Handler(BaseHTTPRequestHandler):
                     else:
                         items = items_raw
 
-                    start = date(2024, 4, 1)
+                    start = date.today() - timedelta(days=730)
                     months_revenue = {}
                     months_sales = {}
 
@@ -9070,7 +9072,7 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                     conn.close()
                     mpstats_path = row[0] if row else niche_name
                     d2 = date.today().isoformat()
-                    d1 = (date.today() - timedelta(days=60)).isoformat()
+                    d1 = (date.today() - timedelta(days=730)).isoformat()
                     mp_data = get_mpstats_cached(mpstats_path, d1, d2)
                     items_raw = mp_data.get('data', [])[:100]
                     print(f'[PDF-AUTO] MPStats items: {len(items_raw)}')

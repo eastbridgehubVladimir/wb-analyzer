@@ -3,9 +3,12 @@
 Запуск: uvicorn main:app --reload
 Документация: http://localhost:8000/docs
 """
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+
+logger = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.v1.router import api_router
@@ -15,11 +18,15 @@ from core.database import close_redis, init_redis
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Запуск: подключаем Redis
-    await init_redis()
+    try:
+        await init_redis()
+    except Exception as exc:
+        logger.warning("Redis недоступен, продолжаем без него: %s", exc)
     yield
-    # Остановка: закрываем соединение
-    await close_redis()
+    try:
+        await close_redis()
+    except Exception:
+        pass
 
 
 app = FastAPI(
@@ -31,8 +38,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

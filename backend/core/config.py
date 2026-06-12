@@ -8,8 +8,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # PostgreSQL
-    database_url: str = "postgresql+asyncpg://wb:wb_secret@localhost:5432/wb_saas"
+    # PostgreSQL — async driver для FastAPI, sync для скриптов
+    async_database_url: str = "postgresql+asyncpg://wb:wb_secret@localhost:5432/wb_saas"
+
+    @property
+    def database_url(self) -> str:
+        """Возвращает async URL (для FastAPI). Если задан ASYNC_DATABASE_URL — использует его."""
+        return self.async_database_url
 
     # ClickHouse
     clickhouse_host: str = "localhost"
@@ -32,7 +37,16 @@ class Settings(BaseSettings):
     mpstats_token: str = ""
     # Безопасность
     secret_key: str = "change_me"
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://127.0.0.1:8000",
+        "http://127.0.0.1:8001",
+        "http://127.0.0.1:8002",
+        "http://127.0.0.1:8003",
+        "http://127.0.0.1:8004",
+    ]
 
     @property
     def proxies(self) -> list[str]:

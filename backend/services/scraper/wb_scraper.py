@@ -101,24 +101,50 @@ class WBScraper:
             finally:
                 await browser.close()
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=2, max=10))
     async def scrape_search(self, keyword: str, pages: int = 3) -> list[int]:
         """Вернуть список SKU из результатов поиска по ключевому слову."""
+        proxy = proxy_rotator.get()
+        proxy_config = {"server": proxy} if proxy else None
         skus: list[int] = []
         async with async_playwright() as pw:
             browser = await pw.chromium.launch(headless=True)
-            page = await (await browser.new_context()).new_page()
-            for page_num in range(1, pages + 1):
-                url = f"https://www.wildberries.ru/catalog/0/search.aspx?search={keyword}&page={page_num}"
-                await page.goto(url, wait_until="domcontentloaded")
-                await asyncio.sleep(1.5)
-                page_skus = await page.evaluate("""() =>
-                    Array.from(document.querySelectorAll('[data-nm-id]'))
-                         .map(el => parseInt(el.dataset.nmId))
-                         .filter(Boolean)
-                """)
-                skus.extend(page_skus)
-            await browser.close()
-        return list(set(skus))
+            try:
+                context = await browser.new_context(
+                    proxy=proxy_config,
+                    user_agent=(
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/120.0.0.0 Safari/537.36"
+                    ),
+                    viewport={"width": 1280, "height": 900},
+                )
+                page = await context.new_page()
+                for page_num in range(1, pages + 1):
+                    url = f"https://www.wildberries.ru/catalog/0/search.aspx?search={keyword}&page={page_num}"
+                    try:
+                        await page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+                        await page.wait_for_selector('[data-nm-id]', timeout=10_000)
+                        await asyncio.sleep(1.5)
+                        page_skus = await page.evaluate("""() =>
+                            Array.from(document.querySelectorAll('[data-nm-id]'))
+                                 .map(el => parseInt(el.dataset.nmId))
+                                 .filter(Boolean)
+                        """)
+                        skus.extend(page_skus)
+                    except Exception as exc:
+                        logger.warning(
+                            "Search page %s failed (proxy=%s): %s",
+                            url,
+                            proxy,
+                            exc,
+                        )
+                        if proxy:
+                            proxy_rotator.mark_failed(proxy)
+                        raise
+                return list(set(skus))
+            finally:
+                await browser.close()
 
 
 wb_scraper = WBScraper()

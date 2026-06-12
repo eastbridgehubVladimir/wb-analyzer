@@ -15,6 +15,8 @@ async def pg_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
+
+
 def ch_client():
     """Выдаёт клиент ClickHouse."""
     return get_clickhouse_client()

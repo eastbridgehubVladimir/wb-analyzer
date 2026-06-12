@@ -8,18 +8,21 @@ from contextlib import asynccontextmanager
 
 import clickhouse_connect
 import redis.asyncio as aioredis
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from core.config import settings
 
-# ── PostgreSQL ──────────────────────────────────────────────
-engine = create_async_engine(
-    settings.database_url,
-    pool_size=10,
-    max_overflow=20,
-    echo=False,  # True — выводить SQL запросы в лог (удобно при отладке)
-)
+# ── PostgreSQL / SQLAlchemy Async ──────────────────────────────────────
+engine_url = make_url(settings.database_url)
+engine_kwargs = {
+    "echo": False,  # True — выводить SQL запросы в лог (удобно при отладке)
+}
+if not engine_url.drivername.startswith("sqlite"):
+    engine_kwargs.update(pool_size=10, max_overflow=20)
+
+engine = create_async_engine(settings.database_url, **engine_kwargs)
 
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 

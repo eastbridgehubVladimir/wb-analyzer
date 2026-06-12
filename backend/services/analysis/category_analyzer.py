@@ -96,14 +96,14 @@ async def analyze_category(
     # ── 4б. AI-анализ ────────────────────────────────────
     try:
         metrics_summary = MetricsSummary(
-            monthly_revenue_estimate=revenue.total_revenue,
+            monthly_revenue_estimate=revenue.monthly_estimate,
             avg_orders_per_day=velocity.avg_orders_per_day,
             active_sellers=competition.active_sellers,
-            competition_level=competition.level,
-            median_price=prices.median_price,
+            competition_level=competition.level.value,
+            median_price=prices.median,
             price_iqr=prices.iqr,
-            top_20pct_revenue_share=competition.top_20pct_share,
-            top_10_revenue_share=competition.top_10_share,
+            top_20pct_revenue_share=revenue.top_20pct_share,
+            top_10_revenue_share=competition.top_10_revenue_share,
         )
         ai_insights = await analyze_niche(metrics_summary)
         result.ai_insights = ai_insights

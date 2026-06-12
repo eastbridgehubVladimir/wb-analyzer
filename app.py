@@ -61,7 +61,7 @@ def get_catalog_cached():
         SELECT name, revenue, orders, sellers, sellers_with_sales,
                buyout_pct, profit_pct, turnover,
                COALESCE(display_name, name) as display_name,
-               mpstats_path
+               mpstats_path, data_updated_at
         FROM niches
         WHERE revenue IS NOT NULL
         ORDER BY revenue DESC
@@ -82,6 +82,7 @@ def get_catalog_cached():
             'buyout_pct': float(r[5] or 0),
             'profit_pct': float(r[6] or 0),
             'turnover': float(r[7] or 0),
+            'data_updated_at': r[10].strftime('%d.%m.%Y') if r[10] else None,
         })
     _catalog_cache = niches
     _catalog_cache_time = now
@@ -133,7 +134,8 @@ def find_niche(query):
     cursor.execute("""
         SELECT name, products, products_with_sales, sellers, sellers_with_sales,
                revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders,
-               buyout_pct, turnover, profit_pct, avg_rating, rank, commission, avg_price
+               buyout_pct, turnover, profit_pct, avg_rating, rank, commission, avg_price,
+               data_updated_at
         FROM niches
         WHERE (LOWER(name) LIKE LOWER(%s) OR LOWER(COALESCE(display_name,name)) LIKE LOWER(%s)) AND revenue IS NOT NULL
         ORDER BY CASE WHEN LOWER(name)=LOWER(%s) THEN 0 WHEN LOWER(name) LIKE LOWER(%s) THEN 1 ELSE 2 END, revenue DESC LIMIT 1
@@ -2798,7 +2800,7 @@ function renderResult(d) {
     <!-- ЗОНА 1: Метрики -->
     <div class="metrics-grid">
       <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-tooltip">Суммарная выручка всех продавцов за последние 30 дней × 12. Показывает годовой размер рынка. Данные MPStats обновляются ежемесячно.</div><div class="metric-value">${fmtCurrency(d.revenue_annual || d.revenue * 12)}</div><div class="metric-sub">за 12 мес (оценка)</div></div>
-      <div class="metric-card"><div class="metric-label">Заказов в месяц</div><div class="metric-tooltip">Среднемесячное количество заказов в нише. Чем больше — тем активнее спрос.</div><div class="metric-value">${d.orders.toLocaleString('ru')}</div><div class="metric-sub">${(d.orders/30).toFixed(0)} в день</div></div>
+      <div class="metric-card"><div class="metric-label">Заказов в месяц</div><div class="metric-tooltip">Реальные продажи ниши за 30 дней по данным MPStats (поле sales). Обновляется раз в 2 недели.</div><div class="metric-value">${d.orders.toLocaleString('ru')}</div><div class="metric-sub">${(d.orders/30).toFixed(0)} в день${d.data_updated_at ? ' · <span style="color:#64748b;font-size:10px;">данные на ' + d.data_updated_at + '</span>' : ''}</div></div>
       <div class="metric-card"><div class="metric-label">Продавцов</div><div class="metric-tooltip">Общее число продавцов и тех кто реально продаёт. Низкий % активных = высокая конкуренция среди немногих.</div><div class="metric-value">${d.sellers.toLocaleString('ru')}</div><div class="metric-sub">${d.sellers_with_sales} с продажами</div></div>
       <div class="metric-card"><div class="metric-label">Выкуп</div><div class="metric-tooltip">Процент заказов которые покупатель не вернул. Низкий выкуп = высокие затраты на логистику возвратов.</div><div class="metric-value">${(d.buyout_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.buyout_pct >= 0.8 ? 'отличный' : d.buyout_pct >= 0.6 ? 'хороший' : 'низкий'}</div></div>
       <div class="metric-card"><div class="metric-label">Оборачиваемость (реальная)</div><div class="metric-tooltip">Среднее время продажи партии товара по данным MPStats (остаток / среднедневные продажи). Значение 1-2 дня = товар продаётся очень быстро. Чем меньше — тем быстрее оборот капитала.</div><div class="metric-value">${(() => { const real = d.buyout_pct > 0 ? Math.round(d.turnover / d.buyout_pct) : Math.round(d.turnover); return real > 365 ? "365+" : real; })()} дн</div><div class="metric-sub">${(() => { const real = d.buyout_pct > 0 ? Math.round(d.turnover / d.buyout_pct) : Math.round(d.turnover); return real <= 45 ? '<span class="turn-fast">🟢 быстро</span>' : real <= 90 ? '<span class="turn-seasonal">🟡 умеренно</span>' : '<span class="turn-slow">🔴 медленно</span>'; })()} <span style="font-size:10px;color:#444;">MPStats: ${Math.round(d.turnover)} дн</span></div></div>
@@ -7046,9 +7048,10 @@ class Handler(BaseHTTPRequestHandler):
                     insights = get_ai_insights(row)
                     name, products, products_with_sales, sellers, sellers_with_sales, \
                     revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders, \
-                    buyout_pct, turnover, profit_pct, avg_rating, rank, commission, avg_price = row
+                    buyout_pct, turnover, profit_pct, avg_rating, rank, commission, avg_price, \
+                    data_updated_at = row
                     sellers_pct = (sellers_with_sales or 0) / (sellers or 1)
-                    score = calculate_score(row)
+                    score = calculate_score(row[:17])
                     verdict = get_verdict(score)
 
                     try:
@@ -7096,6 +7099,7 @@ class Handler(BaseHTTPRequestHandler):
                         'avg_rating': float(avg_rating or 0),
                         'avg_price': float(avg_price or 0),
                         'commission': float(commission or 0),
+                        'data_updated_at': data_updated_at.strftime('%d.%m.%Y') if data_updated_at else None,
                     }
 
                 self.send_response(200)

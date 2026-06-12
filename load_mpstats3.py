@@ -101,7 +101,7 @@ for row in data:
             float(row.get('lost_profit_percent', 0) or 0) / 100,
             float(row.get('final_price_median', 0) or 0),
             float(row.get('commision_fbo', 0) or 0),
-            int(row.get('orders_count', 0) or 0),
+            int(row.get('sales', 0) or 0),  # 'sales' = реальные продажи ниши; 'orders_count' — другой канал (всегда ~1-100)
             mpstats_path,
         ))
         loaded += 1

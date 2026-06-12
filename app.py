@@ -1890,7 +1890,15 @@ async function loadCharts(name) {
     }
     
     window._chartData = data;
-    
+
+    // Показываем примечание о масштабировании
+    const scaleNote = document.getElementById('chart-scale-note');
+    if (scaleNote && data.niche_scale_factor && data.niche_scale_factor > 1.5) {
+      const totalStr = data.niche_total_sales ? data.niche_total_sales.toLocaleString('ru') + ' зак/мес' : '';
+      scaleNote.textContent = 'Масштаб ×' + data.niche_scale_factor + ' (топ-500→вся ниша' + (totalStr ? ', сейчас ' + totalStr : '') + ')';
+      scaleNote.style.display = 'block';
+    }
+
     if (revenueChartInstance) revenueChartInstance.destroy();
     if (salesChartInstance) salesChartInstance.destroy();
     
@@ -2812,9 +2820,10 @@ function renderResult(d) {
 
     <!-- ЗОНА 4: Два графика в ряд -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;" class="mobile-single-col">
-      <div class="chart-card" style="height:320px;" onclick="openChartModal('📦 Сезонность заказов', 'line', window._chartData.labels, window._chartData.sales, '#4ade80', false)">
-        <div class="chart-title">📦 Сезонность заказов <span style="font-size:10px;color:#555;">(шт)</span> <span style="font-size:10px;color:#555;">🔍</span></div>
-        <canvas id="salesChart" height="140"></canvas>
+      <div class="chart-card" style="height:320px;" onclick="openChartModal('📦 Сезонность заказов (масштабировано)', 'line', window._chartData.labels, window._chartData.sales, '#4ade80', false)">
+        <div class="chart-title">📦 Сезонность заказов <span style="font-size:10px;color:#555;">(шт, вся ниша)</span> <span style="font-size:10px;color:#555;">🔍</span></div>
+        <div id="chart-scale-note" style="font-size:9px;color:#444;margin-bottom:4px;display:none;"></div>
+        <canvas id="salesChart" height="130"></canvas>
       </div>
       <div class="chart-card" style="cursor:default;">
         <div class="chart-title">📊 Ключевые показатели</div>
@@ -6645,7 +6654,7 @@ class Handler(BaseHTTPRequestHandler):
                     start = date(2024, 4, 1)
                     months_revenue = {}
                     months_sales = {}
-                    
+
                     for item in items:
                         rg = item.get('revenue_graph', [])
                         sg = item.get('sales_graph', [])
@@ -6657,6 +6666,49 @@ class Handler(BaseHTTPRequestHandler):
                             d = start + timedelta(days=i)
                             key = f'{d.year}-{d.month:02d}'
                             months_sales[key] = months_sales.get(key, 0) + (val or 0)
+
+                    # ── Масштабирование к реальному объёму ниши через subjects/select ──
+                    # /get/category возвращает топ-N товаров (обычно 20-30% рынка).
+                    # subjects/select даёт реальный агрегат всей ниши за 30 дней.
+                    # Находим коэффициент масштабирования по последнему полному месяцу.
+                    niche_total_sales = 0
+                    niche_total_revenue = 0
+                    niche_scale_factor = 1.0
+                    try:
+                        subj_r = get_mpstats_cached.__func__ if hasattr(get_mpstats_cached, '__func__') else None
+                        import requests as _req
+                        _subj = _req.get(
+                            'https://mpstats.io/api/wb/get/subjects/select',
+                            headers={'X-Mpstats-TOKEN': MPSTATS_TOKEN, 'Content-Type': 'application/json'},
+                            params={'fbs': 1},
+                            json={'startRow': 0, 'endRow': 10000, 'filterModel': {}, 'sortModel': []},
+                            timeout=30,
+                        )
+                        if _subj.status_code == 200:
+                            _all = _subj.json()
+                            _name_lower = niche_name.lower()
+                            _row = next((x for x in _all if x.get('name', '').lower() == _name_lower), None)
+                            if not _row:
+                                # мягкий поиск
+                                _row = next((x for x in _all if _name_lower in x.get('name', '').lower()), None)
+                            if _row:
+                                niche_total_sales   = int(_row.get('sales', 0) or 0)
+                                niche_total_revenue = int(_row.get('revenue', 0) or 0)
+                                # Последний полный месяц из топ-N (второй с конца, т.к. текущий неполный)
+                                sorted_keys = sorted(months_sales.keys())
+                                if len(sorted_keys) >= 2:
+                                    ref_key = sorted_keys[-2]
+                                    top_n_last = months_sales.get(ref_key, 0)
+                                    if top_n_last > 0 and niche_total_sales > 0:
+                                        # Грубый scale: текущие 30 дней / последний полный месяц топ-N
+                                        niche_scale_factor = niche_total_sales / top_n_last
+                                        niche_scale_factor = max(1.0, min(50.0, niche_scale_factor))
+                                # Масштабируем все месяцы
+                                months_sales   = {k: round(v * niche_scale_factor) for k, v in months_sales.items()}
+                                months_revenue = {k: round(v * niche_scale_factor) for k, v in months_revenue.items()}
+                                print(f'[CHARTS] scale={niche_scale_factor:.1f}x, niche_total={niche_total_sales:,}')
+                    except Exception as _se:
+                        print(f'[CHARTS] subjects/select skip: {_se}')
                     
                     labels = sorted(months_revenue.keys())
                     month_names = {'01':'Янв','02':'Фев','03':'Мар','04':'Апр','05':'Май',
@@ -6841,6 +6893,9 @@ class Handler(BaseHTTPRequestHandler):
                         'labels': [month_names[k.split('-')[1]] + ' ' + k.split('-')[0][2:] for k in labels],
                         'revenue': [round(months_revenue.get(k, 0) / 1000000, 1) for k in labels],
                         'sales': [months_sales.get(k, 0) for k in labels],
+                        'niche_total_sales': niche_total_sales,
+                        'niche_total_revenue': niche_total_revenue,
+                        'niche_scale_factor': round(niche_scale_factor, 1),
                         'price_labels': list(price_segments.keys()),
                         'price_data': list(price_segments.values()),
                         'seller_labels': [s[0][:25] for s in top_sellers] + ['Остальные продавцы'],

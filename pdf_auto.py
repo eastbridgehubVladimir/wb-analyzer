@@ -18,6 +18,8 @@ _ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_ROOT, 'backend'))
 sys.path.insert(0, _ROOT)
 
+import sourcing_intel as _si
+
 # ── Авто-установка зависимостей ────────────────────────────────────────────────
 def _ensure_deps():
     pkgs = []
@@ -355,7 +357,7 @@ def _finance_block(fm: dict) -> str:
 
 def _run_master(n: dict, level: str = 'standard') -> dict:
     name = n.get('name', '')
-    revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
+    revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) * 12
     avg_price = float(n.get('avg_price', 0))
     profit_pct = float(n.get('profit_pct', 0))
     buyout_pct = float(n.get('buyout_pct', 0))
@@ -481,7 +483,7 @@ def _run_master(n: dict, level: str = 'standard') -> dict:
 
 def _run_deep(n: dict, master_verdict: str = '') -> dict:
     name = n.get('name', '')
-    revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
+    revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) * 12
     avg_price = float(n.get('avg_price', 0))
     commission = float(n.get('commission', 0))
     buyout_pct = float(n.get('buyout_pct', 0))
@@ -581,7 +583,7 @@ def _run_unit(n: dict) -> dict:
 def _run_ads(n: dict) -> dict:
     name = n.get('name', '')
     avg_price = float(n.get('avg_price', 0))
-    revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
+    revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) * 12
     profit_pct = float(n.get('profit_pct', 0))
     buyout_pct = float(n.get('buyout_pct', 0))
     commission = float(n.get('commission', 0))
@@ -623,7 +625,7 @@ def _run_ads(n: dict) -> dict:
 
 def _run_competitors(n: dict) -> dict:
     name      = n.get('name', '')
-    revenue   = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
+    revenue   = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) * 12
     avg_price = float(n.get('avg_price', 0))
     sellers   = int(n.get('sellers', 0))
     sws       = int(n.get('sellers_with_sales', 0))
@@ -660,32 +662,90 @@ def _run_competitors(n: dict) -> dict:
 
 
 def _run_supplier(n: dict) -> dict:
-    name = n.get('name', '')
-    avg_price = float(n.get('avg_price', 0))
-    avg_usd = round(avg_price / 90, 1)
-
-    prompt = (
-        f"Ты эксперт по закупкам в Китае.\n"
-        f"НИША: {name} | Цена WB: {avg_price} ₽ (${avg_usd})\n"
-        "Комиссия WB ~25%, логистика ~120 ₽/шт.\n\n"
-        "ONLY JSON:\n"
-        '{"price_taobao_usd":0,"price_alibaba_usd":0,"moq":0,'
-        '"summary":"3-4 предложения о поставщиках и ценах",'
-        '"search_links":['
-        '{"platform":"1688","url":"https://s.1688.com/selloffer/offer_search.htm?keywords=QUERY_CN","description":"самые низкие оптовые цены"},'
-        '{"platform":"Alibaba","url":"https://www.alibaba.com/trade/search?SearchText=QUERY_EN","description":"оптовые поставщики"},'
-        '{"platform":"Pinduoduo","url":"https://mobile.yangkeduo.com/search_result.html?search_key=QUERY_CN","description":"групповые закупки"}],'
-        '"real_margin_pct":0,"roi_pct":0,"profit_per_unit_rub":0}'
-    )
-    return _json(_claude(prompt, 1000))
-
-
-def _run_docs(n: dict) -> dict:
-    name = n.get('name', '')
+    """Определяет оптимальные каналы закупки с помощью sourcing_intel,
+    затем просит Claude сгенерировать конкретные рекомендации по топ-странам."""
+    name      = n.get('name', '')
     avg_price = float(n.get('avg_price', 0))
 
+    # Сигнальный анализ — определяем топ-страны без стереотипов
+    report = _si.analyze(name, avg_price, revenue=float(n.get('revenue', 0)))
+
+    # Строим умный промпт с контекстом всех вариантов
+    prompt = _si.build_sourcing_prompt(report, n)
+
+    try:
+        ai_data = _json(_claude(prompt, 1200))
+    except Exception:
+        ai_data = {}
+
+    # Формируем унифицированный результат с данными из обоих источников
+    search_queries = ai_data.get('search_queries', {})
+    search_terms   = {**report.search_terms, **search_queries}
+
+    # Строим search_links из топ-платформ по топ-стране
+    search_links = []
+    for opt in report.options[:3]:
+        for plat in opt.platforms:
+            url = _si.platform_url(plat, search_terms)
+            search_links.append({
+                'platform':    plat['name'],
+                'country':     opt.label,
+                'url':         url or '',
+                'description': plat.get('note', ''),
+                'moq':         plat.get('moq', ''),
+            })
+
+    return {
+        # Данные из sourcing_intel (детерминированные)
+        '_report':       report,
+        'sourcing_options': [
+            {
+                'rank':         opt.rank,
+                'country':      opt.label,
+                'score':        opt.score,
+                'customs_pct':  opt.logistics.get('customs_pct', 0),
+                'logistics_rub': opt.logistics.get('logistics_rub', 0),
+                'lead_time':    opt.logistics.get('lead_time_days', ''),
+                'min_order_rub': opt.logistics.get('min_order_rub', 0),
+                'risks':        opt.logistics.get('risks', ''),
+                'certification': opt.logistics.get('certifications', ''),
+                'platforms':    opt.platforms,
+            }
+            for opt in report.options
+        ],
+        # Данные из Claude (интерпретация и конкретные советы)
+        'summary':        ai_data.get('summary', ''),
+        'top_country':    ai_data.get('top_country', (report.options[0].label if report.options else '')),
+        'supplier_tips':  ai_data.get('supplier_tips', []),
+        'red_flags':      ai_data.get('red_flags', []),
+        'first_order_rub': ai_data.get('first_order_rub', 0),
+        'certification_note': ai_data.get('certification_note', ''),
+        'search_links':   search_links,
+        'search_queries': search_queries,
+        # Совместимость со старым кодом _sec_docs
+        'detected_category': report.signals.category,
+        'price_tier':        report.signals.price_tier,
+    }
+
+
+def _run_docs(n: dict, supplier_data: dict = None) -> dict:
+    name = n.get('name', '')
+    avg_price = float(n.get('avg_price', 0))
+
+    # Определяем источник закупки для точных рекомендаций по документам
+    sourcing_context = "закупки в Китае"
+    if supplier_data:
+        top = supplier_data.get('top_country', '')
+        cat = supplier_data.get('detected_category', '')
+        if top:
+            sourcing_context = f"закупки: {top}"
+        if cat in ('food',):
+            sourcing_context += ". ВАЖНО: еда требует ветсертификатов, деклараций о соответствии ТР ТС и ГОСТ"
+        elif cat == 'kids':
+            sourcing_context += ". ВАЖНО: детские товары — повышенные требования к сертификации"
+
     prompt = (
-        f"Ты эксперт по сертификации для WB. Клиент из Беларуси, закупки в Китае, продажи на WB.RU.\n"
+        f"Ты эксперт по сертификации для WB. Клиент из Беларуси, {sourcing_context}, продажи на WB.RU.\n"
         f"НИША: {name} | Средняя цена: {avg_price:.0f} ₽\n\n"
         "ONLY JSON:\n"
         '{"complexity":"low|medium|high",'
@@ -705,7 +765,7 @@ def _run_docs(n: dict) -> dict:
 def _run_warehouse(n: dict) -> dict:
     name = n.get('name', '')
     avg_price = float(n.get('avg_price', 0))
-    revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
+    revenue = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) * 12
     turnover = float(n.get('turnover', 0))
     buyout_pct = float(n.get('buyout_pct', 0))
     profit_pct = float(n.get('profit_pct', 0))
@@ -982,8 +1042,8 @@ def _sec_cover(niche: dict, level: str) -> list:
 
 def _sec_metrics(niche: dict) -> list:
     n = niche
-    # revenue_annual = revenue/2 (DB stores ~2yr total); fallback to revenue/2 if not set
-    revenue    = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
+    # revenue_annual = revenue * 12 (subjects/select returns 30-day figure)
+    revenue    = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) * 12
     orders     = int(n.get('orders', 0))
     sellers    = int(n.get('sellers', 0))
     sws        = int(n.get('sellers_with_sales', 0))
@@ -1544,50 +1604,104 @@ def _sec_competitors(r: dict) -> list:
 def _sec_supplier(r: dict) -> list:
     if not r:
         return []
-    els = [PageBreak(), _h2('Поиск поставщиков и цены закупки'), _hr()]
+    els = [PageBreak(), _h2('Стратегия закупки'), _hr()]
 
-    rows = [['Площадка', 'Цена, USD', 'MOQ, шт', 'Маржа', 'ROI', 'Прибыль/ед']]
-    for platform, key in [('Taobao / 1688', 'price_taobao_usd'), ('Alibaba', 'price_alibaba_usd')]:
-        price = r.get(key, 0)
-        if price:
+    # ── Сводная таблица по странам ─────────────────────────────
+    options = list(r.get('sourcing_options') or [])
+    if options:
+        els.append(_h3('Оптимальные источники закупки для этой ниши'))
+        rows = [['#', 'Страна', 'Таможня', 'Логистика ₽/кг', 'Срок', 'Мин. партия']]
+        for opt in options:
+            customs = opt.get('customs_pct', 0)
+            customs_str = f"{customs*100:.0f}%" if customs else "0% (ЕАЭС)"
             rows.append([
-                platform,
-                f'${price}',
-                str(r.get('moq', 0)),
-                _pct(r.get('real_margin_pct', 0) / 100),
-                _pct(r.get('roi_pct', 0) / 100),
-                _rub(r.get('profit_per_unit_rub', 0)),
+                str(opt.get('rank', '')),
+                str(opt.get('country', '')),
+                customs_str,
+                f"~{opt.get('logistics_rub', 0)} ₽",
+                str(opt.get('lead_time', ''))[:20],
+                _rub(opt.get('min_order_rub', 0)),
             ])
-    if len(rows) > 1:
-        els.append(_tbl(rows, col_widths=[1.8*inch, 1.0*inch, 0.9*inch, 0.8*inch, 0.8*inch, COL_W - 5.3*inch]))
+        els.append(_tbl(rows, col_widths=[
+            0.25*inch, 1.9*inch, 0.7*inch, 1.05*inch, 1.5*inch, COL_W - 5.4*inch
+        ]))
 
+    # ── Вывод от AI ────────────────────────────────────────────
     summary = str(r.get('summary', ''))
     if summary:
-        els.append(_h3('Вывод'))
+        els.append(_h3('Рекомендация эксперта'))
         els.append(_body(summary))
 
-    links = list(r.get('search_links') or [])
-    if links:
-        els.append(_h3('Площадки для поиска'))
-        _link_s = ParagraphStyle('_lnk', fontName=FN, fontSize=8.5,
-                                  textColor=C_BLUE2, leading=12,
-                                  spaceBefore=2, spaceAfter=2)
-        _desc_s = ParagraphStyle('_ldesc', fontName=FN, fontSize=8.5,
-                                  textColor=C_TEXT, leading=12,
-                                  spaceBefore=0, spaceAfter=0)
-        link_rows = [['Площадка', 'Описание', 'Ссылка']]
-        for lk in links:
-            platform = str(lk.get('platform', ''))
-            desc     = str(lk.get('description', ''))
-            url      = str(lk.get('url', '')).strip()
-            if url.startswith('http'):
-                short = (url[:52] + '…') if len(url) > 55 else url
-                link_cell = Paragraph(
-                    f'<link href="{url}"><u>{short}</u></link>', _link_s)
+    # ── Детали по каждой стране + площадки ─────────────────────
+    _link_s = ParagraphStyle('_lnk2', fontName=FN, fontSize=8,
+                              textColor=C_BLUE2, leading=11,
+                              spaceBefore=1, spaceAfter=1)
+    _desc_s = ParagraphStyle('_ldsc2', fontName=FN, fontSize=8,
+                              textColor=C_TEXT, leading=11,
+                              spaceBefore=0, spaceAfter=0)
+
+    for opt in options:
+        country = str(opt.get('country', ''))
+        risks   = str(opt.get('risks', ''))
+        cert    = str(opt.get('certification', ''))
+        plats   = list(opt.get('platforms') or [])
+
+        if not plats:
+            continue
+
+        els.append(_h3(f'{country}'))
+        if risks:
+            els.append(_body(f'⚠ {risks}'))
+        if cert:
+            els.append(_body(f'📋 Документы: {cert}'))
+
+        link_rows = [['Площадка', 'MOQ', 'Описание / Ссылка']]
+        for plat in plats:
+            url  = str(plat.get('url_tpl') or '')
+            note = str(plat.get('note', ''))[:90]
+            moq  = str(plat.get('moq', ''))
+            name = str(plat.get('name', ''))
+            if url and url.startswith('http'):
+                short = (url[:48] + '…') if len(url) > 51 else url
+                cell  = Paragraph(f'<link href="{url}"><u>{short}</u></link><br/>{note}', _link_s)
             else:
-                link_cell = Paragraph(url or '—', _desc_s)
-            link_rows.append([platform, desc, link_cell])
-        els.append(_tbl(link_rows, col_widths=[1.1*inch, 2.0*inch, COL_W - 3.1*inch]))
+                cell = Paragraph(note or '—', _desc_s)
+            link_rows.append([name, moq, cell])
+        els.append(_tbl(link_rows, col_widths=[1.25*inch, 1.1*inch, COL_W - 2.35*inch]))
+
+    # ── Поисковые запросы (от Claude) ─────────────────────────
+    sq = r.get('search_queries') or {}
+    sq_items = [(k.upper(), v) for k, v in sq.items() if v and v != r.get('_report', {}) and k in ('en','cn','tr')]
+    if sq_items:
+        els.append(_h3('Поисковые запросы на других языках'))
+        rows2 = [['Язык', 'Запрос для поиска']]
+        for lang, q in sq_items:
+            rows2.append([lang, str(q)])
+        els.append(_tbl(rows2, col_widths=[0.6*inch, COL_W - 0.6*inch]))
+
+    # ── Советы поиска ─────────────────────────────────────────
+    tips = list(r.get('supplier_tips') or [])
+    if tips:
+        els.append(_h3('Как искать надёжного поставщика'))
+        for t in tips:
+            els.append(_bullet(str(t)))
+
+    # ── Красные флаги ─────────────────────────────────────────
+    red_flags = list(r.get('red_flags') or [])
+    if red_flags:
+        els.append(_h3('На что обратить внимание'))
+        for f in red_flags:
+            els.append(_body(f'🔴 {f}'))
+
+    # ── Оценка первой партии ───────────────────────────────────
+    first_order = r.get('first_order_rub', 0)
+    cert_note   = str(r.get('certification_note', ''))
+    if first_order or cert_note:
+        els.append(_h3('Первый шаг'))
+        if first_order:
+            els.append(_body(f'Рекомендуемый бюджет первой тестовой партии: {_rub(first_order)}'))
+        if cert_note:
+            els.append(_body(f'Сертификация: {cert_note}'))
 
     els.append(_sp(0.1))
     return els
@@ -2816,6 +2930,8 @@ def run_agent(name: str, niche: dict, level: str = 'standard', agents: dict = No
     elif name == 'deep' and agents:
         master_verdict = (agents.get('master') or {}).get('final_verdict', '')
         result = fn(niche, master_verdict=master_verdict)
+    elif name == 'docs' and agents:
+        result = fn(niche, supplier_data=agents.get('supplier'))
     else:
         result = fn(niche)
     if ret_type == 'str':
@@ -2828,7 +2944,7 @@ def _sec_browser_charts(charts: dict, level: str, niche: dict = None) -> list:
     if not charts:
         return []
     n = niche or {}
-    revenue   = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) / 2
+    revenue   = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) * 12
     avg_price = float(n.get('avg_price', 0))
     sellers   = int(n.get('sellers', 0))
     sws       = int(n.get('sellers_with_sales', 0))

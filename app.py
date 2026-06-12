@@ -759,7 +759,7 @@ function renderWatchlist() {
     html += '</div>';
     html += '<div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:6px;padding-right:24px;">'+sn+'</div>';
     if (score > 0) html += '<div style="font-size:10px;color:'+scoreColor+';margin-bottom:6px;">'+score+'/100</div>';
-    html += '<div style="font-size:11px;color:#555;margin-bottom:6px;">'+fmt(n.revenue/2)+'/год</div>';
+    html += '<div style="font-size:11px;color:#555;margin-bottom:6px;">'+fmt(n.revenue_annual)+'/год</div>';
     // Метрики ниши
     if (n.avg_price) {
       html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px;">';
@@ -1749,7 +1749,7 @@ async function showTopNiches() {
         <div onclick="setQuery('${n.full}')" style="background:#1e2433;border:1px solid #2d3748;border-radius:12px;padding:16px;cursor:pointer;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#2d3748'">
           <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:8px">${n.full}</div>
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="font-size:13px;color:#555">${fmt(n.revenue/2)}/год</div>
+            <div style="font-size:13px;color:#555">${fmt(n.revenue_annual)}/год</div>
             <div style="font-size:18px;font-weight:700;color:${n.score>=65?'#22c55e':n.score>=40?'#eab308':'#ef4444'}">${n.score}</div>
           </div>
         </div>
@@ -1821,7 +1821,7 @@ function filterCatalog() {
       <div>
         <div style="font-size:15px;color:#fff;font-weight:500;margin-bottom:6px;">${activeCatFilter !== 'Все' && n.name.includes(' / ') ? n.name.split(' / ').slice(1).join(' / ') : n.name}</div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
-          <span style="font-size:12px;color:#555;">${fmt(n.revenue/2)}/год</span>
+          <span style="font-size:12px;color:#555;">${fmt(n.revenue_annual)}/год</span>
           <span style="font-size:12px;color:#555;">${n.sellers} продавцов</span>
           <span style="font-size:12px;color:#555;">выкуп ${Math.round(n.buyout_pct*100)}%</span>
           <span style="font-size:12px;color:#555;">маржа ${Math.round(n.profit_pct*100)}% до себест.</span>
@@ -2789,7 +2789,7 @@ function renderResult(d) {
 
     <!-- ЗОНА 1: Метрики -->
     <div class="metrics-grid">
-      <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-tooltip">Оценочная выручка всех продавцов за 12 месяцев (данные за ~2 года из БД, делённые на 2). Показывает размер рынка.</div><div class="metric-value">${fmtCurrency(d.revenue_annual || d.revenue / 2)}</div><div class="metric-sub">за 12 мес</div></div>
+      <div class="metric-card"><div class="metric-label">Выручка ниши</div><div class="metric-tooltip">Суммарная выручка всех продавцов за последние 30 дней × 12. Показывает годовой размер рынка. Данные MPStats обновляются ежемесячно.</div><div class="metric-value">${fmtCurrency(d.revenue_annual || d.revenue * 12)}</div><div class="metric-sub">за 12 мес (оценка)</div></div>
       <div class="metric-card"><div class="metric-label">Заказов в месяц</div><div class="metric-tooltip">Среднемесячное количество заказов в нише. Чем больше — тем активнее спрос.</div><div class="metric-value">${d.orders.toLocaleString('ru')}</div><div class="metric-sub">${(d.orders/30).toFixed(0)} в день</div></div>
       <div class="metric-card"><div class="metric-label">Продавцов</div><div class="metric-tooltip">Общее число продавцов и тех кто реально продаёт. Низкий % активных = высокая конкуренция среди немногих.</div><div class="metric-value">${d.sellers.toLocaleString('ru')}</div><div class="metric-sub">${d.sellers_with_sales} с продажами</div></div>
       <div class="metric-card"><div class="metric-label">Выкуп</div><div class="metric-tooltip">Процент заказов которые покупатель не вернул. Низкий выкуп = высокие затраты на логистику возвратов.</div><div class="metric-value">${(d.buyout_pct*100).toFixed(0)}%</div><div class="metric-sub">${d.buyout_pct >= 0.8 ? 'отличный' : d.buyout_pct >= 0.6 ? 'хороший' : 'низкий'}</div></div>
@@ -6212,7 +6212,7 @@ class Handler(BaseHTTPRequestHandler):
                         'name': display_name,
                         'full': name,
                         'revenue': float(revenue or 0),
-                        'revenue_annual': float(revenue or 0) / 2,
+                        'revenue_annual': float(revenue or 0) * 12,
                         'score': score,
                         'category': cat,
                     })
@@ -6348,7 +6348,7 @@ class Handler(BaseHTTPRequestHandler):
                         'name': display_name,
                         'full': name,
                         'revenue': float(revenue or 0),
-                        'revenue_annual': float(revenue or 0) / 2,
+                        'revenue_annual': float(revenue or 0) * 12,
                         'orders': int(orders or 0),
                         'buyout_pct': float(buyout_pct or 0),
                         'profit_pct': float(profit_pct or 0),
@@ -6401,7 +6401,7 @@ class Handler(BaseHTTPRequestHandler):
 Курс к рублю: {rate}
 
 ДАННЫЕ НИШИ:
-- Выручка за период (~2 года): {revenue:,.0f} ₽ (~{revenue/2:,.0f} ₽/год)
+- Выручка ниши (30 дней): {revenue:,.0f} ₽ (~{revenue*12:,.0f} ₽/год)
 - Заказов: {int(revenue/avg_price) if avg_price > 0 else 0}/мес
 - Продавцов всего: {sellers}
 - Продавцов с продажами: {sellers_with_sales} ({round(sellers_with_sales/sellers*100) if sellers > 0 else 0}%)
@@ -7026,7 +7026,7 @@ class Handler(BaseHTTPRequestHandler):
                         'data_warning': data_warning,
                         'category': get_category(name),
                         'revenue': float(revenue or 0),
-                        'revenue_annual': float(revenue or 0) / 2,
+                        'revenue_annual': float(revenue or 0) * 12,
                         'orders': int(orders or 0),
                         'sellers': int(sellers or 0),
                         'sellers_with_sales': int(sellers_with_sales or 0),

@@ -1042,7 +1042,8 @@ def _sec_cover(niche: dict, level: str) -> list:
 
 def _sec_metrics(niche: dict) -> list:
     n = niche
-    # revenue_annual = revenue * 12 (subjects/select returns 30-day figure)
+    # MPStats subjects/select всегда возвращает 30-дневный снимок (поле days=30).
+    # revenue_annual = revenue * 12 (НЕ делить на 2 — это было ошибкой в commit 0739e55).
     revenue    = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) * 12
     orders     = int(n.get('orders', 0))
     sellers    = int(n.get('sellers', 0))

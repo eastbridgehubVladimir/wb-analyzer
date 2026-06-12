@@ -1908,9 +1908,27 @@ async function loadCharts(name) {
     
     const gridColor = '#2a3347';
     const tickColor = '#666';
+    const titleColor = '#888';
+    const commonX = { ticks: { color: tickColor, font: { size: 11 } }, grid: { color: gridColor } };
     const commonScales = {
-      x: { ticks: { color: tickColor, font: { size: 11 } }, grid: { color: gridColor } },
+      x: commonX,
       y: { ticks: { color: tickColor, font: { size: 11 }, maxTicksLimit: 10 }, grid: { color: gridColor } }
+    };
+    const revenueScales = {
+      x: commonX,
+      y: {
+        ticks: { color: tickColor, font: { size: 11 }, maxTicksLimit: 10 },
+        grid: { color: gridColor },
+        title: { display: true, text: 'млн ₽', color: titleColor, font: { size: 11 } }
+      }
+    };
+    const salesScales = {
+      x: commonX,
+      y: {
+        ticks: { color: tickColor, font: { size: 11 }, maxTicksLimit: 10 },
+        grid: { color: gridColor },
+        title: { display: true, text: 'заказов/мес', color: titleColor, font: { size: 11 } }
+      }
     };
     
     const maxRev = Math.max(...data.revenue);
@@ -1938,10 +1956,10 @@ async function loadCharts(name) {
             }
           }
         },
-        scales: commonScales
+        scales: revenueScales
       }
     });
-    
+
     salesChartInstance = new Chart(document.getElementById('salesChart'), {
       type: 'line',
       data: {
@@ -1962,7 +1980,7 @@ async function loadCharts(name) {
       options: {
         responsive: true,
         plugins: { legend: { display: false } },
-        scales: commonScales
+        scales: salesScales
       }
     });
     // График распределения цен
@@ -2813,9 +2831,9 @@ function renderResult(d) {
     </div>
 
     <!-- ЗОНА 3: Главный широкий график -->
-    <div class="chart-card" style="margin-bottom:16px;" onclick="openChartModal('📈 Динамика выручки — топ 100 товаров', 'bar', window._chartData.labels, window._chartData.revenue, '#38bdf8', false)">
+    <div class="chart-card" style="margin-bottom:16px;" onclick="openChartModal('📈 Динамика выручки — топ 100 товаров, млн ₽', 'bar', window._chartData.labels, window._chartData.revenue, '#38bdf8', false)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div class="chart-title" style="margin:0;">📈 Динамика выручки и продаж — топ 100 товаров</div>
+        <div class="chart-title" style="margin:0;">📈 Динамика выручки — топ 100 товаров <span style="font-size:11px;color:#555;font-weight:400;">(млн ₽)</span></div>
         <div id="chart-loading" style="font-size:12px;color:#555;">⏳ Загружаем данные...</div>
         <div style="font-size:11px;color:#555;">🔍 нажмите для увеличения</div>
       </div>

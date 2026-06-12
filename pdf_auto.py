@@ -1043,8 +1043,9 @@ def _sec_cover(niche: dict, level: str) -> list:
 def _sec_metrics(niche: dict) -> list:
     n = niche
     # MPStats subjects/select всегда возвращает 30-дневный снимок (поле days=30).
-    # revenue_annual = revenue * 12 (НЕ делить на 2 — это было ошибкой в commit 0739e55).
-    revenue    = float(n.get('revenue_annual', 0)) or float(n.get('revenue', 0)) * 12
+    # revenue_monthly = raw 30-day figure; revenue_annual = * 12 (грубая оценка, пиковый месяц завышает).
+    revenue_monthly = float(n.get('revenue', 0))
+    revenue    = float(n.get('revenue_annual', 0)) or revenue_monthly * 12
     orders     = int(n.get('orders', 0))
     sellers    = int(n.get('sellers', 0))
     sws        = int(n.get('sellers_with_sales', 0))
@@ -1070,7 +1071,7 @@ def _sec_metrics(niche: dict) -> list:
     # Ряд 1: Выручка, Заказы, Продавцы
     orders_sub = f'≈ {orders_per_day} в день' if orders_per_day else ''
     row1 = [
-        _card('ВЫРУЧКА НИШИ', _rub(revenue), 'за 12 месяцев', C_NAVY),
+        _card('ВЫРУЧКА НИШИ', _rub(revenue_monthly), f'в мес · ~{_rub(revenue)} /год', C_NAVY),
         _card('ЗАКАЗОВ / МЕС', _num(orders), orders_sub, C_BLUE2),
         _card('ПРОДАВЦОВ', f'{sellers} / {sws} акт.', f'{act_pct}% с продажами', C_GREEN),
     ]

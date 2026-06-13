@@ -1188,14 +1188,10 @@ def _sec_metrics(niche: dict) -> list:
 
 
 def _sec_top_products(items: list, limit: int = 20, level: str = 'standard') -> list:
-    els = [_h2(f'Топ-{min(limit, len(items)) if items else 20} товаров ниши'), _hr()]
-
     if not items:
-        els.append(_info(
-            '<b>Данные топ товаров недоступны.</b> Откройте отчёт через полный анализ ниши '
-            'чтобы увидеть таблицу с выручкой, продажами и рейтингами лидеров.'
-        ))
-        return els
+        return []   # Нет данных — раздел не рендерится совсем (лучше чем пустая страница)
+
+    els = [_h2(f'Топ-{min(limit, len(items))} товаров ниши'), _hr()]
 
     count = min(limit, len(items))
     total_rev = sum(float(it.get('revenue') or 0) for it in items)
@@ -1384,29 +1380,44 @@ def _sec_master(r: dict, niche: dict = None) -> list:
                 dr_rows.append([str(risk.get('risk', '')), prob_cell, str(risk.get('mitigation', ''))])
             els.append(_tbl(dr_rows, col_widths=[2.6*inch, 1.1*inch, COL_W - 3.7*inch]))
 
-        # ROI 12-month прогноз
+        # ROI 12-month прогноз — реалистичный (от breakeven, не от доли ниши)
         fm = r.get('financial_model') or {}
         fm_merged = {**_FM_CANONICAL, **{k: v for k, v in fm.items() if v is not None and str(v).strip()}}
-        avg_price  = float(niche.get('avg_price') or fm_merged.get('avg_price') or 1500)
-        monthly_sales_target = float(niche.get('orders') or fm_merged.get('monthly_sales') or 50) * 0.05
-        buyout_pct = float(niche.get('buyout_pct') or fm_merged.get('buyout_pct') or 0.75)
-        margin_pct = float(fm_merged.get('margin_pct') or 0.25)
-        ad_budget  = float(fm_merged.get('monthly_ad_budget') or 45000)
+        avg_price       = float(niche.get('avg_price') or fm_merged.get('avg_price') or 1500)
+        buyout_pct      = float(niche.get('buyout_pct') or fm_merged.get('buyout_pct') or 0.75)
+        margin_pct      = 0.25   # консервативная маржа
+        ad_budget       = float(fm_merged.get('monthly_ad_budget') or 45000)
         test_batch_cost = float(fm_merged.get('test_batch_cost') or 220000)
+        # Breakeven — минимальные продажи для выхода в 0
+        be_raw = fm_merged.get('breakeven_units')
+        try:
+            breakeven = max(1, int(str(be_raw).replace(',', '').strip())) if be_raw else 10
+        except (ValueError, TypeError):
+            breakeven = 10
 
         els.append(_h3('ROI-прогноз: 12 месяцев'))
-        roi_rows = [['Месяц', 'Продажи, шт', 'Выручка', 'Затраты', 'Прибыль', 'ROI']]
+        roi_rows = [['Месяц', 'Продажи, шт', 'Выручка', 'Затраты', 'Прибыль', 'ROI накопл.']]
         cum_profit = 0.0
         for mo in range(1, 13):
-            # ramp-up: первые 3 мес наращиваем объём
-            ramp  = min(1.0, 0.3 + mo * 0.07)
-            sales_n = max(1, int(monthly_sales_target * ramp))
-            revenue = sales_n * avg_price * buyout_pct
-            cogs    = revenue * (1 - margin_pct) + ad_budget
-            init_invest = test_batch_cost if mo == 1 else 0.0
-            profit  = revenue * margin_pct - ad_budget - init_invest
-            cum_profit += profit
-            roi_pct = cum_profit / (test_batch_cost or 1) * 100
+            # Рост от точки безубыточности: мес1=be, мес2=1.5×be, мес3=2×be, мес4-6 +20%/мес, мес7-12 стабильно
+            if mo == 1:
+                sales_n = breakeven
+            elif mo == 2:
+                sales_n = max(breakeven, int(breakeven * 1.5))
+            elif mo == 3:
+                sales_n = max(breakeven, int(breakeven * 2.0))
+            elif mo <= 6:
+                prev = int(breakeven * 2.0 * (1.2 ** (mo - 3)))
+                sales_n = prev
+            else:
+                sales_n = int(breakeven * 2.0 * (1.2 ** 3))   # стабильно на уровне мес6
+
+            revenue        = sales_n * avg_price * buyout_pct
+            init_invest    = test_batch_cost if mo == 1 else 0.0
+            profit         = revenue * margin_pct - ad_budget - init_invest
+            cum_profit    += profit
+            roi_pct        = cum_profit / (test_batch_cost or 1) * 100
+            cogs           = revenue * (1 - margin_pct) + ad_budget + init_invest
             roi_cell = _p(f'{roi_pct:+.0f}%', size=7.5, bold=True,
                           color=C_GREEN if roi_pct > 0 else C_RED, align=TA_CENTER)
             roi_rows.append([
@@ -1647,15 +1658,66 @@ def _sec_ads(r: dict) -> list:
             rows.append(['Комментарий', str(budget['comment']), ''])
         els.append(_tbl(rows, col_widths=[1.3*inch, 1.8*inch, COL_W - 3.1*inch]))
 
+    # Рекомендуемые каналы продвижения — Standard и Deep
+    _ad_start = int((budget.get('start_rub') or 30000))
+    _ad_day   = max(500, _ad_start // 30)
+    _ad_traf  = int(_ad_start * 0.3)
+    els.append(_h3('Рекомендуемые каналы продвижения'))
+    els.append(_body(
+        f'<b>Автоматическая реклама (Аукцион WB)</b> — основной канал на старте. '
+        f'Ставка: авто, дневной бюджет {_rub(_ad_day)}/день. '
+        f'Цель: CTR &gt;3%, ДРР &lt;25% в первый месяц.'
+    ))
+    els.append(_body(
+        f'<b>Трафарет на конкурентов</b> — подключить с месяца 2, когда набрано 10+ отзывов. '
+        f'Бюджет: {_rub(_ad_traf)}/мес (30% от общего рекламного бюджета).'
+    ))
+    els.append(_body(
+        '<b>SEO-оптимизация</b> — параллельно с рекламой заполнить все характеристики карточки, '
+        'добавить синонимы запросов в описание. Органика даёт 40–60% трафика к 3-му месяцу.'
+    ))
+
     # CPM и KPI по месяцам — только в Deep
     if _CURRENT_LEVEL == 'deep':
         cpm = r.get('cpm_forecast') or {}
-        if cpm:
-            els.append(_h3('Прогноз CPM'))
-            rows = [['Старт', 'Мес. 2', 'Комментарий']]
-            rows.append([_rub(cpm.get('start_rub', 0)), _rub(cpm.get('month2_rub', 0)),
-                         str(cpm.get('comment', ''))])
-            els.append(_tbl(rows, col_widths=[1.5*inch, 1.5*inch, COL_W - 3.0*inch]))
+        _b = budget or {}
+        _cpm_m = [
+            int(cpm.get('start_rub', 350)),
+            int(cpm.get('month2_rub', 320)),
+            300,
+        ]
+        _budgets = [
+            int(_b.get('start_rub', 30000)),
+            int(_b.get('growth_rub', 45000)),
+            int(_b.get('sustain_rub', 60000)),
+        ]
+        els.append(_h3('Прогноз CPM и показателей по месяцам'))
+        cpm_rows = [['Период', 'CPM, ₽', 'Бюджет, ₽', 'Показы', 'Клики (CTR 4%)', 'Заказы (CR 8%)']]
+        for mo, (label, cpm_v, bud) in enumerate([
+            ('Месяц 1', _cpm_m[0], _budgets[0]),
+            ('Месяц 2', _cpm_m[1], _budgets[1]),
+            ('Месяц 3', _cpm_m[2], _budgets[2]),
+        ]):
+            shows  = int(bud * 1000 / cpm_v) if cpm_v else 0
+            clicks = int(shows * 0.04)
+            orders = int(clicks * 0.08)
+            cpm_rows.append([label, _rub(cpm_v), _rub(bud), _num(shows), _num(clicks), _num(orders)])
+        cpm_t = _tbl(cpm_rows, col_widths=[0.72*inch, 0.65*inch, 0.9*inch, 0.85*inch, 1.05*inch,
+                                            COL_W - 4.17*inch])
+        cpm_t.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,0), C_NAVY),
+            ('FONTSIZE',      (0,0), (-1,-1), 8),
+            ('TOPPADDING',    (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('LEFTPADDING',   (0,0), (-1,-1), 5),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 5),
+            ('GRID',          (0,0), (-1,-1), 0.3, C_BORDER),
+            ('ROWBACKGROUNDS',(0,1), (-1,-1), [WHITE, C_TABLE_ODD]),
+            ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
+        ]))
+        els.append(cpm_t)
+        if cpm.get('comment'):
+            els.append(_p(str(cpm['comment']), size=7.5, color=C_GRAY, space_before=3))
 
         _KPI_EXPAND = {
             'CTR':    'CTR (кликабельность, %)',
@@ -1715,20 +1777,32 @@ def _sec_competitors(r: dict) -> list:
     sellers = list(r.get('top_sellers') or [])
     if sellers:
         els.append(_h3('Топ продавцов в нише'))
-        rows = [['Продавец', 'Выручка/мес', 'Товаров', 'Рейтинг', 'Доля рынка', 'Слабое место']]
+        _WEAK_COL_W = COL_W - 3.7*inch
+        rows = [['Продавец', 'Выр./мес', 'Рейтинг', 'Доля %', 'Слабое место']]
+        _ws = ParagraphStyle('_wsp', fontName=FN, fontSize=7, textColor=C_TEXT,
+                              leading=10, spaceBefore=0, spaceAfter=0, wordWrap='LTR')
         for s in sellers[:10]:
             rows.append([
-                str(s.get('name', ''))[:22],
+                str(s.get('name', ''))[:20],
                 _rub(s.get('revenue_monthly_rub', 0)),
-                str(s.get('products_count', '—')),
                 str(s.get('avg_rating', '—')),
                 f"{s.get('market_share_pct', 0):.1f}%",
-                str(s.get('weak_point', ''))[:28],
+                Paragraph(str(s.get('weak_point', '')), _ws),
             ])
-        els.append(_tbl(rows, col_widths=[
-            1.55*inch, 1.1*inch, 0.65*inch, 0.65*inch, 0.85*inch,
-            COL_W - 4.8*inch
+        comp_tbl = _tbl(rows, col_widths=[1.1*inch, 0.9*inch, 0.6*inch, 0.55*inch, _WEAK_COL_W])
+        comp_tbl.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,0), C_NAVY),
+            ('FONTSIZE',      (0,0), (-1,0), 8),
+            ('FONTSIZE',      (0,1), (-1,-1), 7.5),
+            ('TOPPADDING',    (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('LEFTPADDING',   (0,0), (-1,-1), 5),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 5),
+            ('GRID',          (0,0), (-1,-1), 0.3, C_BORDER),
+            ('ROWBACKGROUNDS',(0,1), (-1,-1), [WHITE, C_TABLE_ODD]),
+            ('VALIGN',        (0,0), (-1,-1), 'TOP'),
         ]))
+        els.append(comp_tbl)
 
     # Слабые места конкурентов
     weak = str(r.get('weak_spots_summary', ''))
@@ -1797,19 +1871,32 @@ def _sec_competitors_merged(comp: dict, deep: dict) -> list:
     sellers = list(comp.get('top_sellers') or [])
     if sellers:
         els.append(_h3('Топ продавцов в нише'))
-        rows = [['Продавец', 'Выручка/мес', 'Товаров', 'Рейтинг', 'Доля рынка', 'Слабое место']]
+        _WEAK_COL_W2 = COL_W - 3.7*inch
+        rows = [['Продавец', 'Выр./мес', 'Рейтинг', 'Доля %', 'Слабое место']]
+        _ws2 = ParagraphStyle('_wsp2', fontName=FN, fontSize=7, textColor=C_TEXT,
+                               leading=10, spaceBefore=0, spaceAfter=0, wordWrap='LTR')
         for s in sellers[:10]:
             rows.append([
-                str(s.get('name', ''))[:22],
+                str(s.get('name', ''))[:20],
                 _rub(s.get('revenue_monthly_rub', 0)),
-                str(s.get('products_count', '—')),
                 str(s.get('avg_rating', '—')),
                 f"{s.get('market_share_pct', 0):.1f}%",
-                str(s.get('weak_point', ''))[:28],
+                Paragraph(str(s.get('weak_point', '')), _ws2),
             ])
-        els.append(_tbl(rows, col_widths=[
-            1.55*inch, 1.1*inch, 0.65*inch, 0.65*inch, 0.85*inch, COL_W - 4.8*inch
+        comp_tbl2 = _tbl(rows, col_widths=[1.1*inch, 0.9*inch, 0.6*inch, 0.55*inch, _WEAK_COL_W2])
+        comp_tbl2.setStyle(TableStyle([
+            ('BACKGROUND',    (0,0), (-1,0), C_NAVY),
+            ('FONTSIZE',      (0,0), (-1,0), 8),
+            ('FONTSIZE',      (0,1), (-1,-1), 7.5),
+            ('TOPPADDING',    (0,0), (-1,-1), 4),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+            ('LEFTPADDING',   (0,0), (-1,-1), 5),
+            ('RIGHTPADDING',  (0,0), (-1,-1), 5),
+            ('GRID',          (0,0), (-1,-1), 0.3, C_BORDER),
+            ('ROWBACKGROUNDS',(0,1), (-1,-1), [WHITE, C_TABLE_ODD]),
+            ('VALIGN',        (0,0), (-1,-1), 'TOP'),
         ]))
+        els.append(comp_tbl2)
 
     # Слабые места конкурентов (из _run_competitors)
     weak = str(comp.get('weak_spots_summary', ''))
@@ -1878,7 +1965,7 @@ def _sec_supplier(r: dict) -> list:
     options = list(r.get('sourcing_options') or [])
     if options:
         els.append(_h3('Оптимальные источники закупки для этой ниши'))
-        rows = [['#', 'Страна', 'Таможня', 'Логистика ₽/кг', 'Срок', 'Мин. партия']]
+        rows = [['#', 'Страна', 'Тамож. пошлина', 'Логистика ₽/кг', 'Срок', 'Мин. партия']]
         for opt in options:
             customs = opt.get('customs_pct', 0)
             customs_str = f"{customs*100:.0f}%" if customs else "0% (ЕАЭС)"
@@ -1893,6 +1980,12 @@ def _sec_supplier(r: dict) -> list:
         els.append(_tbl(rows, col_widths=[
             0.25*inch, 1.9*inch, 0.7*inch, 1.05*inch, 1.5*inch, COL_W - 5.4*inch
         ]))
+        els.append(_p(
+            '* 0% — в рамках ЕАЭС (Беларусь, Россия, Казахстан). '
+            '10% — ввоз из Китая. 8% — ввоз из Турции. '
+            'К пошлине добавляется НДС 20%.',
+            size=7.5, color=C_GRAY, space_before=3,
+        ))
 
     # ── Вывод от AI ────────────────────────────────────────────
     summary = str(r.get('summary', ''))
@@ -1939,7 +2032,7 @@ def _sec_supplier(r: dict) -> list:
 
     # ── Поисковые запросы (от Claude) ─────────────────────────
     sq = r.get('search_queries') or {}
-    sq_items = [(k.upper(), v) for k, v in sq.items() if v and v != r.get('_report', {}) and k in ('en','cn','tr')]
+    sq_items = [(k.upper(), v) for k, v in sq.items() if v and v != r.get('_report', {}) and k in ('en', 'tr')]
     if sq_items:
         els.append(_h3('Поисковые запросы на других языках'))
         rows2 = [['Язык', 'Запрос для поиска']]

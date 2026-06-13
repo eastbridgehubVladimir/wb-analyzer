@@ -6015,6 +6015,30 @@ class Handler(BaseHTTPRequestHandler):
             level  = session['level']
             niche  = session['niche']
             charts = session.get('charts') or {}
+
+            # Получаем топ-товары из MPStats для таблицы топ-20 в PDF
+            _pdf_items_raw = []
+            if level in ('standard', 'deep'):
+                try:
+                    _niche_name_pdf = niche.get('name', '')
+                    conn = psycopg2.connect(DB)
+                    cur = conn.cursor()
+                    cur.execute(
+                        "SELECT mpstats_path FROM niches WHERE name ILIKE %s AND mpstats_path IS NOT NULL LIMIT 1",
+                        (f'%{_niche_name_pdf}%',)
+                    )
+                    row = cur.fetchone()
+                    conn.close()
+                    _mp_path = row[0] if row else _niche_name_pdf
+                    from datetime import date as _date, timedelta as _td
+                    _d2 = _date.today().isoformat()
+                    _d1 = (_date.today() - _td(days=730)).isoformat()
+                    _mp = get_mpstats_cached(_mp_path, _d1, _d2)
+                    _pdf_items_raw = _mp.get('data', [])[:50]
+                    print(f'[PDF-STREAM] Топ-товары: {len(_pdf_items_raw)} шт для ниши {_niche_name_pdf!r}')
+                except Exception as _ie:
+                    print(f'[PDF-STREAM] Топ-товары не получены: {_ie}')
+
             agent_seq = ['master']
             if level in ('standard', 'deep'): agent_seq += ['unit', 'ads']
             if level == 'deep': agent_seq += ['deep', 'competitors', 'supplier', 'docs', 'warehouse', 'content']
@@ -6038,7 +6062,7 @@ class Handler(BaseHTTPRequestHandler):
                 if critical_qa:
                     _sse({'type': 'qa_warning', 'warnings': critical_qa})
 
-                pdf_bytes = pdf_auto.render(level, niche, agents, content_text, [], charts)
+                pdf_bytes = pdf_auto.render(level, niche, agents, content_text, _pdf_items_raw, charts)
                 key = _uuid.uuid4().hex
                 _niche_safe = re.sub(r'[\\\/:"*?<>|]', '', niche.get('name', 'report')).strip() or 'report'
                 _pdf_results[key] = {'pdf': pdf_bytes, 'filename': f'WBAnalyzer {_niche_safe} {level}.pdf'}

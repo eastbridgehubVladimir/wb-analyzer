@@ -577,7 +577,9 @@ def _run_unit(n: dict) -> dict:
     except Exception:
         rec = {}
     # Сценарии считаются локально — возвращаем их даже если Claude не ответил
-    return {'scenarios': scenarios, 'recommendation': rec}
+    return {'scenarios': scenarios, 'recommendation': rec,
+            'buyout_pct': buyout_pct, 'turnover': float(n.get('turnover', 60) or 60),
+            'test_batch': 20}
 
 
 def _run_ads(n: dict) -> dict:
@@ -1186,17 +1188,20 @@ def _sec_metrics(niche: dict) -> list:
 
 
 def _sec_top_products(items: list, limit: int = 20, level: str = 'standard') -> list:
-    if not items:
-        return []
-    count = min(limit, len(items))
-    els = [_h2(f'Топ-{count} товаров ниши'), _hr()]
+    els = [_h2(f'Топ-{min(limit, len(items)) if items else 20} товаров ниши'), _hr()]
 
-    # Вычисляем суммарную выручку для доли рынка
+    if not items:
+        els.append(_info(
+            '<b>Данные топ товаров недоступны.</b> Откройте отчёт через полный анализ ниши '
+            'чтобы увидеть таблицу с выручкой, продажами и рейтингами лидеров.'
+        ))
+        return els
+
+    count = min(limit, len(items))
     total_rev = sum(float(it.get('revenue') or 0) for it in items)
 
     if level == 'basic':
-        # Basic: компактная таблица с 5 товарами
-        rows = [['#', 'Название товара', 'Цена, ₽', 'Выручка/мес', 'Отзывы', 'Ссылка']]
+        rows = [['#', 'Название товара', 'Цена, ₽', 'Выручка/мес', 'Отзывы', 'Арт. WB']]
         for i, it in enumerate(items[:limit], 1):
             name  = str(it.get('name') or it.get('title') or '')[:45]
             price = _rub(it.get('price') or it.get('final_price') or 0)
@@ -1204,26 +1209,24 @@ def _sec_top_products(items: list, limit: int = 20, level: str = 'standard') -> 
             fb    = str(int(it.get('feedbacks') or it.get('reviews') or
                              it.get('reviews_count') or 0))
             sku   = str(it.get('sku') or it.get('wb_sku') or it.get('id') or '—')
-            link  = f'→ {sku}' if sku != '—' else '—'
-            rows.append([str(i), name, price, rev, fb, link])
-        cw = [0.28*inch, 2.8*inch, 0.8*inch, 0.95*inch, 0.6*inch, 0.9*inch]
+            rows.append([str(i), name, price, rev, fb, sku])
+        cw = [0.28*inch, 2.8*inch, 0.82*inch, 0.95*inch, 0.62*inch, 0.9*inch]
     else:
-        # Standard/Deep: таблица с 20 товарами + доля рынка, компактная
-        rows = [['#', 'Название товара', 'Цена, ₽', 'Выручка/мес', 'Отзывы', 'Доля, %', 'WB']]
+        # Standard/Deep: 7 колонок — добавляем Продавца и Продажи/мес
+        rows = [['#', 'Товар', 'Продавец', 'Цена, ₽', 'Выр./мес', 'Продажи', 'Рейтинг']]
         for i, it in enumerate(items[:limit], 1):
-            name  = str(it.get('name') or it.get('title') or '')[:38]
-            price = _rub(it.get('price') or it.get('final_price') or 0)
-            rev   = _rub(it.get('revenue') or 0)
-            fb    = str(int(it.get('feedbacks') or it.get('reviews') or
-                             it.get('reviews_count') or 0))
-            item_rev = float(it.get('revenue') or 0)
-            share = f'{item_rev / total_rev * 100:.1f}%' if total_rev else '—'
-            sku   = str(it.get('sku') or it.get('wb_sku') or it.get('id') or '—')
-            link  = f'→{sku}' if sku != '—' else '—'
-            rows.append([str(i), name, price, rev, fb, share, link])
-        cw = [0.25*inch, 2.45*inch, 0.7*inch, 0.85*inch, 0.55*inch, 0.6*inch, 0.7*inch]
+            name   = str(it.get('name') or it.get('title') or '')[:35]
+            seller = str(it.get('brand_name') or it.get('brand') or
+                         it.get('seller') or it.get('supplier') or '—')[:18]
+            price  = _rub(it.get('price') or it.get('final_price') or 0)
+            rev    = _rub(it.get('revenue') or 0)
+            sales_n = int(it.get('sales') or it.get('orders') or 0)
+            sales  = str(sales_n) if sales_n else '—'
+            rating = str(it.get('rating') or it.get('avg_rating') or '—')
+            rows.append([str(i), name, seller, price, rev, sales, rating])
+        cw = [0.25*inch, 1.95*inch, 1.25*inch, 0.75*inch, 0.85*inch, 0.68*inch,
+              COL_W - 5.73*inch]
 
-    # Компактный стиль для всех уровней
     t = _tbl(rows, col_widths=cw)
     t.setStyle(TableStyle([
         ('BACKGROUND',    (0, 0), (-1, 0), C_NAVY),
@@ -1237,6 +1240,29 @@ def _sec_top_products(items: list, limit: int = 20, level: str = 'standard') -> 
         ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
     ]))
     els.append(t)
+
+    # Аналитические наблюдения после таблицы (Standard/Deep)
+    if level != 'basic' and len(items) >= 3:
+        top3_rev  = sorted(items[:count], key=lambda x: float(x.get('revenue') or 0), reverse=True)[:3]
+        leader    = top3_rev[0]
+        lead_name = str(leader.get('name') or leader.get('title') or '')[:30]
+        lead_rev  = float(leader.get('revenue') or 0)
+        lead_share = lead_rev / total_rev * 100 if total_rev else 0
+
+        prices  = [float(x.get('price') or x.get('final_price') or 0) for x in items[:count] if x.get('price') or x.get('final_price')]
+        p_min   = min(prices) if prices else 0
+        p_max   = max(prices) if prices else 0
+
+        obs = []
+        if lead_name and lead_rev > 0:
+            obs.append(f'Лидер по выручке — <b>{lead_name}</b> ({_rub(lead_rev)}/мес, доля {lead_share:.1f}%).')
+        if p_min and p_max:
+            obs.append(f'Ценовой диапазон топ-{count}: от {_rub(p_min)} до {_rub(p_max)}.')
+        if obs:
+            obs.append('Войдите в середину ценового диапазона и предложите лучший контент карточки.')
+            els.append(_sp(0.06))
+            els.append(_p('  '.join(obs), size=8.5, color=C_TEXT, space_before=2))
+
     els.append(_sp(0.1))
     return els
 
@@ -1251,10 +1277,11 @@ _FM_CANONICAL = {
 }
 
 
-def _sec_master(r: dict) -> list:
+def _sec_master(r: dict, niche: dict = None) -> list:
     if not r:
         return []
     level = _CURRENT_LEVEL
+    niche = niche or {}
     els = [_h2('Мастер-анализ'), _hr()]
 
     verdict = str(r.get('final_verdict', ''))
@@ -1340,11 +1367,76 @@ def _sec_master(r: dict) -> list:
     if level != 'basic':
         sp = r.get('seasonal_plan') or {}
         if sp:
-            els.append(_h3('Сезонный план'))
-            for lbl, val in [('Пик продаж', sp.get('peak', '')), ('Период спада', sp.get('low', '')),
-                              ('Когда закупать', sp.get('buy_date', '')), ('Старт рекламы', sp.get('ad_date', ''))]:
-                if str(val).strip():
-                    els.append(_p(f'<b>{lbl}:</b> {val}', size=9, space_before=2, space_after=2))
+            els.append(_h3('Сезонный план закупок и рекламы'))
+            els += _render_seasonal_table(sp)
+
+    # Deep: расширенные риски + ROI 12-месяцев
+    if level == 'deep':
+        deep_risks = list(r.get('deep_risks') or [])
+        if deep_risks:
+            els.append(_h3('Дополнительные риски (Deep)'))
+            _prob_colors = {'высокая': C_RED, 'средняя': C_AMBER, 'низкая': C_GREEN}
+            dr_rows = [['Риск', 'Вероятность', 'Решение']]
+            for risk in deep_risks[:3]:
+                prob_str = str(risk.get('probability', '')).lower().strip()
+                prob_cell = _p(prob_str.capitalize(), size=8, bold=True,
+                               color=_prob_colors.get(prob_str, C_GRAY), align=TA_CENTER)
+                dr_rows.append([str(risk.get('risk', '')), prob_cell, str(risk.get('mitigation', ''))])
+            els.append(_tbl(dr_rows, col_widths=[2.6*inch, 1.1*inch, COL_W - 3.7*inch]))
+
+        # ROI 12-month прогноз
+        fm = r.get('financial_model') or {}
+        fm_merged = {**_FM_CANONICAL, **{k: v for k, v in fm.items() if v is not None and str(v).strip()}}
+        avg_price  = float(niche.get('avg_price') or fm_merged.get('avg_price') or 1500)
+        monthly_sales_target = float(niche.get('orders') or fm_merged.get('monthly_sales') or 50) * 0.05
+        buyout_pct = float(niche.get('buyout_pct') or fm_merged.get('buyout_pct') or 0.75)
+        margin_pct = float(fm_merged.get('margin_pct') or 0.25)
+        ad_budget  = float(fm_merged.get('monthly_ad_budget') or 45000)
+        test_batch_cost = float(fm_merged.get('test_batch_cost') or 220000)
+
+        els.append(_h3('ROI-прогноз: 12 месяцев'))
+        roi_rows = [['Месяц', 'Продажи, шт', 'Выручка', 'Затраты', 'Прибыль', 'ROI']]
+        cum_profit = 0.0
+        for mo in range(1, 13):
+            # ramp-up: первые 3 мес наращиваем объём
+            ramp  = min(1.0, 0.3 + mo * 0.07)
+            sales_n = max(1, int(monthly_sales_target * ramp))
+            revenue = sales_n * avg_price * buyout_pct
+            cogs    = revenue * (1 - margin_pct) + ad_budget
+            init_invest = test_batch_cost if mo == 1 else 0.0
+            profit  = revenue * margin_pct - ad_budget - init_invest
+            cum_profit += profit
+            roi_pct = cum_profit / (test_batch_cost or 1) * 100
+            roi_cell = _p(f'{roi_pct:+.0f}%', size=7.5, bold=True,
+                          color=C_GREEN if roi_pct > 0 else C_RED, align=TA_CENTER)
+            roi_rows.append([
+                f'Мес {mo:02d}',
+                str(sales_n),
+                _rub(revenue),
+                _rub(cogs),
+                _rub(profit),
+                roi_cell,
+            ])
+        roi_t = _tbl(roi_rows,
+                     col_widths=[0.65*inch, 0.8*inch, 1.1*inch, 1.1*inch, 1.1*inch,
+                                 COL_W - 4.75*inch])
+        roi_t.setStyle(TableStyle([
+            ('BACKGROUND',    (0, 0), (-1, 0), C_NAVY),
+            ('FONTSIZE',      (0, 0), (-1, -1), 7.5),
+            ('TOPPADDING',    (0, 0), (-1, -1), 3),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 4),
+            ('GRID',          (0, 0), (-1, -1), 0.3, C_BORDER),
+            ('ROWBACKGROUNDS',(0, 1), (-1, -1), [WHITE, C_TABLE_ODD]),
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        els.append(roi_t)
+        els.append(_p(
+            '* Прогноз базируется на 5% доле ниши, среднерыночной цене и выкупе '
+            f'{int(buyout_pct*100)}%. Инвестиция в тестовую партию отражена в Месяц 01.',
+            size=7.5, color=C_GRAY, space_before=3
+        ))
 
     els.append(_sp(0.1))
     return els
@@ -1404,11 +1496,17 @@ def _sec_unit(r: dict) -> list:
     els = [_h2('Юнит-экономика'), _hr()]
 
     rec = r.get('recommendation') or {}
-    if rec.get('title'):
-        els.append(_h3(str(rec['title'])))
-    if rec.get('detail'):
-        els.append(_body(str(rec['detail'])))
-        els.append(_sp(0.1))
+    if isinstance(rec, str):
+        if rec:
+            els.append(_body(rec))
+            els.append(_sp(0.1))
+        rec = {}
+    else:
+        if rec.get('title'):
+            els.append(_h3(str(rec['title'])))
+        if rec.get('detail'):
+            els.append(_body(str(rec['detail'])))
+            els.append(_sp(0.1))
 
     scenarios = r.get('scenarios') or {}
     vmap = {'profit': '✅ Прибыльно', 'marginal': '⚠ На грани', 'loss': '❌ Убыток'}
@@ -1441,6 +1539,63 @@ def _sec_unit(r: dict) -> list:
 
     els.append(_tbl(rows, col_widths=[COL_W - 3.9*inch, 1.3*inch, 1.3*inch, 1.3*inch]))
     els.append(_sp(0.1))
+
+    # ── Deep: чувствительность + оборотный капитал ──────────────────────────
+    if _CURRENT_LEVEL == 'deep' and scenarios:
+        # Берём лучший сценарий для чувствительного анализа
+        best = max(scenarios.values(), key=lambda s: float(s.get('margin_pct', 0) or 0))
+        ap   = float(best.get('avg_price_used', 0) or 0)  # fallback
+        cost = float(best.get('total_cost_rub', 0) or 0)
+        prof = float(best.get('profit_per_unit_rub', 0) or 0)
+        roi  = float(best.get('roi_pct', 0) or 0)
+        mar  = float(best.get('margin_pct', 0) or 0)
+
+        # Вычисляем цену из cost+profit (раз avg_price недоступен напрямую)
+        # Приблизительно: price ≈ cost + wb_comm + wb_log + profit
+        wb_comm = float(best.get('wb_commission_rub', 0) or 0)
+        wb_log  = float(best.get('wb_logistics_rub', 0) or 0)
+        approx_price = cost + wb_comm + wb_log + prof
+
+        if approx_price > 0:
+            els.append(_h3('Чувствительность к изменениям'))
+            sens_rows = [['Сценарий', 'Новая маржа', 'Новый ROI', 'Прибыль/ед']]
+            # Закупочная цена +10%
+            cost_10 = cost * 1.1
+            prof_10 = approx_price - cost_10 - wb_comm - wb_log
+            mar_10  = prof_10 / approx_price * 100 if approx_price else 0
+            roi_10  = prof_10 / cost_10 * 100 if cost_10 else 0
+            sens_rows.append(['Закуп. цена +10%',
+                               f'{mar_10:.1f}%', f'{roi_10:.0f}%', _rub(prof_10)])
+            # Цена продажи -5%
+            price_5  = approx_price * 0.95
+            prof_5   = price_5 - cost - wb_comm - wb_log
+            mar_5    = prof_5 / price_5 * 100 if price_5 else 0
+            roi_5    = prof_5 / cost * 100 if cost else 0
+            sens_rows.append(['Цена продажи -5%',
+                               f'{mar_5:.1f}%', f'{roi_5:.0f}%', _rub(prof_5)])
+            # Выкуп 70%
+            buyout_orig = float(r.get('buyout_pct', 0.84) or 0.84)
+            ret_orig = wb_log * (1 - buyout_orig) * 0.5
+            ret_70   = wb_log * 0.30 * 0.5
+            prof_70  = prof + ret_orig - ret_70
+            mar_70   = prof_70 / approx_price * 100 if approx_price else 0
+            sens_rows.append([f'Выкуп 70% (вместо {buyout_orig*100:.0f}%)',
+                               f'{mar_70:.1f}%', f'{roi:.0f}%', _rub(prof_70)])
+            els.append(_tbl(sens_rows, col_widths=[2.3*inch, 1.1*inch, 1.0*inch, COL_W-4.4*inch]))
+
+        # Оборотный капитал
+        els.append(_h3('Расчёт оборотного капитала'))
+        turnover = float(r.get('turnover', 60) or 60)
+        batch    = float(r.get('test_batch', 20) or 20)
+        frozen   = cost * batch if cost > 0 else 0
+        free_mo  = frozen / (turnover / 30) if turnover > 0 else 0
+        els.append(_info(
+            f'При оборачиваемости <b>{turnover:.0f} дней</b> и партии <b>{batch:.0f} шт</b>:<br/>'
+            f'Заморожено в товаре: <b>{_rub(frozen)}</b><br/>'
+            f'Свободный оборот товара: <b>≈ {_rub(free_mo)}/мес</b><br/>'
+            'Планируйте оборотный капитал с запасом на 2 оборота до выхода на самоокупаемость.'
+        ))
+
     return els
 
 
@@ -1468,11 +1623,13 @@ def _sec_ads(r: dict) -> list:
     if sdetail:
         els.append(_body(sdetail))
 
-    steps = list(r.get('strategy_steps') or [])
-    if steps:
-        els.append(_h3('Шаги реализации'))
-        for s in steps:
-            els.append(_bullet(str(s)))
+    # Шаги реализации — только в Deep (Standard ограничивается описанием стратегии + бюджетом)
+    if _CURRENT_LEVEL == 'deep':
+        steps = list(r.get('strategy_steps') or [])
+        if steps:
+            els.append(_h3('Шаги реализации'))
+            for s in steps:
+                els.append(_bullet(str(s)))
 
     budget = r.get('budget') or {}
     if budget:
@@ -1490,36 +1647,44 @@ def _sec_ads(r: dict) -> list:
             rows.append(['Комментарий', str(budget['comment']), ''])
         els.append(_tbl(rows, col_widths=[1.3*inch, 1.8*inch, COL_W - 3.1*inch]))
 
-    cpm = r.get('cpm_forecast') or {}
-    if cpm:
-        els.append(_h3('Прогноз CPM'))
-        rows = [['Старт', 'Мес. 2', 'Комментарий']]
-        rows.append([_rub(cpm.get('start_rub',0)), _rub(cpm.get('month2_rub',0)),
-                     str(cpm.get('comment',''))])
-        els.append(_tbl(rows, col_widths=[1.5*inch, 1.5*inch, COL_W - 3.0*inch]))
+    # CPM и KPI по месяцам — только в Deep
+    if _CURRENT_LEVEL == 'deep':
+        cpm = r.get('cpm_forecast') or {}
+        if cpm:
+            els.append(_h3('Прогноз CPM'))
+            rows = [['Старт', 'Мес. 2', 'Комментарий']]
+            rows.append([_rub(cpm.get('start_rub', 0)), _rub(cpm.get('month2_rub', 0)),
+                         str(cpm.get('comment', ''))])
+            els.append(_tbl(rows, col_widths=[1.5*inch, 1.5*inch, COL_W - 3.0*inch]))
 
-    _KPI_EXPAND = {
-        'CTR':    'CTR (кликабельность, %)',
-        'CR':     'CR (конверсия в заказ, %)',
-        'DRR':    'DRR (доля рекламных расходов, %)',
-        'ДРР':    'ДРР (доля рекламных расходов, %)',
-        'Pos':    'Позиция в выдаче',
-        'Orders': 'Заказов в месяц',
-    }
-    def _expand_kpi(s: str) -> str:
-        for abbr, full in _KPI_EXPAND.items():
-            if s.startswith(abbr + ':') or s.startswith(abbr + ' '):
-                return full + s[len(abbr):]
-        return s
+        _KPI_EXPAND = {
+            'CTR':    'CTR (кликабельность, %)',
+            'CR':     'CR (конверсия в заказ, %)',
+            'DRR':    'DRR (доля рекламных расходов, %)',
+            'ДРР':    'ДРР (доля рекламных расходов, %)',
+            'Pos':    'Позиция в выдаче',
+            'Orders': 'Заказов в месяц',
+        }
+        def _expand_kpi(s: str) -> str:
+            for abbr, full in _KPI_EXPAND.items():
+                if s.startswith(abbr + ':') or s.startswith(abbr + ' '):
+                    return full + s[len(abbr):]
+            return s
 
-    forecast = r.get('forecast') or {}
-    for mkey, mlabel in [('month1','Месяц 1 KPI'),('month2','Месяц 2 KPI')]:
-        m = forecast.get(mkey) or {}
-        metrics = list(m.get('metrics') or [])
-        if metrics:
-            els.append(_h3(mlabel))
-            for metric in metrics:
-                els.append(_bullet(_expand_kpi(str(metric))))
+        forecast = r.get('forecast') or {}
+        for mkey, mlabel in [('month1', 'Месяц 1 — KPI'),('month2', 'Месяц 2 — KPI')]:
+            m = forecast.get(mkey) or {}
+            if isinstance(m, str):
+                # Если AI вернул строку, а не dict — показываем как обычный текст
+                if m:
+                    els.append(_h3(mlabel))
+                    els.append(_body(m))
+                continue
+            metrics = list(m.get('metrics') or [])
+            if metrics:
+                els.append(_h3(mlabel))
+                for metric in metrics:
+                    els.append(_bullet(_expand_kpi(str(metric))))
 
     els.append(_sp(0.1))
     return els
@@ -1598,6 +1763,107 @@ def _sec_competitors(r: dict) -> list:
             ])
         els.append(_tbl(rows, col_widths=[1.7*inch, 1.4*inch, 1.4*inch, 1.4*inch,
                                           COL_W - 5.9*inch]))
+
+    els.append(_sp(0.1))
+    return els
+
+
+def _sec_competitors_merged(comp: dict, deep: dict) -> list:
+    """Объединённый раздел конкурентов для Deep: _run_competitors + _run_deep в одном блоке."""
+    if not comp and not deep:
+        return []
+    els = [_h2('Анализ конкурентов'), _hr()]
+
+    # Сводная таблица входа (из _run_deep)
+    if deep:
+        verdict   = str(deep.get('verdict', ''))
+        desc      = str(deep.get('verdict_desc', ''))
+        if verdict:
+            vc = {'ВХОДИТЬ': C_GREEN, 'ТЕСТИРОВАТЬ': C_AMBER, 'НЕ ВХОДИТЬ': C_RED}
+            col = vc.get(verdict.strip().upper(), C_AMBER)
+            els.append(_p(f'Вердикт: {verdict}', size=12, bold=True, color=col))
+        if desc:
+            els.append(_body(desc))
+        entry  = deep.get('entry_budget', 0)
+        ad_b   = deep.get('ad_budget', 0)
+        be     = deep.get('breakeven', 0)
+        roi    = deep.get('roi_forecast', '—')
+        rows   = [['Бюджет входа', 'Бюджет рекламы/мес', 'Точка безуб.', 'ROI прогноз']]
+        rows.append([_rub(entry), _rub(ad_b), _num(be) + ' шт', str(roi)])
+        els.append(_tbl(rows, col_widths=[1.6*inch, 1.7*inch, 1.5*inch, COL_W - 4.8*inch]))
+        els.append(_sp(0.08))
+
+    # Топ-10 продавцов (из _run_competitors)
+    sellers = list(comp.get('top_sellers') or [])
+    if sellers:
+        els.append(_h3('Топ продавцов в нише'))
+        rows = [['Продавец', 'Выручка/мес', 'Товаров', 'Рейтинг', 'Доля рынка', 'Слабое место']]
+        for s in sellers[:10]:
+            rows.append([
+                str(s.get('name', ''))[:22],
+                _rub(s.get('revenue_monthly_rub', 0)),
+                str(s.get('products_count', '—')),
+                str(s.get('avg_rating', '—')),
+                f"{s.get('market_share_pct', 0):.1f}%",
+                str(s.get('weak_point', ''))[:28],
+            ])
+        els.append(_tbl(rows, col_widths=[
+            1.55*inch, 1.1*inch, 0.65*inch, 0.65*inch, 0.85*inch, COL_W - 4.8*inch
+        ]))
+
+    # Слабые места конкурентов (из _run_competitors)
+    weak = str(comp.get('weak_spots_summary', ''))
+    if weak:
+        els.append(_h3('Слабые места конкурентов'))
+        els.append(_body(weak))
+
+    # Конкурентный анализ (из _run_deep)
+    if deep:
+        ca = str(deep.get('competitive_analysis', ''))
+        if ca:
+            els.append(_h3('Конкурентный анализ'))
+            els.append(_body(ca))
+        fs = str(deep.get('free_segments', ''))
+        if fs:
+            els.append(_h3('Свободные сегменты (расширенный анализ)'))
+            els.append(_body(fs))
+
+    # Свободные сегменты (из _run_competitors)
+    segs = list(comp.get('free_segments') or [])
+    if segs:
+        els.append(_h3('Свободные рыночные сегменты'))
+        for seg in segs:
+            els.append(_bullet(str(seg)))
+
+    # Когда входить (из _run_competitors)
+    window = str(comp.get('entry_window', ''))
+    if window:
+        els.append(_tip(f'<b>Когда входить:</b> {window}'))
+
+    # ROI-прогноз 12 месяцев (из _run_competitors)
+    rof = list(comp.get('roi_forecast') or [])
+    if rof:
+        els.append(_h3('ROI-прогноз: первые 12 месяцев'))
+        rows = [['Период', 'Инвестиции', 'Выручка', 'Прибыль', 'ROI']]
+        for row in rof:
+            rows.append([
+                str(row.get('period', '')),
+                _rub(row.get('investment_rub', 0)),
+                _rub(row.get('revenue_rub', 0)),
+                _rub(row.get('profit_rub', 0)),
+                f"{row.get('roi_pct', 0)}%",
+            ])
+        els.append(_tbl(rows, col_widths=[1.7*inch, 1.4*inch, 1.4*inch, 1.4*inch,
+                                          COL_W - 5.9*inch]))
+
+    # Финансовый план и рекомендация (из _run_deep)
+    if deep:
+        for field, label in [('financial_plan', 'Финансовый план'),
+                              ('recommendation', 'Рекомендация')]:
+            txt = str(deep.get(field, ''))
+            if txt:
+                els.append(_h3(label))
+                els.append(_body(txt))
 
     els.append(_sp(0.1))
     return els
@@ -1941,6 +2207,97 @@ def _sec_content(text: str) -> list:
             els.append(_body(_md_inline(line)))
     els.append(_sp(0.1))
     return els
+
+
+def _render_seasonal_table(sp: dict) -> list:
+    """Build a visual 12-month seasonal plan table from peak/low/buy_date/ad_date."""
+    peak_str = (sp.get('peak') or '').lower()
+    low_str  = (sp.get('low')  or '').lower()
+    buy_str  = (sp.get('buy_date') or '').lower()
+    ad_str   = (sp.get('ad_date')  or '').lower()
+
+    MONTH_MAP = {
+        'январ': 1, 'янв': 1, 'феврал': 2, 'фев': 2, 'март': 3, 'мар': 3,
+        'апрел': 4, 'апр': 4, 'мая': 5, 'май': 5, 'июн': 6,
+        'июл': 7, 'август': 8, 'авг': 8, 'сентябр': 9, 'сен': 9,
+        'октябр': 10, 'окт': 10, 'ноябр': 11, 'ноя': 11, 'декабр': 12, 'дек': 12,
+    }
+
+    def _parse(text: str) -> set:
+        found = set()
+        for abbr, num in sorted(MONTH_MAP.items(), key=lambda x: -len(x[0])):
+            if abbr in text:
+                found.add(num)
+        return found
+
+    peak_m = _parse(peak_str)
+    low_m  = _parse(low_str)
+    buy_m  = _parse(buy_str)
+    ad_m   = _parse(ad_str)
+
+    MNAMES = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+              'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек']
+
+    rows = [['Месяц', 'Статус', 'Рекомендация']]
+    status_list = []
+    for i, mname in enumerate(MNAMES, 1):
+        if i in peak_m:
+            status = '🔥 Пик'
+            action = 'Активные продажи, реклама +30–50%'
+        elif i in low_m:
+            status = '📉 Спад'
+            action = 'Анализ сезона, подготовка, снижение стока'
+        else:
+            status = '→ Норма'
+            action = 'Поддержание стока, умеренная реклама'
+        notes = []
+        if i in buy_m:
+            notes.append('📦 закупка')
+        if i in ad_m:
+            notes.append('📢 старт рекламы')
+        if notes:
+            action += f'  ({", ".join(notes)})'
+        rows.append([mname, status, action])
+        status_list.append(status)
+
+    t = Table(rows, colWidths=[0.65*inch, 0.82*inch, COL_W - 1.47*inch])
+    cmds = [
+        ('BACKGROUND',    (0, 0), (-1, 0), C_NAVY),
+        ('TEXTCOLOR',     (0, 0), (-1, 0), WHITE),
+        ('FONTNAME',      (0, 0), (-1, 0), FB),
+        ('FONTSIZE',      (0, 0), (-1, -1), 8.5),
+        ('FONTNAME',      (0, 1), (-1, -1), FN),
+        ('TEXTCOLOR',     (0, 1), (-1, -1), C_TEXT),
+        ('GRID',          (0, 0), (-1, -1), 0.4, C_BORDER),
+        ('TOPPADDING',    (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 7),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 7),
+        ('ROWBACKGROUNDS',(0, 1), (-1, -1), [WHITE, C_TABLE_ODD]),
+    ]
+    for ri, st in enumerate(status_list, 1):
+        if '🔥' in st:
+            cmds += [('BACKGROUND', (0, ri), (-1, ri), HexColor('#f0fdf4')),
+                     ('TEXTCOLOR',  (1, ri), (1, ri), C_GREEN),
+                     ('FONTNAME',   (1, ri), (1, ri), FB)]
+        elif '📉' in st:
+            cmds += [('BACKGROUND', (0, ri), (-1, ri), HexColor('#fef2f2')),
+                     ('TEXTCOLOR',  (1, ri), (1, ri), C_RED)]
+    t.setStyle(TableStyle(cmds))
+
+    result = [t]
+    buy_label = sp.get('buy_date') or ''
+    ad_label  = sp.get('ad_date') or ''
+    if buy_label or ad_label:
+        result.append(_sp(0.05))
+    if buy_label:
+        result.append(_p(f'<b>Когда закупать:</b> {buy_label} — за 45–60 дней до пика',
+                         size=8.5, space_before=2))
+    if ad_label:
+        result.append(_p(f'<b>Старт рекламы:</b> {ad_label} — за 2–3 недели до пика',
+                         size=8.5, space_before=2))
+    result.append(_sp(0.1))
+    return result
 
 
 def _sec_seasonal_plan(r: dict) -> list:
@@ -2481,117 +2838,208 @@ def _sec_deep_value_block() -> list:
     return [_sp(0.15), tbl, _sp(0.15)]
 
 
-def _sec_30days() -> list:
-    """Страница «30 дней» в Deep — на тёмном фоне (Finale template)."""
-    gold      = HexColor('#f59e0b')
-    dark_card = HexColor('#1a2d40')
-    sep_line  = HexColor('#2d4a62')
+def _sec_30days(niche: dict = None, fm: dict = None) -> list:
+    """90-дневный план запуска — на светлом фоне (NoBar template)."""
+    niche = niche or {}
+    fm    = fm or {}
 
-    GAP  = 0.15 * inch
-    COL3 = (COL_W - 2 * GAP) / 3
+    # Числа из ниши
+    niche_name   = str(niche.get('name') or 'нише')
+    avg_price    = float(niche.get('avg_price') or fm.get('avg_price') or 1500)
+    buyout_pct   = float(niche.get('buyout_pct') or fm.get('buyout_pct') or 0.75)
+    turnover     = float(niche.get('turnover') or fm.get('turnover') or 60)
+    sellers_cnt  = int(niche.get('sellers_with_sales') or fm.get('sellers_with_sales') or 150)
+    monthly_rev  = float(niche.get('revenue') or 0)
+    target_sales = max(5, int(monthly_rev / avg_price / sellers_cnt * 0.5)) if (monthly_rev and avg_price and sellers_cnt) else 25
+    target_rev   = int(target_sales * avg_price * buyout_pct)
 
-    def _wp(text, size=10, bold=False, color=WHITE, align=TA_CENTER, sb=0, sa=0):
-        s = ParagraphStyle('_30wp', fontName=FB if bold else FN, fontSize=size,
-                           textColor=color, alignment=align,
-                           spaceBefore=sb, spaceAfter=sa,
-                           leading=size * 1.38)
-        return Paragraph(str(text), s)
+    test_batch   = int(fm.get('test_batch_units') or 20)
+    test_cost    = int(fm.get('test_batch_cost') or int(test_batch * avg_price * 0.35))
+    ad_budget_mo = int(fm.get('monthly_ad_budget') or 45000)
+    ad_budget_wk = int(ad_budget_mo / 4)
+    reorder_qty  = int(test_batch * 2.5)
+    reorder_cost = int(reorder_qty * avg_price * 0.35)
 
-    def _card(label, hdr_color, actions):
-        hdr_s  = ParagraphStyle('_30h', fontName=FB, fontSize=9,
-                                textColor=HexColor('#0d1b2a'), alignment=TA_CENTER,
-                                leading=13)
-        item_s = ParagraphStyle('_30i', fontName=FN, fontSize=8.5,
-                                textColor=WHITE, leading=13, spaceBefore=4)
+    C_BLUE_H = HexColor('#1e40af')
+    C_STEP   = [HexColor('#dbeafe'), HexColor('#dcfce7'),
+                HexColor('#fef9c3'), HexColor('#ede9fe'), HexColor('#fee2e2')]
+    C_STEP_H = [HexColor('#1e40af'), HexColor('#15803d'),
+                HexColor('#92400e'), HexColor('#6d28d9'), HexColor('#b91c1c')]
 
-        hdr_tbl = Table([[Paragraph(label, hdr_s)]], colWidths=[COL3])
-        hdr_tbl.setStyle(TableStyle([
-            ('BACKGROUND',    (0, 0), (-1, -1), hdr_color),
-            ('TOPPADDING',    (0, 0), (-1, -1), 9),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 9),
-            ('LEFTPADDING',   (0, 0), (-1, -1), 8),
-            ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
-        ]))
-
-        rows = [[Paragraph(f'☐  {a}', item_s)] for a in actions]
-        body_tbl = Table(rows, colWidths=[COL3])
-        body_tbl.setStyle(TableStyle([
-            ('BACKGROUND',    (0, 0), (-1, -1), dark_card),
-            ('TOPPADDING',    (0, 0), (-1, -1), 7),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
-            ('LEFTPADDING',   (0, 0), (-1, -1), 10),
-            ('RIGHTPADDING',  (0, 0), (-1, -1), 8),
-            ('BOX',           (0, 0), (-1, -1), 1.5, hdr_color),
-            ('LINEBELOW',     (0, 0), (-1, -2), 0.4, sep_line),
-        ]))
-
-        card = Table([[hdr_tbl], [body_tbl]], colWidths=[COL3])
-        card.setStyle(TableStyle([
-            ('TOPPADDING',    (0, 0), (-1, -1), 0),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-            ('LEFTPADDING',   (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING',  (0, 0), (-1, -1), 0),
-        ]))
-        return card
-
-    card1  = _card('НЕДЕЛЯ 1\nНайти поставщика',
-                   HexColor('#3b82f6'), [
-                       'Найти поставщика на 1688.com или Alibaba',
-                       'Запросить образцы и прайс-лист',
-                       'Зарегистрировать ИП или самозанятость',
-                       'Изучить топ-10 конкурентов в нише',
-                   ])
-    card23 = _card('НЕДЕЛЯ 2–3\nПроверить качество',
-                   HexColor('#f59e0b'), [
-                       'Получить образцы от поставщика',
-                       'Проверить качество и упаковку',
-                       'Заказать тестовую партию',
-                       'Начать сбор документов для WB',
-                   ])
-    card4  = _card('НЕДЕЛЯ 4\nЗапустить продажи',
-                   HexColor('#16a34a'), [
-                       'Подготовить карточку товара',
-                       'Сделать фото и видео контент',
-                       'Зарегистрироваться на WB как продавец',
-                       'Настроить первую рекламную кампанию',
-                   ])
-
-    grid = Table([[card1, '', card23, '', card4]],
-                 colWidths=[COL3, GAP, COL3, GAP, COL3])
-    grid.setStyle(TableStyle([
-        ('TOPPADDING',    (0, 0), (-1, -1), 0),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
-        ('LEFTPADDING',   (0, 0), (-1, -1), 0),
-        ('RIGHTPADDING',  (0, 0), (-1, -1), 0),
-        ('VALIGN',        (0, 0), (-1, -1), 'TOP'),
-    ]))
-
-    acl = Table([['']], colWidths=[COL_W * 0.35], rowHeights=[1.5])
-    acl.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), gold),
-                              ('TOPPADDING', (0, 0), (-1, -1), 0),
-                              ('BOTTOMPADDING', (0, 0), (-1, -1), 0)]))
-    divider = Table([[acl]], colWidths=[COL_W])
-    divider.setStyle(TableStyle([('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                                  ('TOPPADDING', (0, 0), (-1, -1), 0),
-                                  ('BOTTOMPADDING', (0, 0), (-1, -1), 0)]))
-
-    close_s = ParagraphStyle('_30cl', fontName=FB, fontSize=12, textColor=WHITE,
-                              alignment=TA_CENTER, leading=18)
-
-    return [
-        _sp(1.0),
-        _wp('◆ ПЛАН ПЕРВОГО МЕСЯЦА ◆', size=9, bold=True, color=gold),
-        _sp(0.15),
-        _wp('С чего начать завтра утром', size=20, bold=True),
-        _sp(0.08),
-        _wp('Конкретные шаги для входа в нишу', size=9.5, color=C_COVER_SUB),
-        _sp(0.3),
-        divider,
-        _sp(0.32),
-        grid,
-        _sp(0.5),
-        Paragraph('Ниша проанализирована. Решение за вами.', close_s),
+    els = [
+        _h2('90-дневный план запуска'),
+        _hr(),
+        _p(
+            f'Детальная дорожная карта входа в нишу <b>{niche_name}</b>. '
+            f'Цель к концу 90 дней — {target_sales} продаж/мес и выручка '
+            f'{_rub(target_rev)}/мес после выкупа ({int(buyout_pct*100)}%).',
+            size=9.5, color=C_TEXT, space_before=2, space_after=6,
+        ),
     ]
+
+    # 5 блоков: заголовок, срок, задачи, метрики успеха
+    blocks = [
+        {
+            'idx': 0,
+            'label': 'БЛОК 1 — Подготовка и разведка',
+            'period': 'Дни 1–14',
+            'tasks': [
+                f'Зарегистрировать ИП (ОКВЭД 47.91) или оформить самозанятость — нужен личный кабинет WB.',
+                f'Собрать топ-20 конкурентов в нише «{niche_name}»: цена, отзывы, контент карточки.',
+                f'Найти 3–5 поставщиков на 1688.com / Alibaba / через российских посредников.',
+                f'Запросить образцы (по 1–2 шт от каждого) и прайс-лист с MOQ.',
+                f'Рассчитать юнит-экономику: целевая цена ≈ {_rub(avg_price)}, '
+                f'выкуп {int(buyout_pct*100)}%, тестовая партия {test_batch} шт = {_rub(test_cost)}.',
+            ],
+            'kpi': f'Выбран поставщик, подписан контракт, известна точная себестоимость.',
+        },
+        {
+            'idx': 1,
+            'label': 'БЛОК 2 — Тестовая партия',
+            'period': 'Дни 15–30',
+            'tasks': [
+                f'Заказать тестовую партию: {test_batch} шт, бюджет ≈ {_rub(test_cost)}.',
+                f'Оплатить доставку (карго или СДЭК из Китая, ~{int(turnover)} дней оборот).',
+                f'Получить сертификат / декларацию соответствия (если требуется для ниши).',
+                f'Создать карточку товара: 7–9 инфографических фото + видео 30 с.',
+                f'Написать SEO-описание: главное ключевое слово в заголовке, синонимы в описании.',
+            ],
+            'kpi': f'Товар поступил на склад WB FBO, карточка создана и прошла модерацию.',
+        },
+        {
+            'idx': 2,
+            'label': 'БЛОК 3 — Старт продаж и первые отзывы',
+            'period': 'Дни 31–45',
+            'tasks': [
+                f'Запустить автоматическую рекламу (Аукцион) с бюджетом {_rub(ad_budget_wk)}/нед.',
+                f'Настроить СПП-скидку 30–40% для разгона позиции в первые 2 недели.',
+                f'Организовать выкупы-самовыкупы (не менее {min(5,test_batch)} шт) для стартового буста.',
+                f'Мониторить ДРР: цель ≤30% в первый месяц, снижать к 15% к 3-му месяцу.',
+                f'Оперативно отвечать на вопросы покупателей (статус карточки влияет на ранжирование).',
+            ],
+            'kpi': f'5+ отзывов с рейтингом ≥4.5, позиция в топ-100 по ключевому запросу.',
+        },
+        {
+            'idx': 3,
+            'label': 'БЛОК 4 — Оптимизация и масштаб',
+            'period': 'Дни 46–75',
+            'tasks': [
+                f'Заказать дозаказ: {reorder_qty} шт (~{_rub(reorder_cost)}) до нулевого остатка.',
+                f'Расширить ключевые запросы — добавить низкочастотники в описание и SEO-поля.',
+                f'Перейти с авто-рекламы на ручную ставку: выделить топ-5 конверсионных ключей.',
+                f'Добавить второй цвет / вариацию — расширяет охват без нового артикула.',
+                f'Запустить акцию «Дни рождения» или скидку в коллекции для роста CTR.',
+            ],
+            'kpi': f'{int(target_sales * 0.6)}+ продаж/мес, ДРР ≤25%, остатки > 30 дней оборота.',
+        },
+        {
+            'idx': 4,
+            'label': 'БЛОК 5 — Закрепление позиции',
+            'period': 'Дни 76–90',
+            'tasks': [
+                f'Достичь {target_sales}+ продаж/мес — плановый показатель для 5% доли ниши.',
+                f'Выручка ≥ {_rub(target_rev)}/мес после выкупа. Проверить P&L.',
+                f'Подать заявку в «Витрину» или «Новинки» для дополнительного трафика WB.',
+                f'Собрать {min(50, target_sales * 3)}+ отзывов, добиться рейтинга карточки ≥4.7.',
+                f'Запланировать масштабирование: следующая ниша или ещё один артикул той же категории.',
+            ],
+            'kpi': f'Самоокупаемый канал продаж, ROI > 0%, маржинальность ≥{int((avg_price * buyout_pct * 0.25) / (avg_price * buyout_pct) * 100)}%.',
+        },
+    ]
+
+    for b in blocks:
+        i = b['idx']
+        # Заголовок блока
+        hdr_t = Table([[_p(f'{b["label"]}', size=9.5, bold=True,
+                           color=WHITE, align=TA_LEFT)]],
+                      colWidths=[COL_W * 0.6])
+        period_t = Table([[_p(b['period'], size=9.5, bold=True,
+                               color=WHITE, align=TA_RIGHT)]],
+                         colWidths=[COL_W * 0.4])
+        hdr_row = Table([[hdr_t, period_t]],
+                        colWidths=[COL_W * 0.6, COL_W * 0.4])
+        hdr_row.setStyle(TableStyle([
+            ('BACKGROUND',    (0, 0), (-1, -1), C_STEP_H[i]),
+            ('TOPPADDING',    (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
+            ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        els.append(_sp(0.08))
+        els.append(hdr_row)
+
+        # Задачи
+        task_rows = []
+        for j, task in enumerate(b['tasks']):
+            task_rows.append([_p(f'☐  {task}', size=8.5, color=C_TEXT)])
+        body_t = Table(task_rows, colWidths=[COL_W])
+        body_t.setStyle(TableStyle([
+            ('BACKGROUND',    (0, 0), (-1, -1), C_STEP[i]),
+            ('TOPPADDING',    (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 16),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
+            ('LINEBELOW',     (0, 0), (-1, -2), 0.3, HexColor('#e5e7eb')),
+        ]))
+        els.append(body_t)
+
+        # Метрика успеха
+        kpi_t = Table(
+            [[_p(f'✓ Критерий успеха: {b["kpi"]}', size=8, bold=True, color=C_STEP_H[i])]],
+            colWidths=[COL_W]
+        )
+        kpi_t.setStyle(TableStyle([
+            ('BACKGROUND',    (0, 0), (-1, -1), HexColor('#f9fafb')),
+            ('TOPPADDING',    (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING',   (0, 0), (-1, -1), 16),
+            ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
+            ('BOX',           (0, 0), (-1, -1), 0.5, C_STEP_H[i]),
+        ]))
+        els.append(kpi_t)
+
+    # KPI-таблица 3 месяца
+    els.append(_sp(0.2))
+    els.append(_h3('Целевые KPI по месяцам'))
+    s2 = int(target_sales * 0.6)
+    s3 = target_sales
+    r1 = int(s2 * 0.4 * avg_price * buyout_pct)
+    r2 = int(s2 * avg_price * buyout_pct)
+    r3 = int(s3 * avg_price * buyout_pct)
+    kpi_rows = [
+        ['Показатель', 'Месяц 1 (дни 1–30)', 'Месяц 2 (дни 31–60)', 'Месяц 3 (дни 61–90)'],
+        ['Продажи, шт/мес',     f'5–10',       f'{int(s2*0.7)}–{s2}',  f'{s2}–{s3}'],
+        ['Выручка после выкупа', _rub(r1),      _rub(r2),               _rub(r3)],
+        ['ДРР (доля рекламы)',   '≤ 35%',       '≤ 25%',                '≤ 20%'],
+        ['Отзывы, шт',          '3–5',          '20–30',                f'≥ {min(50, s3*3)}'],
+        ['Позиция по ключу',     'топ 500',      'топ 200',              'топ 50'],
+        ['Бюджет рекламы',      _rub(ad_budget_mo), _rub(ad_budget_mo), _rub(int(ad_budget_mo * 1.2))],
+    ]
+    kpi_t2 = _tbl(kpi_rows,
+                  col_widths=[1.65*inch, 1.45*inch, 1.45*inch,
+                               COL_W - 4.55*inch])
+    kpi_t2.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, 0), C_BLUE_H),
+        ('FONTSIZE',      (0, 0), (-1, -1), 8.5),
+        ('TOPPADDING',    (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 7),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 7),
+        ('GRID',          (0, 0), (-1, -1), 0.4, C_BORDER),
+        ('ROWBACKGROUNDS',(0, 1), (-1, -1), [WHITE, C_TABLE_ODD]),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME',      (0, 0), (-1, 0), FB),
+        ('FONTNAME',      (0, 1), (0, -1), FB),
+    ]))
+    els.append(kpi_t2)
+    els.append(_p(
+        f'* Расчёт на основе данных ниши: средняя цена {_rub(avg_price)}, '
+        f'выкуп {int(buyout_pct*100)}%, тестовая партия {test_batch} шт.',
+        size=7.5, color=C_GRAY, space_before=3,
+    ))
+    els.append(_sp(0.15))
+    return els
 
 
 def _sec_finale(level: str, agents: dict = None) -> list:
@@ -2718,7 +3166,7 @@ def _sec_finale(level: str, agents: dict = None) -> list:
 
 def generate(level: str, niche: dict, chart_items: list = None) -> bytes:
     """
-    Генерирует PDF-отчёт.
+    Генерирует PDF-отчёт: запускает агентов параллельно, затем делегирует в render().
 
     Args:
         level:       'basic' | 'standard' | 'deep'
@@ -2730,7 +3178,6 @@ def generate(level: str, niche: dict, chart_items: list = None) -> bytes:
     print(f'[PDF] Генерация уровень={level}, ниша={niche.get("name","")}')
     t0 = time.time()
 
-    # ── Параллельный запуск агентов (ThreadPoolExecutor — I/O bound) ───────────
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     task_map = {'master': lambda n: _run_master(n, level)}
@@ -2738,17 +3185,18 @@ def generate(level: str, niche: dict, chart_items: list = None) -> bytes:
         task_map['unit'] = _run_unit
         task_map['ads']  = _run_ads
     if level == 'deep':
-        task_map['deep']      = _run_deep
-        task_map['supplier']  = _run_supplier
-        task_map['docs']      = _run_docs
-        task_map['warehouse'] = _run_warehouse
-        task_map['content']   = _run_content
+        task_map['deep']        = _run_deep
+        task_map['competitors'] = _run_competitors
+        task_map['supplier']    = _run_supplier
+        task_map['docs']        = _run_docs
+        task_map['warehouse']   = _run_warehouse
+        task_map['content']     = _run_content
 
     agents = {}
     content_text = ''
     print(f'[PDF] Запускаем {len(task_map)} агентов параллельно...')
 
-    with ThreadPoolExecutor(max_workers=len(task_map)) as pool:
+    with ThreadPoolExecutor(max_workers=max(len(task_map), 1)) as pool:
         futs = {pool.submit(fn, niche): name for name, fn in task_map.items()}
         for fut in as_completed(futs):
             name = futs[fut]
@@ -2763,70 +3211,8 @@ def generate(level: str, niche: dict, chart_items: list = None) -> bytes:
                 if name != 'content':
                     agents[name] = {}
 
-    print(f'[PDF] Агенты готовы за {time.time()-t0:.1f}s, собираем PDF...')
-
-    # ── Собираем PDF ──────────────────────────────────────────────────────────
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        rightMargin=MARGIN, leftMargin=MARGIN,
-        topMargin=0.6*inch, bottomMargin=0.5*inch,
-    )
-
-    items = chart_items or []
-    top_limit = 5 if level == 'basic' else 20
-
-    els = []
-    els += _sec_cover(niche, level)
-    els += _sec_metrics(niche)
-
-    # Графики из данных MPStats
-    if items:
-        if len(items) >= 4:
-            d = _chart_revenue_line(items)
-            if d:
-                els.append(_h2('Топ товары по выручке'))
-                els.append(_hr())
-                els.append(d)
-                els.append(_sp(0.1))
-
-        if level in ('standard', 'deep') and len(items) >= 6:
-            d2 = _chart_price_bar(items)
-            if d2:
-                els.append(_h2('Распределение цен'))
-                els.append(_hr())
-                els.append(d2)
-                els.append(_sp(0.1))
-
-        if level == 'deep' and len(items) >= 8:
-            d3 = _chart_sellers_pie(items)
-            if d3:
-                els.append(_h2('Доля продавцов'))
-                els.append(_hr())
-                els.append(d3)
-                els.append(_sp(0.1))
-
-    els += _sec_top_products(items, limit=top_limit, level=level)
-    els += _sec_master(agents.get('master', {}))
-
-    if level in ('standard', 'deep'):
-        els += _sec_unit(agents.get('unit', {}))
-        els += _sec_ads(agents.get('ads', {}))
-
-    if level == 'deep':
-        els += _sec_deep(agents.get('deep', {}))
-        els += _sec_supplier(agents.get('supplier', {}))
-        els += _sec_docs(agents.get('docs', {}))
-        els += _sec_warehouse(agents.get('warehouse', {}))
-        els += _sec_content(content_text)
-
-    els += _sec_conclusion(level, agents)
-    els += _sec_upsell(level)
-
-    doc.build(els)
-    buf.seek(0)
-    print(f'[PDF] Готово за {time.time()-t0:.1f}s, размер={len(buf.getvalue())} байт')
-    return buf.getvalue()
+    print(f'[PDF] Агенты готовы за {time.time()-t0:.1f}s, рендерим...')
+    return render(level, niche, agents, content_text, chart_items or [])
 
 
 # ── Валидатор качества PDF ────────────────────────────────────────────────────
@@ -3041,6 +3427,11 @@ def render(level: str, niche: dict, agents: dict,
     """
     Собирает PDF из готовых результатов агентов — без вызовов Claude.
     charts: словарь {chart_id: base64_data_url} из браузера (canvas.toDataURL).
+
+    Структура документа (нарастающая):
+      BASIC zone (синяя полоса):    Метрики → Графики → Топ-20
+      STANDARD zone (жёлтая полоса): Мастер-анализ → Юнит-экономика → Реклама
+      DEEP zone (фиолетовая полоса): Конкуренты → Поставщики → Документы → Склад → Карточка
     """
     global _CURRENT_LEVEL
     _CURRENT_LEVEL = level
@@ -3055,9 +3446,13 @@ def render(level: str, niche: dict, agents: dict,
 
     buf = io.BytesIO()
 
-    # ── Зоны страницы ─────────────────────────────────────────────────────────
-    HEADER_ZONE = 0.68 * inch   # резервируется сверху для колонтитула
-    FOOTER_ZONE = 0.52 * inch   # резервируется снизу
+    HEADER_ZONE = 0.68 * inch
+    FOOTER_ZONE = 0.52 * inch
+    SIDEBAR_X   = 0.09 * inch
+    SIDEBAR_W   = 0.11 * inch   # ~7.9pt — минимум по спецификации 4-6pt
+    C_PURPLE    = HexColor('#7c3aed')
+    C_BASIC_BAR = HexColor('#1e40af')
+    C_STD_BAR   = HexColor('#b45309')
 
     # ── Callbacks для PageTemplate ─────────────────────────────────────────────
     def _on_dark(canvas, doc):
@@ -3066,33 +3461,48 @@ def render(level: str, niche: dict, agents: dict,
         canvas.rect(0, 0, W, H, fill=1, stroke=0)
         canvas.restoreState()
 
-    def _on_content(canvas, doc):
-        canvas.saveState()
-        # ── Верхний колонтитул
-        hY = H - 0.38 * inch
-        canvas.setFont(FB, 7.5)
-        canvas.setFillColor(C_NAVY)
-        canvas.drawString(MARGIN, hY, f'WBAnalyzer  ·  {niche_name}')
-        canvas.setFont(FN, 7.5)
-        canvas.setFillColor(accent)
-        canvas.drawRightString(W - MARGIN, hY, lname)
-        # Линия под заголовком
-        canvas.setStrokeColor(accent)
-        canvas.setLineWidth(0.7)
-        canvas.line(MARGIN, H - HEADER_ZONE + 0.04 * inch,
-                    W - MARGIN, H - HEADER_ZONE + 0.04 * inch)
-        # ── Нижний колонтитул
-        fY = 0.22 * inch
-        canvas.setFont(FN, 7)
-        canvas.setFillColor(C_GRAY)
-        canvas.drawString(MARGIN, fY,
-                          f'© {PLATFORM_YEAR} WBAnalyzer · {PLATFORM_URL}')
-        # Номер страницы: -1 чтобы обложка не считалась
-        canvas.drawRightString(W - MARGIN, fY, f'Стр. {doc.page - 1}')
-        canvas.setStrokeColor(C_BORDER)
-        canvas.setLineWidth(0.4)
-        canvas.line(MARGIN, fY + 0.13 * inch, W - MARGIN, fY + 0.13 * inch)
-        canvas.restoreState()
+    def _make_content_cb(bar_color, bar_label=''):
+        """Фабрика колбека страницы: шапка + подвал + цветная полоса зоны."""
+        def _cb(canvas, doc):
+            canvas.saveState()
+            # Верхний колонтитул
+            hY = H - 0.38 * inch
+            canvas.setFont(FB, 7.5)
+            canvas.setFillColor(C_NAVY)
+            canvas.drawString(MARGIN, hY, f'WBAnalyzer  ·  {niche_name}')
+            canvas.setFont(FN, 7.5)
+            canvas.setFillColor(accent)
+            canvas.drawRightString(W - MARGIN, hY, lname)
+            canvas.setStrokeColor(accent)
+            canvas.setLineWidth(0.7)
+            canvas.line(MARGIN, H - HEADER_ZONE + 0.04 * inch,
+                        W - MARGIN, H - HEADER_ZONE + 0.04 * inch)
+            # Нижний колонтитул
+            fY = 0.22 * inch
+            canvas.setFont(FN, 7)
+            canvas.setFillColor(C_GRAY)
+            canvas.drawString(MARGIN, fY,
+                              f'© {PLATFORM_YEAR} WBAnalyzer · {PLATFORM_URL}')
+            canvas.drawRightString(W - MARGIN, fY, f'Стр. {doc.page - 1}')
+            canvas.setStrokeColor(C_BORDER)
+            canvas.setLineWidth(0.4)
+            canvas.line(MARGIN, fY + 0.13 * inch, W - MARGIN, fY + 0.13 * inch)
+            # Цветная зонная полоса на левом поле
+            if bar_color is not None:
+                bh = H - HEADER_ZONE - FOOTER_ZONE
+                canvas.setFillColor(bar_color)
+                canvas.roundRect(SIDEBAR_X, FOOTER_ZONE, SIDEBAR_W, bh, 1.5,
+                                 fill=1, stroke=0)
+                if bar_label:
+                    canvas.setFillColor(colors.white)
+                    canvas.setFont(FB, 5.5)
+                    canvas.saveState()
+                    canvas.translate(SIDEBAR_X + SIDEBAR_W / 2, FOOTER_ZONE + bh / 2)
+                    canvas.rotate(90)
+                    canvas.drawCentredString(0, -1.5, bar_label)
+                    canvas.restoreState()
+            canvas.restoreState()
+        return _cb
 
     # ── Фреймы ────────────────────────────────────────────────────────────────
     full_frame = Frame(
@@ -3107,43 +3517,40 @@ def render(level: str, niche: dict, agents: dict,
     )
 
     doc = BaseDocTemplate(buf, pagesize=A4, pageTemplates=[
-        PageTemplate(id='Cover',   frames=[full_frame],    onPage=_on_dark),
-        PageTemplate(id='Content', frames=[content_frame], onPage=_on_content),
-        PageTemplate(id='Finale',  frames=[full_frame],    onPage=_on_dark),
+        PageTemplate(id='Cover',    frames=[full_frame],    onPage=_on_dark),
+        PageTemplate(id='Basic',    frames=[content_frame], onPage=_make_content_cb(C_BASIC_BAR, '▌ BASIC')),
+        PageTemplate(id='Standard', frames=[content_frame], onPage=_make_content_cb(C_STD_BAR,   '▌ STANDARD')),
+        PageTemplate(id='Deep',     frames=[content_frame], onPage=_make_content_cb(C_PURPLE,    '▌ DEEP')),
+        PageTemplate(id='NoBar',    frames=[content_frame], onPage=_make_content_cb(None)),
+        PageTemplate(id='Finale',   frames=[full_frame],    onPage=_on_dark),
     ])
 
     # ── Контент ───────────────────────────────────────────────────────────────
     els = []
 
-    # Обложка
+    # Обложка (тёмная страница)
     els += _sec_cover(niche, level)
-    els.append(NextPageTemplate('Content'))
+    els.append(NextPageTemplate('Basic'))
     els.append(PageBreak())
 
-    # Deep: Содержание документа в начале
+    # ── BASIC: Метрики → Графики → Топ-20 ───────────────────────────────────
     if level == 'deep':
-        deep_toc = [
-            ('Ключевые показатели ниши',   2),
-            ('Графики ниши',               3),
-            ('Топ-20 товаров ниши',        4),
-            ('Мастер-анализ AI',           5),
-            ('Юнит-экономика',             6),
-            ('Рекламная стратегия',        7),
-            ('Глубокий анализ ниши',       8),
-            ('Анализ конкурентов',         9),
-            ('Поиск поставщиков',         10),
-            ('Документы и сертификаты',   11),
-            ('Стратегия поставок',        12),
-            ('Создание карточки товара',  13),
-            ('Итоговый вывод',            14),
-            ('Словарь терминов',          15),
-        ]
-        els += _sec_toc_deep(deep_toc)
-        els += _sec_deep_value_block()
-
-    # ── BASIC — метрики, графики, топ товары, мастер-анализ ─────────────────────
-    if level == 'deep':
-        els += _level_divider('BASIC', 'Базовый анализ ниши', HexColor('#6b7280'))
+        # Содержание и блок ценности — на первой контентной странице (Basic zone)
+        els += _sec_toc_deep([
+            ('Ключевые показатели ниши',    2),
+            ('Графики ниши',                3),
+            ('Топ-20 товаров ниши',         4),
+            ('Мастер-анализ AI',            5),
+            ('Юнит-экономика',              7),
+            ('Рекламная стратегия',         8),
+            ('Анализ конкурентов (топ-10)', 9),
+            ('Поиск поставщиков',          11),
+            ('Документы и сертификаты',    12),
+            ('Стратегия поставок',         13),
+            ('Создание карточки товара',   14),
+            ('Итоговый вывод',             15),
+            ('Словарь терминов',           16),
+        ])
 
     els += _sec_metrics(niche)
 
@@ -3153,52 +3560,79 @@ def render(level: str, niche: dict, agents: dict,
     elif items:
         if len(items) >= 4:
             d = _chart_revenue_line(items)
-            if d: els += [_h2('Топ товары по выручке'), d, _sp(0.1)]
+            if d:
+                els += [_h2('Топ товары по выручке'), _hr(), d, _sp(0.1)]
         if level in ('standard', 'deep') and len(items) >= 6:
             d2 = _chart_price_bar(items)
-            if d2: els += [_h2('Распределение цен'), d2, _sp(0.1)]
+            if d2:
+                els += [_h2('Распределение цен'), _hr(), d2, _sp(0.1)]
+        if level == 'deep' and len(items) >= 8:
+            d3 = _chart_sellers_pie(items)
+            if d3:
+                els += [_h2('Доля продавцов'), _hr(), d3, _sp(0.1)]
 
     els += _sec_top_products(items, limit=top_limit, level=level)
-    els += _sec_master(agents.get('master') or {})
 
-    # Сезонный план — только в Basic (как отдельный раздел)
+    # ── BASIC-only: Master + сезонный план ─────────────────────────────────
     if level == 'basic':
+        els += _sec_master(agents.get('master') or {}, niche=niche)
         els += _sec_seasonal_plan(agents.get('master') or {})
+        els += _sec_conclusion(level, agents)
+        els += _sec_upsell(level)
+        els.append(NextPageTemplate('Finale'))
+        els.append(PageBreak())
+        els += _sec_finale(level, agents)
 
-    # ── STANDARD — юнит-экономика и реклама ─────────────────────────────────────
-    if level in ('standard', 'deep'):
-        if level == 'deep':
-            els += _level_divider('STANDARD', 'Расширенный анализ', HexColor('#2563eb'))
+    # ── STANDARD: Мастер → Юнит → Реклама (→ Вывод → Глоссарий → Финал) ──
+    elif level == 'standard':
+        els.append(NextPageTemplate('Standard'))
+        els.append(PageBreak())
+        els += _sec_master(agents.get('master') or {}, niche=niche)
+        els += _sec_unit(agents.get('unit') or {})
+        els += _sec_ads(agents.get('ads') or {})
+        els += _sec_conclusion(level, agents)
+        els += _sec_upsell(level)
+        els.append(NextPageTemplate('NoBar'))
+        els += _sec_glossary()
+        els.append(NextPageTemplate('Finale'))
+        els.append(PageBreak())
+        els += _sec_finale(level, agents)
+
+    # ── DEEP: Standard-секции → Deep-секции → Вывод → 30 дней → Финал ─────
+    else:
+        # Standard zone: Master, Unit, Ads
+        els.append(NextPageTemplate('Standard'))
+        els.append(PageBreak())
+        els += _sec_master(agents.get('master') or {}, niche=niche)
         els += _sec_unit(agents.get('unit') or {})
         els += _sec_ads(agents.get('ads') or {})
 
-    # ── DEEP — эксклюзивные разделы ─────────────────────────────────────────────
-    if level == 'deep':
-        els += _level_divider('DEEP', 'Профессиональный анализ — только в этом отчёте', HexColor('#7c3aed'))
-        els += _sec_deep(agents.get('deep') or {})
-        els += _sec_competitors(agents.get('competitors') or {})
+        # Deep zone: Competitors, Supplier, Docs, Warehouse, Content
+        els.append(NextPageTemplate('Deep'))
+        els.append(PageBreak())
+        els += _sec_competitors_merged(
+            agents.get('competitors') or {},
+            agents.get('deep') or {}
+        )
         els += _sec_supplier(agents.get('supplier') or {})
         els += _sec_docs(agents.get('docs') or {})
         els += _sec_warehouse(agents.get('warehouse') or {})
         els += _sec_content(content_text)
+        els += _sec_conclusion(level, agents)
 
-    els += _sec_conclusion(level, agents)
-    els += _sec_upsell(level)
-
-    # Словарь терминов — только в Standard и Deep
-    if level != 'basic':
+        # Glossary
+        els.append(NextPageTemplate('NoBar'))
         els += _sec_glossary()
 
-    # Страница «30 дней» — только для Deep
-    if level == 'deep':
+        # 90-day plan on light NoBar template (not dark Finale)
+        fm_data = agents.get('unit') or {}
+        els.append(PageBreak())
+        els += _sec_30days(niche=niche, fm=fm_data)
+
+        # Finale (dark template)
         els.append(NextPageTemplate('Finale'))
         els.append(PageBreak())
-        els += _sec_30days()
-
-    # Финальная тёмная страница
-    els.append(NextPageTemplate('Finale'))
-    els.append(PageBreak())
-    els += _sec_finale(level, agents)
+        els += _sec_finale(level, agents)
 
     doc.build(els)
     buf.seek(0)

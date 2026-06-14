@@ -2631,6 +2631,7 @@ async function downloadReport(level) {
     turnover: niche.turnover || 0, commission: niche.commission || 0,
     lost_revenue: niche.lost_revenue || 0, lost_revenue_pct: niche.lost_revenue_pct || 0,
     avg_rating: niche.avg_rating || 0,
+    mpstats_path: (window._chartData && window._chartData.mpstats_path) || '',
     prepared_for: (typeof window.currentUserLabel !== 'undefined' && window.currentUserLabel)
       ? window.currentUserLabel
       : (document.querySelector('[data-user-label]') || {}).dataset?.userLabel || '',
@@ -6020,22 +6021,41 @@ class Handler(BaseHTTPRequestHandler):
             _pdf_items_raw = []
             if level in ('standard', 'deep'):
                 try:
-                    _niche_name_pdf = niche.get('name', '')
-                    conn = psycopg2.connect(DB)
-                    cur = conn.cursor()
-                    cur.execute(
-                        "SELECT mpstats_path FROM niches WHERE name ILIKE %s AND mpstats_path IS NOT NULL LIMIT 1",
-                        (f'%{_niche_name_pdf}%',)
-                    )
-                    row = cur.fetchone()
-                    conn.close()
-                    _mp_path = row[0] if row else _niche_name_pdf
                     from datetime import date as _date, timedelta as _td
                     _d2 = _date.today().isoformat()
                     _d1 = (_date.today() - _td(days=730)).isoformat()
-                    _mp = get_mpstats_cached(_mp_path, _d1, _d2)
-                    _pdf_items_raw = _mp.get('data', [])[:50]
-                    print(f'[PDF-STREAM] Топ-товары: {len(_pdf_items_raw)} шт для ниши {_niche_name_pdf!r}')
+                    _niche_name_pdf = niche.get('name', '')
+                    # Приоритет: путь из /charts (уже верифицирован) → DB → имя ниши
+                    _paths_to_try = []
+                    _passed_path = niche.get('mpstats_path', '').strip()
+                    if _passed_path:
+                        _paths_to_try.append(_passed_path)
+                    try:
+                        conn = psycopg2.connect(DB)
+                        cur = conn.cursor()
+                        cur.execute(
+                            "SELECT mpstats_path FROM niches WHERE name ILIKE %s AND mpstats_path IS NOT NULL LIMIT 1",
+                            (f'%{_niche_name_pdf}%',)
+                        )
+                        row = cur.fetchone()
+                        conn.close()
+                        if row and row[0] and row[0] not in _paths_to_try:
+                            _paths_to_try.append(row[0])
+                    except Exception:
+                        pass
+                    if _niche_name_pdf not in _paths_to_try:
+                        _paths_to_try.append(_niche_name_pdf)
+                    for _try_path in _paths_to_try:
+                        try:
+                            _mp = get_mpstats_cached(_try_path, _d1, _d2)
+                            _items = _mp.get('data', [])
+                            if _items:
+                                _pdf_items_raw = _items[:50]
+                                print(f'[PDF-STREAM] Топ-товары: {len(_pdf_items_raw)} шт, путь={_try_path!r}')
+                                break
+                            print(f'[PDF-STREAM] Путь {_try_path!r} → 0 товаров')
+                        except Exception as _pe:
+                            print(f'[PDF-STREAM] Ошибка пути {_try_path!r}: {_pe}')
                 except Exception as _ie:
                     print(f'[PDF-STREAM] Топ-товары не получены: {_ie}')
 
@@ -6965,6 +6985,7 @@ class Handler(BaseHTTPRequestHandler):
                         'ad_verdict_color': ad_verdict_color,
                         'top_ad_sellers': [{'name': s[0][:25], 'count': s[1]} for s in top_ad_sellers],
                         'top_items': top_items,
+                        'mpstats_path': used_path or mpstats_path or '',
                         'warehouse_stats': warehouse_stats,
                         'package_data': {
                             'avg_length': round(sum(i.get('package_length',0) or 0 for i in items_with_sales) / len(items_with_sales), 1) if items_with_sales else 0,

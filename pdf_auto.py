@@ -808,6 +808,111 @@ def _run_content(n: dict) -> str:
 
 # ── Генерация графиков (ReportLab drawing) ────────────────────────────────────
 
+def _chart_monthly_bar(items: list, mode: str = 'revenue',
+                       width=COL_W, height=2.5*inch,
+                       label: str = '') -> Drawing:
+    """Агрегирует revenue_graph или sales_graph по месяцам и рисует вертикальные бары."""
+    from datetime import date as _date, timedelta as _td
+    if not items:
+        return Drawing(width, height)
+
+    start = _date.today() - _td(days=730)
+    months: dict = {}
+    for item in items:
+        arr = item.get(f'{mode}_graph', []) or []
+        for i, val in enumerate(arr):
+            d = start + _td(days=i)
+            key = (d.year, d.month)
+            months[key] = months.get(key, 0.0) + float(val or 0)
+
+    if not months:
+        return Drawing(width, height)
+
+    # Последние 12 полных месяцев
+    sorted_keys = sorted(months.keys())[-13:-1] if len(months) >= 13 else sorted(months.keys())
+    if not sorted_keys:
+        return Drawing(width, height)
+
+    values = [months[k] for k in sorted_keys]
+    cat_names = [f'{k[0] % 100:02d}-{k[1]:02d}' for k in sorted_keys]
+
+    max_v = max(values) if max(values) > 0 else 1
+    if mode == 'revenue':
+        fmt = lambda v: f'{v/1e6:.1f}M' if v >= 1e6 else f'{v/1e3:.0f}k'
+    else:
+        fmt = lambda v: f'{int(v)}'
+
+    d = Drawing(width, height)
+    chart = VerticalBarChart()
+    chart.x = 45
+    chart.y = 30
+    chart.width = width - 60
+    chart.height = height - 50
+    chart.data = [values]
+    chart.bars[0].fillColor = C_BLUE2
+    chart.bars[0].strokeColor = C_BLUE2
+    chart.valueAxis.valueMin = 0
+    chart.valueAxis.valueMax = max_v * 1.15
+    chart.valueAxis.labelTextFormat = fmt
+    chart.valueAxis.labels.fontSize = 7
+    chart.categoryAxis.categoryNames = cat_names
+    chart.categoryAxis.labels.angle = 40
+    chart.categoryAxis.labels.dy = -10
+    chart.categoryAxis.labels.fontSize = 7
+    d.add(chart)
+    if label:
+        d.add(String(width / 2, height - 14, label,
+                     fontSize=9, fontName=FB, fillColor=C_TEXT, textAnchor='middle'))
+    return d
+
+
+def _chart_sellers_table(items: list) -> list:
+    """Заменяет сломанный pie-chart таблицей Бренд/Доля/Кол-во товаров в топ-20."""
+    seller_rev: dict = {}
+    seller_cnt: dict = {}
+    for item in items:
+        seller = str(item.get('brand') or item.get('brand_name') or
+                     item.get('supplier') or 'Неизвестно')[:25]
+        rev = float(item.get('revenue') or 0)
+        seller_rev[seller] = seller_rev.get(seller, 0.0) + rev
+        seller_cnt[seller] = seller_cnt.get(seller, 0) + 1
+
+    if not seller_rev:
+        return []
+
+    total = sum(seller_rev.values()) or 1
+    sorted_s = sorted(seller_rev.items(), key=lambda x: x[1], reverse=True)
+
+    # Группируем <5% в "Другие"
+    big = [(s, v) for s, v in sorted_s if v / total >= 0.05]
+    small_rev = sum(v for _, v in sorted_s if v / total < 0.05)
+    small_cnt = sum(seller_cnt.get(s, 0) for s, v in sorted_s if v / total < 0.05)
+    if small_rev > 0:
+        big.append(('Другие (<5% каждый)', small_rev))
+        seller_cnt['Другие (<5% каждый)'] = small_cnt
+
+    rows = [['Бренд / Продавец', 'Доля рынка', 'Товаров в топ-20']]
+    for seller, rev in big:
+        share = rev / total * 100
+        cnt   = seller_cnt.get(seller, '—')
+        rows.append([seller, f'{share:.1f}%', str(cnt)])
+
+    t = _tbl(rows, col_widths=[3.0*inch, 1.3*inch, COL_W - 4.3*inch])
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (-1,0), C_NAVY),
+        ('FONTSIZE',      (0,0), (-1,-1), 8.5),
+        ('TOPPADDING',    (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+        ('LEFTPADDING',   (0,0), (-1,-1), 7),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 7),
+        ('GRID',          (0,0), (-1,-1), 0.3, C_BORDER),
+        ('ROWBACKGROUNDS',(0,1), (-1,-1), [WHITE, C_TABLE_ODD]),
+        ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
+        ('ALIGN',         (1,0), (2,-1),  'CENTER'),
+    ]))
+    return [_h3('Распределение продавцов в топ-20'), t]
+
+
 def _chart_price_bar(items: list, width=COL_W, height=2.5*inch) -> Drawing:
     """Распределение цен — вертикальные бары."""
     if not items:
@@ -1196,32 +1301,48 @@ def _sec_top_products(items: list, limit: int = 20, level: str = 'standard') -> 
     count = min(limit, len(items))
     total_rev = sum(float(it.get('revenue') or 0) for it in items)
 
+    _WB_URL = 'https://www.wildberries.ru/catalog/{}/detail.aspx'
+    _link_s = ParagraphStyle('_top_link', fontName=FN, fontSize=7,
+                              textColor=C_BLUE2, leading=9,
+                              spaceBefore=0, spaceAfter=0)
+    _name_s = ParagraphStyle('_top_name', fontName=FN, fontSize=7.5,
+                              textColor=C_TEXT, leading=10,
+                              spaceBefore=0, spaceAfter=0, wordWrap='LTR')
+
+    def _wb_link(sku_raw):
+        sku = str(sku_raw).strip() if sku_raw else ''
+        if sku and sku != '—' and sku.isdigit():
+            url = _WB_URL.format(sku)
+            return Paragraph(f'<link href="{url}"><u>{sku}</u></link>', _link_s)
+        return Paragraph(sku or '—', _link_s)
+
     if level == 'basic':
-        rows = [['#', 'Название товара', 'Цена, ₽', 'Выручка/мес', 'Отзывы', 'Арт. WB']]
+        rows = [['#', 'Название товара', 'Цена, ₽', 'Выр./мес', 'Отзывы', 'Арт. WB']]
         for i, it in enumerate(items[:limit], 1):
-            name  = str(it.get('name') or it.get('title') or '')[:45]
+            name  = Paragraph(str(it.get('name') or it.get('title') or '')[:50], _name_s)
             price = _rub(it.get('price') or it.get('final_price') or 0)
             rev   = _rub(it.get('revenue') or 0)
             fb    = str(int(it.get('feedbacks') or it.get('reviews') or
                              it.get('reviews_count') or 0))
-            sku   = str(it.get('sku') or it.get('wb_sku') or it.get('id') or '—')
-            rows.append([str(i), name, price, rev, fb, sku])
-        cw = [0.28*inch, 2.8*inch, 0.82*inch, 0.95*inch, 0.62*inch, 0.9*inch]
+            sku_v = it.get('id') or it.get('nm_id') or it.get('sku') or it.get('wb_sku')
+            rows.append([str(i), name, price, rev, fb, _wb_link(sku_v)])
+        cw = [0.25*inch, 2.85*inch, 0.78*inch, 0.9*inch, 0.58*inch, COL_W - 5.36*inch]
     else:
-        # Standard/Deep: 7 колонок — добавляем Продавца и Продажи/мес
-        rows = [['#', 'Товар', 'Продавец', 'Цена, ₽', 'Выр./мес', 'Продажи', 'Рейтинг']]
+        # Standard/Deep: 8 колонок — Товар/Продавец/Цена/Выр/Продажи/Рейтинг/Артикул
+        rows = [['#', 'Товар', 'Продавец', 'Цена', 'Выр./мес', 'Прод.', 'Рейт.', 'Арт. WB']]
         for i, it in enumerate(items[:limit], 1):
-            name   = str(it.get('name') or it.get('title') or '')[:35]
+            name   = Paragraph(str(it.get('name') or it.get('title') or '')[:40], _name_s)
             seller = str(it.get('brand_name') or it.get('brand') or
-                         it.get('seller') or it.get('supplier') or '—')[:18]
+                         it.get('seller') or it.get('supplier') or '—')[:16]
             price  = _rub(it.get('price') or it.get('final_price') or 0)
             rev    = _rub(it.get('revenue') or 0)
             sales_n = int(it.get('sales') or it.get('orders') or 0)
             sales  = str(sales_n) if sales_n else '—'
             rating = str(it.get('rating') or it.get('avg_rating') or '—')
-            rows.append([str(i), name, seller, price, rev, sales, rating])
-        cw = [0.25*inch, 1.95*inch, 1.25*inch, 0.75*inch, 0.85*inch, 0.68*inch,
-              COL_W - 5.73*inch]
+            sku_v  = it.get('id') or it.get('nm_id') or it.get('sku') or it.get('wb_sku')
+            rows.append([str(i), name, seller, price, rev, sales, rating, _wb_link(sku_v)])
+        cw = [0.22*inch, 1.7*inch, 1.05*inch, 0.62*inch, 0.78*inch,
+              0.52*inch, 0.48*inch, COL_W - 5.37*inch]
 
     t = _tbl(rows, col_widths=cw)
     t.setStyle(TableStyle([
@@ -3651,20 +3772,50 @@ def render(level: str, niche: dict, agents: dict,
     if browser_charts:
         els += _sec_browser_charts(browser_charts, level, niche)
     elif items:
-        if len(items) >= 4:
-            d = _chart_revenue_line(items)
-            if d:
-                els += [_h2('Топ товары по выручке'), _hr(), d, _sp(0.1)]
-        if level in ('standard', 'deep') and len(items) >= 6:
-            d2 = _chart_price_bar(items)
-            if d2:
-                els += [_h2('Распределение цен'), _hr(), d2, _sp(0.1)]
-        if level == 'deep' and len(items) >= 8:
-            d3 = _chart_sellers_pie(items)
-            if d3:
-                els += [_h2('Доля продавцов'), _hr(), d3, _sp(0.1)]
+        # Fallback: генерируем все 5 графиков локально из данных MPStats items
+        _chart_els = [_h2('Графики ниши'), _hr()]
+        _added = 0
+        # 1. Динамика выручки
+        dc1 = _chart_monthly_bar(items, 'revenue', label='Динамика выручки ниши (₽/мес)')
+        if dc1:
+            _chart_els += [_p('Динамика выручки', size=10, bold=True, color=C_NAVY,
+                               align=TA_CENTER, space_before=8, space_after=2),
+                           _p('Изменение суммарной выручки топ товаров по месяцам.',
+                              size=8, color=C_GRAY, space_before=0, space_after=4),
+                           dc1, _sp(0.1)]
+            _added += 1
+        # 2. Сезонность заказов
+        dc2 = _chart_monthly_bar(items, 'sales', label='Сезонность заказов (шт/мес)')
+        if dc2:
+            _chart_els += [_p('Сезонность заказов', size=10, bold=True, color=C_NAVY,
+                               align=TA_CENTER, space_before=8, space_after=2),
+                           _p('Количество заказов по месяцам — ключ к планированию закупок.',
+                              size=8, color=C_GRAY, space_before=0, space_after=4),
+                           dc2, _sp(0.1)]
+            _added += 1
+        # 3. Распределение цен
+        if level in ('standard', 'deep') and len(items) >= 4:
+            dc3 = _chart_price_bar(items)
+            if dc3:
+                _chart_els += [_p('Распределение цен', size=10, bold=True, color=C_NAVY,
+                                   align=TA_CENTER, space_before=8, space_after=2),
+                               _p(f'Количество товаров в каждом ценовом диапазоне. Средний чек ниши — {_rub(float(niche.get("avg_price") or 0))}.',
+                                  size=8, color=C_GRAY, space_before=0, space_after=4),
+                               dc3, _sp(0.1)]
+                _added += 1
+        if _added > 0:
+            els += _chart_els
 
+    # Таблица топ-20 + сопроводительные графики по товарам
     els += _sec_top_products(items, limit=top_limit, level=level)
+
+    # Дополнительные графики рядом с топ-товарами (если нет browser charts)
+    if not browser_charts and items and level in ('standard', 'deep'):
+        if len(items) >= 4:
+            dl = _chart_revenue_line(items)
+            if dl:
+                els += [_h3('Топ товары по выручке'), dl, _sp(0.1)]
+        els += _chart_sellers_table(items)
 
     # ── BASIC-only: Master + сезонный план ─────────────────────────────────
     if level == 'basic':
@@ -3713,14 +3864,14 @@ def render(level: str, niche: dict, agents: dict,
         els += _sec_content(content_text)
         els += _sec_conclusion(level, agents)
 
-        # Glossary
+        # 90-day plan (NoBar, light template) — before glossary
         els.append(NextPageTemplate('NoBar'))
-        els += _sec_glossary()
-
-        # 90-day plan on light NoBar template (not dark Finale)
         fm_data = agents.get('unit') or {}
         els.append(PageBreak())
         els += _sec_30days(niche=niche, fm=fm_data)
+
+        # Glossary — last content section before Finale
+        els += _sec_glossary()
 
         # Finale (dark template)
         els.append(NextPageTemplate('Finale'))

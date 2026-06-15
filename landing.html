@@ -501,10 +501,10 @@
         <div class="result-plan-price" id="rp-price">2 500 ₽ за отчёт</div>
         <ul class="result-features" id="rp-features"></ul>
       </div>
-      <a href="/login" class="btn btn-primary" style="width:100%;justify-content:center;font-size:15px;">
+      <a href="/login" class="btn btn-primary" id="quiz-cta" style="width:100%;justify-content:center;font-size:15px;">
         Попробовать бесплатно →
       </a>
-      <p style="margin-top:12px;font-size:12px;color:var(--muted);">Первый анализ бесплатно · Без подписки</p>
+      <p style="margin-top:12px;font-size:12px;color:var(--muted);" id="quiz-cta-sub">Первый анализ бесплатно · Без подписки</p>
     </div>
   </div>
 </section>
@@ -652,7 +652,7 @@
         <li><span class="check">✓</span> Рекомендуемая цена входа</li>
         <li class="off"><span class="x">—</span> 30-дневный план</li>
       </ul>
-      <a href="/login" class="plan-cta primary">Получить отчёт</a>
+      <a href="/order?level=standard" class="plan-cta primary">Получить отчёт</a>
     </div>
 
     <div class="plan-card">
@@ -668,7 +668,7 @@
         <li><span class="check">✓</span> Unit-экономика под вашу ситуацию</li>
         <li><span class="check">✓</span> Приоритетная поддержка</li>
       </ul>
-      <a href="/login" class="plan-cta ghost">Заказать Deep-анализ</a>
+      <a href="/order?level=deep" class="plan-cta ghost">Заказать Deep-анализ</a>
     </div>
 
   </div>
@@ -831,6 +831,23 @@ function showResult() {
   });
 
   document.getElementById('quiz-result').classList.add('active');
+
+  // Обновляем CTA кнопку в зависимости от плана
+  var cta = document.getElementById('quiz-cta');
+  var ctaSub = document.getElementById('quiz-cta-sub');
+  if (plan === 'Basic') {
+    cta.href = '/login';
+    cta.textContent = 'Попробовать бесплатно →';
+    ctaSub.textContent = 'Первый анализ бесплатно · Без подписки';
+  } else if (plan === 'Standard') {
+    cta.href = '/order?level=standard';
+    cta.textContent = 'Заказать Standard-отчёт →';
+    ctaSub.textContent = '2 500 ₽ · Оплата после оформления заявки';
+  } else {
+    cta.href = '/order?level=deep';
+    cta.textContent = 'Заказать Deep-отчёт →';
+    ctaSub.textContent = '6 000 ₽ · Оплата после оформления заявки';
+  }
 }
 
 // ── TABS ──

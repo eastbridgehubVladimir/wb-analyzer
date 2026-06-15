@@ -530,6 +530,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
     <button id="gcur-usd" onclick="setGlobalCurrency('usd')" style="background:transparent;border:1px solid #2d3748;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">$</button>
     <button id="gcur-eur" onclick="setGlobalCurrency('eur')" style="background:transparent;border:1px solid #2d3748;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">€</button>
     <button id="gcur-byn" onclick="setGlobalCurrency('byn')" style="background:transparent;border:1px solid #2d3748;border-radius:6px;color:#555;font-size:13px;padding:6px 12px;cursor:pointer;font-weight:600;">Br</button>
+    <a href="/order" style="background:#3b82f6;border:1px solid #3b82f6;border-radius:6px;color:#fff;font-size:12px;padding:6px 12px;cursor:pointer;text-decoration:none;margin-left:8px;font-weight:600;">📄 Заказать отчёт</a>
     <a href="/logout" style="background:transparent;border:1px solid #3d4a5c;border-radius:6px;color:#6b7a8d;font-size:12px;padding:6px 10px;cursor:pointer;text-decoration:none;margin-left:8px;">Выйти</a>
   </div>
 </div>

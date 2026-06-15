@@ -560,8 +560,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <input class="search-input" id="query" autocomplete="off" placeholder="Введите нишу, например: платья, термосы, наушники..." />
       <button class="btn" id="analyze-btn" onclick="analyze()" disabled>Анализировать</button>
     </div>
-    <div class="examples" id="top-chips">
-      <span style="font-size:11px;color:#555;align-self:center;">🔥 Топ ниши:</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;margin-bottom:2px;">
+      <div class="examples" id="top-chips" style="margin:0;flex:1;">
+        <span style="font-size:11px;color:#555;align-self:center;">🔥 Топ ниши:</span>
+      </div>
+      <div id="free-count-badge" style="font-size:11px;color:#6b7a8d;background:#1a1f2e;border:1px solid #2d3748;border-radius:20px;padding:3px 10px;white-space:nowrap;margin-left:12px;"></div>
     </div>
   </div>
   <div id="top-niches" style="display:none;margin-top:24px;"></div>
@@ -2711,7 +2714,27 @@ async function downloadReport(level) {
   }
 }
 
+function _checkFreeLimit() {
+  var used = parseInt(localStorage.getItem('wb_free_count') || '0');
+  if (used >= 3) {
+    document.getElementById('upsell-modal').style.display = 'flex';
+    return false;
+  }
+  return true;
+}
+function _incFreeCount() {
+  var used = parseInt(localStorage.getItem('wb_free_count') || '0');
+  localStorage.setItem('wb_free_count', used + 1);
+  var left = 2 - used;
+  var badge = document.getElementById('free-count-badge');
+  if (badge) badge.textContent = left > 0 ? 'Осталось бесплатных: ' + left : 'Последний бесплатный';
+}
+function closeUpsell() {
+  document.getElementById('upsell-modal').style.display = 'none';
+}
+
 async function analyze() {
+  if (!_checkFreeLimit()) return;
   hideAll();
   const q = document.getElementById('query').value.trim();
   if (!q) return;
@@ -2763,6 +2786,7 @@ async function analyze() {
       return;
     }
     renderResult(data);
+    _incFreeCount();
   } catch(e) {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('error').style.display = 'block';
@@ -5948,6 +5972,40 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
   </div>
 <script src="/compare.js"></script>
+
+<!-- UPSELL MODAL: показывается после 3 бесплатных анализов -->
+<div id="upsell-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000000dd;z-index:2000;align-items:center;justify-content:center;" onclick="if(event.target.id==='upsell-modal')closeUpsell()">
+  <div style="background:#141418;border:1px solid #3b82f6;border-radius:20px;padding:40px 36px;max-width:460px;width:90%;text-align:center;position:relative;">
+    <button onclick="closeUpsell()" style="position:absolute;top:14px;right:14px;background:#1e2433;border:none;color:#666;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:16px;line-height:1;">✕</button>
+    <div style="font-size:48px;margin-bottom:12px;">🎯</div>
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">Вы использовали 3 бесплатных анализа</h2>
+    <p style="color:#8896a7;font-size:14px;line-height:1.6;margin-bottom:28px;">Вы уже видели главное — теперь пора получить полный PDF-отчёт с AI-анализом, ценовым распределением и конкретным планом входа.</p>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+      <a href="/order?level=standard" style="display:block;padding:14px 20px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:12px;color:#fff;text-decoration:none;font-size:15px;font-weight:700;">
+        📄 Стандартный отчёт — 2 500 ₽
+        <div style="font-size:12px;font-weight:400;opacity:0.85;margin-top:2px;">~15 страниц · AI-анализ · Ценовое распределение · PDF</div>
+      </a>
+      <a href="/order?level=deep" style="display:block;padding:14px 20px;background:#1e2433;border:1.5px solid #3b82f644;border-radius:12px;color:#fff;text-decoration:none;font-size:15px;font-weight:700;">
+        💎 Максимальный отчёт — 6 000 ₽
+        <div style="font-size:12px;font-weight:400;color:#8896a7;margin-top:2px;">~30 страниц · 30-дневный план · Конкуренты · Документы</div>
+      </a>
+    </div>
+    <button onclick="closeUpsell()" style="background:none;border:none;color:#4b5563;font-size:12px;cursor:pointer;text-decoration:underline;">Продолжить без PDF (Экспресс)</button>
+  </div>
+</div>
+
+<script>
+(function() {
+  var used = parseInt(localStorage.getItem('wb_free_count') || '0');
+  var badge = document.getElementById('free-count-badge');
+  if (badge) {
+    if (used === 0) badge.textContent = '3 бесплатных анализа';
+    else if (used === 1) badge.textContent = 'Осталось бесплатных: 2';
+    else if (used === 2) badge.textContent = 'Осталось бесплатных: 1';
+    else { badge.textContent = 'Бесплатные закончились'; badge.style.color = '#ef4444'; badge.style.borderColor = '#ef444433'; }
+  }
+})();
+</script>
 </body>
 </html>"""
 

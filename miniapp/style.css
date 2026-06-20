@@ -1,0 +1,340 @@
+/* Telegram CSS vars — set by app.js from tg.themeParams */
+:root {
+  --tg-bg-color: #ffffff;
+  --tg-text-color: #000000;
+  --tg-hint-color: #999999;
+  --tg-button-color: #2481cc;
+  --tg-button-text-color: #ffffff;
+  --tg-secondary-bg-color: #f0f0f0;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--tg-bg-color);
+  color: var(--tg-text-color);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+/* ── Screens ────────────────────────────────────────── */
+
+.screen {
+  display: none;
+  flex-direction: column;
+  padding: 16px;
+  min-height: 100vh;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+
+.header {
+  text-align: center;
+  padding: 12px 0 20px;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--tg-button-color);
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: var(--tg-hint-color);
+  margin-top: 2px;
+}
+
+/* ── Search Box ─────────────────────────────────────── */
+
+.search-box {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+#search-input {
+  width: 100%;
+  padding: 12px 40px 12px 14px;
+  border: 1.5px solid var(--tg-secondary-bg-color);
+  border-radius: 12px;
+  background-color: var(--tg-secondary-bg-color);
+  color: var(--tg-text-color);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+#search-input::placeholder {
+  color: var(--tg-hint-color);
+}
+
+#search-input:focus {
+  border-color: var(--tg-button-color);
+  background-color: var(--tg-bg-color);
+}
+
+.search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.search-hint {
+  font-size: 12px;
+  color: var(--tg-hint-color);
+  padding: 0 4px;
+  margin-bottom: 12px;
+}
+
+.search-status {
+  text-align: center;
+  color: var(--tg-hint-color);
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+/* ── Results ────────────────────────────────────────── */
+
+.results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-item {
+  background-color: var(--tg-secondary-bg-color);
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  border: 1.5px solid transparent;
+}
+
+.result-item:active {
+  opacity: 0.7;
+}
+
+.result-name {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.result-meta {
+  font-size: 12px;
+  color: var(--tg-hint-color);
+  display: flex;
+  gap: 12px;
+}
+
+/* ── Back Button ────────────────────────────────────── */
+
+.btn-back {
+  background: none;
+  border: none;
+  color: var(--tg-button-color);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0 0 12px 0;
+  text-align: left;
+  font-weight: 500;
+}
+
+/* ── Preview Card ───────────────────────────────────── */
+
+.preview-card {
+  background-color: var(--tg-secondary-bg-color);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.preview-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  line-height: 1.2;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.metric {
+  background-color: var(--tg-bg-color);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.metric-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--tg-button-color);
+}
+
+.metric-label {
+  font-size: 11px;
+  color: var(--tg-hint-color);
+  margin-top: 2px;
+}
+
+.data-date {
+  font-size: 11px;
+  color: var(--tg-hint-color);
+  text-align: right;
+  margin-top: 4px;
+}
+
+/* ── PDF Buttons ────────────────────────────────────── */
+
+.pdf-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.pdf-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  text-align: left;
+  transition: opacity 0.15s;
+  width: 100%;
+}
+
+.pdf-btn:active {
+  opacity: 0.7;
+}
+
+.pdf-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pdf-basic {
+  background-color: var(--tg-button-color);
+  color: var(--tg-button-text-color);
+}
+
+.pdf-standard {
+  background-color: var(--tg-secondary-bg-color);
+  color: var(--tg-text-color);
+  border: 1.5px solid var(--tg-button-color);
+}
+
+.pdf-deep {
+  background-color: var(--tg-secondary-bg-color);
+  color: var(--tg-text-color);
+  border: 1.5px solid var(--tg-secondary-bg-color);
+}
+
+.pdf-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.pdf-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pdf-name {
+  font-weight: 600;
+}
+
+.pdf-price {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* ── PDF Status ─────────────────────────────────────── */
+
+.pdf-status {
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.pdf-status.generating {
+  background-color: var(--tg-secondary-bg-color);
+  color: var(--tg-hint-color);
+  text-align: center;
+}
+
+.pdf-status.ready {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.pdf-status.pending {
+  background-color: var(--tg-secondary-bg-color);
+  color: var(--tg-text-color);
+}
+
+.pdf-status.error {
+  background-color: #fdecea;
+  color: #c62828;
+}
+
+.download-link {
+  display: block;
+  margin-top: 10px;
+  padding: 12px;
+  background-color: var(--tg-button-color);
+  color: var(--tg-button-text-color);
+  border-radius: 10px;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* ── Spinner ────────────────────────────────────────── */
+
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--tg-hint-color);
+  border-top-color: var(--tg-button-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Utility ────────────────────────────────────────── */
+
+.hidden {
+  display: none !important;
+}

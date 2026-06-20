@@ -11,6 +11,7 @@ import uuid as _uuid
 import re
 _pdf_sessions = {}   # {session_id: {level, niche, charts}}
 _pdf_results  = {}   # {key: {'pdf': bytes, 'filename': str}}
+_miniapp_pdf_jobs = {}  # {job_id: {'status': 'generating'|'ready'|'error', 'path': str}}
 import json
 import asyncio
 import subprocess, sys
@@ -7412,6 +7413,127 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
 
+        # ── Mini App статика ────────────────────────────────────────────────────
+        elif self.path in ('/miniapp', '/miniapp/'):
+            _base = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'miniapp')
+            try:
+                with open(os.path.join(_base, 'index.html'), 'rb') as f:
+                    body = f.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(body)
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(str(e).encode())
+
+        elif self.path == '/miniapp/style.css':
+            _base = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'miniapp')
+            with open(os.path.join(_base, 'style.css'), 'rb') as f:
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/css; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(f.read())
+
+        elif self.path == '/miniapp/app.js':
+            _base = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'miniapp')
+            with open(os.path.join(_base, 'app.js'), 'rb') as f:
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/javascript; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(f.read())
+
+        # ── Mini App: поиск ниш ─────────────────────────────────────────────────
+        elif self.path.startswith('/api/miniapp/search'):
+            from urllib.parse import parse_qs, urlparse
+            q = parse_qs(urlparse(self.path).query).get('q', [''])[0].strip()
+            if not q or len(q) < 2:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(b'[]')
+            else:
+                try:
+                    conn = psycopg2.connect(DB)
+                    cur = conn.cursor()
+                    cur.execute("""
+                        SELECT name,
+                               COALESCE(display_name, name) AS display_name,
+                               COALESCE(revenue_with_buyout, revenue, 0) * 12 AS revenue_annual,
+                               COALESCE(orders, 0)              AS orders_monthly,
+                               COALESCE(sellers_with_sales, 0)  AS sellers_active,
+                               COALESCE(sellers, 0)             AS sellers_total,
+                               COALESCE(buyout_pct, 0)          AS buyout_pct,
+                               data_updated_at
+                        FROM niches
+                        WHERE (LOWER(name) ILIKE LOWER(%s) OR LOWER(COALESCE(display_name,name)) ILIKE LOWER(%s))
+                          AND revenue IS NOT NULL
+                        ORDER BY revenue DESC LIMIT 10
+                    """, (f'%{q}%', f'%{q}%'))
+                    rows = cur.fetchall()
+                    cur.close(); conn.close()
+                    results = [
+                        {
+                            'name':          r[0],
+                            'display_name':  r[1],
+                            'revenue_annual':   float(r[2] or 0),
+                            'orders_monthly':   int(r[3] or 0),
+                            'sellers_active':   int(r[4] or 0),
+                            'sellers_total':    int(r[5] or 0),
+                            'buyout_pct':       float(r[6] or 0),
+                            'data_updated_at':  r[7].strftime('%d.%m.%Y') if r[7] else None,
+                        }
+                        for r in rows
+                    ]
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json; charset=utf-8')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps(results, ensure_ascii=False).encode('utf-8'))
+                except Exception as e:
+                    self.send_response(500)
+                    self.send_header('Content-Type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+        # ── Mini App: статус генерации PDF ──────────────────────────────────────
+        elif self.path.startswith('/api/miniapp/status/'):
+            job_id = self.path.split('/api/miniapp/status/')[-1].strip('/')
+            job = _miniapp_pdf_jobs.get(job_id, {'status': 'not_found'})
+            resp = {'status': job['status']}
+            if job['status'] == 'ready':
+                resp['download_url'] = f'/api/miniapp/download/{job_id}.pdf'
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(resp).encode())
+
+        # ── Mini App: скачать сгенерированный PDF ───────────────────────────────
+        elif self.path.startswith('/api/miniapp/download/'):
+            import re as _re
+            fname = self.path.split('/api/miniapp/download/')[-1]
+            m = _re.match(r'^([0-9a-f\-]{36})\.pdf$', fname)
+            if not m:
+                self.send_response(400); self.end_headers(); return
+            job_id = m.group(1)
+            job = _miniapp_pdf_jobs.get(job_id)
+            if not job or job['status'] != 'ready':
+                self.send_response(404); self.end_headers(); return
+            pdf_path = job.get('path', '')
+            try:
+                with open(pdf_path, 'rb') as f:
+                    pdf_bytes = f.read()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/pdf')
+                self.send_header('Content-Disposition', f'attachment; filename="WBAnalyzer_Basic.pdf"')
+                self.send_header('Content-Length', str(len(pdf_bytes)))
+                self.end_headers()
+                self.wfile.write(pdf_bytes)
+            except Exception as e:
+                self.send_response(500); self.end_headers()
+
     def do_POST(self):
         if self.path == '/api/submit-order':
             try:
@@ -9253,6 +9375,137 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+        elif self.path == '/api/miniapp/order':
+            import threading as _threading, uuid as _uuid2, os as _os
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                body = json.loads(self.rfile.read(length))
+                tg_user_id  = body.get('telegram_user_id')
+                tg_username = body.get('telegram_username')
+                niche_name  = str(body.get('niche_name', ''))
+                level       = str(body.get('pdf_level', 'basic')).lower()
+                ref_source  = str(body.get('ref_source', 'miniapp_direct'))
+                if level not in ('basic', 'standard', 'deep'):
+                    raise ValueError('invalid pdf_level')
+                amount = {'basic': 0, 'standard': 2500, 'deep': 6000}[level]
+                status = 'free' if amount == 0 else 'pending'
+
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO orders "
+                    "(telegram_user_id, telegram_username, niche_name, pdf_level, "
+                    "amount, payment_status, ref_source, source_channel)"
+                    " VALUES (%s,%s,%s,%s,%s,%s,%s,'miniapp') RETURNING id",
+                    (tg_user_id, tg_username, niche_name, level, amount, status, ref_source)
+                )
+                order_id = cur.fetchone()[0]
+                cur.execute(
+                    "INSERT INTO telegram_leads "
+                    "(telegram_user_id, telegram_username, niche_searched, action, ref_source, source_channel)"
+                    " VALUES (%s,%s,%s,%s,%s,'miniapp')",
+                    (tg_user_id, tg_username, niche_name,
+                     'basic_clicked' if level == 'basic' else f'{level}_clicked', ref_source)
+                )
+                conn.commit()
+                cur.close(); conn.close()
+
+                if level in ('standard', 'deep'):
+                    support = os.getenv('TELEGRAM_SUPPORT_USERNAME', '')
+                    msg = f'Оплата временно недоступна. Напишите @{support} чтобы получить отчёт вручную.' if support else 'Оплата временно недоступна — свяжитесь с поддержкой.'
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({'status': 'pending', 'message': msg}, ensure_ascii=False).encode())
+                    return
+
+                # Basic: запускаем генерацию в фоне
+                job_id = str(_uuid2.uuid4())
+                _miniapp_pdf_jobs[job_id] = {'status': 'generating'}
+
+                def _generate_pdf_bg(jid, nname, oid):
+                    try:
+                        import pdf_auto
+                        c2 = psycopg2.connect(DB)
+                        c2cur = c2.cursor()
+                        c2cur.execute("""
+                            SELECT name, COALESCE(display_name,name),
+                                   products, products_with_sales, sellers, sellers_with_sales,
+                                   revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders,
+                                   buyout_pct, turnover, profit_pct, avg_rating, rank, commission,
+                                   avg_price, data_updated_at, revenue_with_buyout, mpstats_path
+                            FROM niches WHERE LOWER(name) ILIKE LOWER(%s) AND revenue IS NOT NULL
+                            ORDER BY revenue DESC LIMIT 1
+                        """, (f'%{nname}%',))
+                        row = c2cur.fetchone()
+                        c2cur.close(); c2.close()
+                        if not row:
+                            _miniapp_pdf_jobs[jid] = {'status': 'error'}
+                            return
+                        niche = {
+                            'name': row[0], 'display_name': row[1], 'full': row[0],
+                            'products': int(row[2] or 0), 'products_with_sales': int(row[3] or 0),
+                            'sellers': int(row[4] or 0), 'sellers_with_sales': int(row[5] or 0),
+                            'revenue': float(row[6] or 0), 'potential_revenue': float(row[7] or 0) if row[7] else None,
+                            'lost_revenue': float(row[8] or 0) if row[8] else None,
+                            'lost_revenue_pct': float(row[9] or 0), 'orders': int(row[10] or 0),
+                            'buyout_pct': float(row[11] or 0), 'turnover': float(row[12] or 0),
+                            'profit_pct': float(row[13] or 0), 'avg_rating': float(row[14] or 0),
+                            'rank': row[15], 'commission': float(row[16] or 0), 'avg_price': float(row[17] or 0),
+                            'data_updated_at': row[18].strftime('%d.%m.%Y') if row[18] else None,
+                            'revenue_with_buyout': float(row[19] or 0), 'mpstats_path': row[20],
+                            'revenue_annual': (float(row[19] or 0) or float(row[6] or 0)) * 12,
+                        }
+                        pdf_bytes = pdf_auto.generate('basic', niche)
+                        tmp_dir = '/tmp/miniapp_pdfs'
+                        _os.makedirs(tmp_dir, exist_ok=True)
+                        path = f'{tmp_dir}/{jid}.pdf'
+                        with open(path, 'wb') as f:
+                            f.write(pdf_bytes)
+                        # Отмечаем в orders
+                        c3 = psycopg2.connect(DB)
+                        c3cur = c3.cursor()
+                        c3cur.execute("UPDATE orders SET pdf_sent=TRUE WHERE id=%s", (oid,))
+                        c3cur.execute(
+                            "INSERT INTO telegram_leads "
+                            "(telegram_user_id, telegram_username, niche_searched, action, ref_source, source_channel)"
+                            " VALUES (%s,%s,%s,'basic_downloaded',%s,'miniapp')",
+                            (tg_user_id, tg_username, nname, ref_source)
+                        )
+                        c3.commit()
+                        c3cur.close(); c3.close()
+                        _miniapp_pdf_jobs[jid] = {'status': 'ready', 'path': path}
+                    except Exception as e:
+                        import traceback; traceback.print_exc()
+                        _miniapp_pdf_jobs[jid] = {'status': 'error', 'error': str(e)}
+
+                _threading.Thread(target=_generate_pdf_bg, args=(job_id, niche_name, order_id), daemon=True).start()
+
+                self.send_response(202)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'status': 'generating', 'job_id': job_id}).encode())
+
+            except Exception as e:
+                import traceback; traceback.print_exc()
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+        elif self.path == '/webhook/payment':
+            # Заглушка вебхука платёжной системы.
+            # При подключении ЮKassa / CloudPayments:
+            #   1. Проверить подпись запроса (HMAC-SHA256 или заголовок X-Idempotency-Key)
+            #   2. Найти заказ по payment_id из тела запроса
+            #   3. Обновить orders.payment_status = 'paid', paid_at = NOW()
+            #   4. Вызвать fulfill_order() из telegram_bot (или через HTTP если бот отдельно)
+            #   5. Вернуть 200 OK чтобы провайдер не слал повторные уведомления
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"status":"webhook_not_configured"}')
 
         else:
             self.send_response(404)

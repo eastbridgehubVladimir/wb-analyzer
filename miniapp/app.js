@@ -1,0 +1,243 @@
+// TODO: до подключения реальных платежей — добавить серверную валидацию
+// tg.initData через HMAC-SHA256 с TELEGRAM_BOT_TOKEN, чтобы исключить
+// подделку telegram_user_id. См. документацию:
+// https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
+
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+// ── Тема ──────────────────────────────────────────────────────────────────────
+
+function applyTheme() {
+  const p = tg.themeParams;
+  const r = document.documentElement.style;
+  r.setProperty('--tg-bg-color',            p.bg_color            || '#ffffff');
+  r.setProperty('--tg-text-color',          p.text_color          || '#000000');
+  r.setProperty('--tg-hint-color',          p.hint_color          || '#999999');
+  r.setProperty('--tg-button-color',        p.button_color        || '#2481cc');
+  r.setProperty('--tg-button-text-color',   p.button_text_color   || '#ffffff');
+  r.setProperty('--tg-secondary-bg-color',  p.secondary_bg_color  || '#f0f0f0');
+}
+
+applyTheme();
+tg.onEvent('themeChanged', applyTheme);
+
+// ── Данные пользователя ───────────────────────────────────────────────────────
+
+const user       = tg.initDataUnsafe?.user;
+const userId     = user?.id     || null;
+const username   = user?.username || null;
+const startParam = tg.initDataUnsafe?.start_param || 'miniapp_direct';
+
+// ── Навигация ─────────────────────────────────────────────────────────────────
+
+let currentNiche = null;
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── Утилиты ───────────────────────────────────────────────────────────────────
+
+function fmtMoney(v) {
+  if (!v) return '—';
+  if (v >= 1e9) return (v / 1e9).toFixed(1) + ' млрд ₽';
+  if (v >= 1e6) return Math.round(v / 1e6) + ' млн ₽';
+  return Math.round(v / 1e3) + ' тыс ₽';
+}
+
+function fmtNum(v) {
+  if (!v) return '—';
+  return v.toLocaleString('ru-RU');
+}
+
+// ── Поиск ─────────────────────────────────────────────────────────────────────
+
+const searchInput  = document.getElementById('search-input');
+const searchHint   = document.getElementById('search-hint');
+const searchStatus = document.getElementById('search-status');
+const resultsList  = document.getElementById('results-list');
+
+let searchTimer = null;
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  const q = searchInput.value.trim();
+
+  if (q.length < 2) {
+    searchHint.classList.remove('hidden');
+    searchStatus.classList.add('hidden');
+    resultsList.innerHTML = '';
+    return;
+  }
+
+  searchHint.classList.add('hidden');
+  searchStatus.textContent = 'Ищу...';
+  searchStatus.classList.remove('hidden');
+  resultsList.innerHTML = '';
+
+  searchTimer = setTimeout(() => doSearch(q), 500);
+});
+
+async function doSearch(q) {
+  try {
+    const resp = await fetch(`/api/miniapp/search?q=${encodeURIComponent(q)}`);
+    if (!resp.ok) throw new Error('Ошибка сервера');
+    const niches = await resp.json();
+
+    searchStatus.classList.add('hidden');
+
+    if (!niches.length) {
+      searchStatus.textContent = `По запросу «${q}» ничего не найдено`;
+      searchStatus.classList.remove('hidden');
+      return;
+    }
+
+    resultsList.innerHTML = '';
+    niches.forEach(n => {
+      const el = document.createElement('div');
+      el.className = 'result-item';
+      el.innerHTML = `
+        <div class="result-name">${n.display_name || n.name}</div>
+        <div class="result-meta">
+          <span>💰 ${fmtMoney(n.revenue_annual)}/год</span>
+          <span>🛒 ${fmtNum(n.orders_monthly)}/мес</span>
+        </div>
+      `;
+      el.addEventListener('click', () => showPreview(n));
+      resultsList.appendChild(el);
+    });
+  } catch (e) {
+    searchStatus.textContent = 'Ошибка поиска. Попробуйте ещё раз.';
+    searchStatus.classList.remove('hidden');
+  }
+}
+
+// ── Превью ────────────────────────────────────────────────────────────────────
+
+function showPreview(n) {
+  currentNiche = n;
+
+  document.getElementById('preview-title').textContent  = n.display_name || n.name;
+  document.getElementById('m-revenue').textContent      = fmtMoney(n.revenue_annual);
+  document.getElementById('m-orders').textContent       = fmtNum(n.orders_monthly);
+  document.getElementById('m-sellers').textContent      = `${fmtNum(n.sellers_active)} / ${fmtNum(n.sellers_total)}`;
+  document.getElementById('m-buyout').textContent       = n.buyout_pct ? Math.round(n.buyout_pct * 100) + '%' : '—';
+  document.getElementById('m-date').textContent         = n.data_updated_at ? 'Данные на ' + n.data_updated_at : '';
+
+  const pdfStatus = document.getElementById('pdf-status');
+  pdfStatus.className = 'pdf-status hidden';
+  pdfStatus.innerHTML = '';
+
+  ['btn-basic', 'btn-standard', 'btn-deep'].forEach(id => {
+    document.getElementById(id).disabled = false;
+  });
+
+  showScreen('screen-preview');
+}
+
+document.getElementById('btn-back').addEventListener('click', () => {
+  showScreen('screen-search');
+});
+
+// ── PDF-кнопки ────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-basic').addEventListener('click', () => orderPdf('basic'));
+document.getElementById('btn-standard').addEventListener('click', () => orderPdf('standard'));
+document.getElementById('btn-deep').addEventListener('click', () => orderPdf('deep'));
+
+async function orderPdf(level) {
+  const pdfStatus = document.getElementById('pdf-status');
+
+  ['btn-basic', 'btn-standard', 'btn-deep'].forEach(id => {
+    document.getElementById(id).disabled = true;
+  });
+
+  if (level === 'basic') {
+    pdfStatus.className = 'pdf-status generating';
+    pdfStatus.innerHTML = '<span class="spinner"></span>Генерирую PDF... (~1 минута)';
+    pdfStatus.classList.remove('hidden');
+  }
+
+  try {
+    const resp = await fetch('/api/miniapp/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        telegram_user_id: userId,
+        telegram_username: username,
+        niche_name: currentNiche.name,
+        pdf_level: level,
+        ref_source: startParam,
+      }),
+    });
+
+    const data = await resp.json();
+
+    if (level === 'basic') {
+      if (data.job_id) {
+        pollJob(data.job_id);
+      } else {
+        pdfStatus.className = 'pdf-status error';
+        pdfStatus.textContent = 'Ошибка запуска генерации. Попробуйте ещё раз.';
+        resetButtons();
+      }
+    } else {
+      pdfStatus.className = 'pdf-status pending';
+      pdfStatus.textContent = data.message || 'Оплата временно недоступна.';
+      pdfStatus.classList.remove('hidden');
+      resetButtons();
+    }
+  } catch (e) {
+    pdfStatus.className = 'pdf-status error';
+    pdfStatus.textContent = 'Ошибка соединения. Попробуйте ещё раз.';
+    pdfStatus.classList.remove('hidden');
+    resetButtons();
+  }
+}
+
+function resetButtons() {
+  ['btn-basic', 'btn-standard', 'btn-deep'].forEach(id => {
+    document.getElementById(id).disabled = false;
+  });
+}
+
+// ── Поллинг генерации PDF ─────────────────────────────────────────────────────
+
+async function pollJob(jobId) {
+  const pdfStatus = document.getElementById('pdf-status');
+  const BASE_URL  = window.location.origin;
+
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    try {
+      const resp = await fetch(`/api/miniapp/status/${jobId}`);
+      const data = await resp.json();
+
+      if (data.status === 'ready') {
+        pdfStatus.className = 'pdf-status ready';
+        pdfStatus.innerHTML =
+          '✅ PDF готов!<br>' +
+          `<a class="download-link" href="${data.download_url}" download>⬇️ Скачать Basic PDF</a>`;
+        resetButtons();
+        return;
+      }
+      if (data.status === 'error') {
+        pdfStatus.className = 'pdf-status error';
+        pdfStatus.textContent = '❌ Ошибка генерации. Попробуйте ещё раз.';
+        resetButtons();
+        return;
+      }
+      // status === 'generating' → continue polling
+    } catch (_) {
+      // network blip, keep polling
+    }
+  }
+
+  // timeout after 3 min
+  pdfStatus.className = 'pdf-status error';
+  pdfStatus.textContent = '⏱ Превышено время ожидания. Попробуйте ещё раз.';
+  resetButtons();
+}

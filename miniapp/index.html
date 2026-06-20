@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WBAnalyzer</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+
+<!-- SCREEN: SEARCH -->
+<div id="screen-search" class="screen active">
+  <div class="header">
+    <div class="logo">WBAnalyzer</div>
+    <div class="subtitle">Анализ ниш Wildberries</div>
+  </div>
+  <div class="search-box">
+    <input
+      id="search-input"
+      type="text"
+      placeholder="Введите название товара или ниши..."
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+    >
+    <div class="search-icon">🔍</div>
+  </div>
+  <div id="search-hint" class="search-hint">Например: вытяжки кухонные, йога коврики, кофемашины</div>
+  <div id="search-status" class="search-status hidden"></div>
+  <div id="results-list" class="results-list"></div>
+</div>
+
+<!-- SCREEN: PREVIEW -->
+<div id="screen-preview" class="screen">
+  <button id="btn-back" class="btn-back">← Назад</button>
+  <div id="preview-card" class="preview-card">
+    <div class="preview-title" id="preview-title"></div>
+    <div class="metrics-grid">
+      <div class="metric">
+        <div class="metric-value" id="m-revenue"></div>
+        <div class="metric-label">выручка/год</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="m-orders"></div>
+        <div class="metric-label">заказов/мес</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="m-sellers"></div>
+        <div class="metric-label">продавцов</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="m-buyout"></div>
+        <div class="metric-label">выкуп</div>
+      </div>
+    </div>
+    <div class="data-date" id="m-date"></div>
+  </div>
+
+  <div class="pdf-buttons">
+    <button class="pdf-btn pdf-basic" id="btn-basic">
+      <span class="pdf-icon">📄</span>
+      <span class="pdf-info">
+        <span class="pdf-name">Basic PDF</span>
+        <span class="pdf-price">Бесплатно</span>
+      </span>
+    </button>
+    <button class="pdf-btn pdf-standard" id="btn-standard">
+      <span class="pdf-icon">📊</span>
+      <span class="pdf-info">
+        <span class="pdf-name">Standard PDF</span>
+        <span class="pdf-price">2 500 ₽</span>
+      </span>
+    </button>
+    <button class="pdf-btn pdf-deep" id="btn-deep">
+      <span class="pdf-icon">📈</span>
+      <span class="pdf-info">
+        <span class="pdf-name">Deep PDF</span>
+        <span class="pdf-price">6 000 ₽</span>
+      </span>
+    </button>
+  </div>
+
+  <div id="pdf-status" class="pdf-status hidden"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

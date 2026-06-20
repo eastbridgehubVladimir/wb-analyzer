@@ -304,15 +304,18 @@ body {
 
 .download-link {
   display: block;
+  width: 100%;
   margin-top: 10px;
   padding: 12px;
   background-color: var(--tg-button-color);
   color: var(--tg-button-text-color);
+  border: none;
   border-radius: 10px;
   text-align: center;
   text-decoration: none;
   font-weight: 600;
   font-size: 14px;
+  cursor: pointer;
 }
 
 /* ── Spinner ────────────────────────────────────────── */

@@ -217,10 +217,25 @@ async function pollJob(jobId) {
       const data = await resp.json();
 
       if (data.status === 'ready') {
+        const absoluteUrl = window.location.origin + data.download_url;
         pdfStatus.className = 'pdf-status ready';
         pdfStatus.innerHTML =
           '✅ PDF готов!<br>' +
-          `<a class="download-link" href="${data.download_url}" download>⬇️ Скачать Basic PDF</a>`;
+          '<button class="download-link" id="btn-download-pdf">⬇️ Скачать Basic PDF</button>';
+
+        document.getElementById('btn-download-pdf').addEventListener('click', () => {
+          // tg.downloadFile — лучший вариант (Telegram 10+), скачивает напрямую
+          // tg.openLink — открывает в системном браузере где PDF можно сохранить
+          // fallback — для десктопного браузера при тестировании вне Telegram
+          if (tg.downloadFile) {
+            tg.downloadFile({ url: absoluteUrl, file_name: 'WBAnalyzer_Basic.pdf' });
+          } else if (tg.openLink) {
+            tg.openLink(absoluteUrl);
+          } else {
+            window.open(absoluteUrl, '_blank');
+          }
+        });
+
         resetButtons();
         return;
       }

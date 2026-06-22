@@ -9,6 +9,14 @@ tg.expand();
 
 // ── Тема ──────────────────────────────────────────────────────────────────────
 
+function isDark(hex) {
+  const h = (hex || '#ffffff').replace('#', '');
+  const r = parseInt(h.slice(0,2), 16);
+  const g = parseInt(h.slice(2,4), 16);
+  const b = parseInt(h.slice(4,6), 16);
+  return (r * 0.299 + g * 0.587 + b * 0.114) < 128;
+}
+
 function applyTheme() {
   const p = tg.themeParams;
   const r = document.documentElement.style;
@@ -18,6 +26,20 @@ function applyTheme() {
   r.setProperty('--tg-button-color',        p.button_color        || '#2481cc');
   r.setProperty('--tg-button-text-color',   p.button_text_color   || '#ffffff');
   r.setProperty('--tg-secondary-bg-color',  p.secondary_bg_color  || '#f0f0f0');
+
+  // Glass-переменные: разные значения для тёмной и светлой темы
+  const dark = isDark(p.bg_color || '#ffffff');
+  r.setProperty('--glass-bg',     dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)');
+  r.setProperty('--glass-border', dark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)');
+  r.setProperty('--glass-shadow', dark ? '0 4px 20px rgba(0,0,0,0.40)' : '0 4px 20px rgba(0,0,0,0.08)');
+
+  // Акцентный цвет кнопки с прозрачностью для градиентов
+  const btn = p.button_color || '#2481cc';
+  const bR = parseInt(btn.replace('#','').slice(0,2), 16);
+  const bG = parseInt(btn.replace('#','').slice(2,4), 16);
+  const bB = parseInt(btn.replace('#','').slice(4,6), 16);
+  r.setProperty('--accent-a15', `rgba(${bR},${bG},${bB},0.15)`);
+  r.setProperty('--accent-a08', `rgba(${bR},${bG},${bB},0.08)`);
 }
 
 applyTheme();
@@ -157,7 +179,14 @@ async function orderPdf(level) {
 
   if (level === 'basic') {
     pdfStatus.className = 'pdf-status generating';
-    pdfStatus.innerHTML = '<span class="spinner"></span>Генерирую PDF... (~1 минута)';
+    pdfStatus.innerHTML =
+      '<div class="generating-block">' +
+        '<div class="gen-ring"></div>' +
+        '<div class="gen-info">' +
+          '<span class="gen-label">Генерирую PDF…</span>' +
+          '<span class="gen-sub">обычно около минуты</span>' +
+        '</div>' +
+      '</div>';
     pdfStatus.classList.remove('hidden');
   }
 

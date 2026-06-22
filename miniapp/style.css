@@ -1,4 +1,5 @@
-/* Telegram CSS vars — set by app.js from tg.themeParams */
+/* ── CSS переменные ─────────────────────────────────────── */
+/* Telegram vars — перезаписываются из tg.themeParams в app.js */
 :root {
   --tg-bg-color: #ffffff;
   --tg-text-color: #000000;
@@ -6,15 +7,26 @@
   --tg-button-color: #2481cc;
   --tg-button-text-color: #ffffff;
   --tg-secondary-bg-color: #f0f0f0;
+
+  /* Glass эффект — пересчитывается в applyTheme() */
+  --glass-bg:     rgba(0,0,0,0.04);
+  --glass-border: rgba(0,0,0,0.07);
+  --glass-shadow: 0 4px 20px rgba(0,0,0,0.08);
+
+  /* Акцент с прозрачностью — пересчитывается в applyTheme() */
+  --accent-a15: rgba(36,129,204,0.15);
+  --accent-a08: rgba(36,129,204,0.08);
 }
 
-* {
+/* ── Сброс ──────────────────────────────────────────────── */
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ── Body ───────────────────────────────────────────────── */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--tg-bg-color);
@@ -22,10 +34,10 @@ body {
   min-height: 100vh;
   font-size: 15px;
   line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ── Screens ────────────────────────────────────────── */
-
+/* ── Экраны ─────────────────────────────────────────────── */
 .screen {
   display: none;
   flex-direction: column;
@@ -37,43 +49,60 @@ body {
   display: flex;
 }
 
-/* ── Header ─────────────────────────────────────────── */
-
+/* ── Шапка (логотип) ────────────────────────────────────── */
 .header {
   text-align: center;
-  padding: 12px 0 20px;
+  padding: 16px 0 20px;
 }
 
 .logo {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 800;
   color: var(--tg-button-color);
   letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.logo-icon {
+  font-size: 22px;
 }
 
 .subtitle {
   font-size: 13px;
   color: var(--tg-hint-color);
-  margin-top: 2px;
+  margin-top: 3px;
+  letter-spacing: 0.1px;
 }
 
-/* ── Search Box ─────────────────────────────────────── */
+/* ── Поисковая glass-карточка ───────────────────────────── */
+.search-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: var(--glass-shadow);
+}
 
 .search-box {
   position: relative;
-  margin-bottom: 8px;
 }
 
 #search-input {
   width: 100%;
-  padding: 12px 40px 12px 14px;
-  border: 1.5px solid var(--tg-secondary-bg-color);
+  padding: 13px 44px 13px 16px;
+  border: 1.5px solid transparent;
   border-radius: 12px;
-  background-color: var(--tg-secondary-bg-color);
+  background-color: var(--tg-bg-color);
   color: var(--tg-text-color);
   font-size: 15px;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 #search-input::placeholder {
@@ -82,34 +111,36 @@ body {
 
 #search-input:focus {
   border-color: var(--tg-button-color);
-  background-color: var(--tg-bg-color);
+  box-shadow: 0 0 0 3px var(--accent-a08);
 }
 
 .search-icon {
   position: absolute;
-  right: 12px;
+  right: 14px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 16px;
   pointer-events: none;
+  opacity: 0.6;
 }
 
 .search-hint {
   font-size: 12px;
-  color: var(--tg-hint-color);
-  padding: 0 4px;
-  margin-bottom: 12px;
+  color: var(--tg-text-color);
+  opacity: 0.5;
+  padding: 8px 4px 2px;
+  line-height: 1.4;
 }
 
+/* ── Статус поиска ──────────────────────────────────────── */
 .search-status {
   text-align: center;
   color: var(--tg-hint-color);
   font-size: 13px;
-  padding: 8px 0;
+  padding: 10px 0;
 }
 
-/* ── Results ────────────────────────────────────────── */
-
+/* ── Результаты поиска ──────────────────────────────────── */
 .results-list {
   display: flex;
   flex-direction: column;
@@ -117,94 +148,180 @@ body {
 }
 
 .result-item {
-  background-color: var(--tg-secondary-bg-color);
-  border-radius: 12px;
-  padding: 12px 14px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 13px 15px;
   cursor: pointer;
-  transition: opacity 0.15s;
-  border: 1.5px solid transparent;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
 .result-item:active {
-  opacity: 0.7;
+  transform: scale(0.98);
+  box-shadow: none;
 }
 
 .result-name {
   font-weight: 600;
   font-size: 14px;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
+  line-height: 1.3;
 }
 
 .result-meta {
   font-size: 12px;
   color: var(--tg-hint-color);
   display: flex;
-  gap: 12px;
+  gap: 14px;
 }
 
-/* ── Back Button ────────────────────────────────────── */
-
+/* ── Кнопка «Назад» ─────────────────────────────────────── */
 .btn-back {
   background: none;
   border: none;
   color: var(--tg-button-color);
   font-size: 15px;
   cursor: pointer;
-  padding: 0 0 12px 0;
+  padding: 4px 0 14px 0;
   text-align: left;
   font-weight: 500;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 
-/* ── Preview Card ───────────────────────────────────── */
-
+/* ── Preview карточка (glassmorphism) ───────────────────── */
 .preview-card {
-  background-color: var(--tg-secondary-bg-color);
-  border-radius: 16px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
   padding: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--glass-shadow);
 }
 
 .preview-title {
-  font-size: 17px;
-  font-weight: 700;
-  margin-bottom: 14px;
-  line-height: 1.2;
-}
-
-.metrics-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.metric {
-  background-color: var(--tg-bg-color);
-  border-radius: 10px;
-  padding: 10px 12px;
-}
-
-.metric-value {
   font-size: 16px;
   font-weight: 700;
+  margin-bottom: 12px;
+  line-height: 1.25;
+  color: var(--tg-text-color);
+}
+
+/* ── Bento grid метрик ──────────────────────────────────── */
+.metrics-bento {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  grid-template-rows: auto auto auto;
+  gap: 8px;
+}
+
+/* Базовые стили всех metric-ячеек */
+.metric {
+  background-color: var(--tg-bg-color);
+  border-radius: 14px;
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 62px;
+}
+
+/* ВЫРУЧКА — featured, занимает 2 строки */
+.metric-revenue {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  background: linear-gradient(140deg, var(--accent-a15) 0%, var(--accent-a08) 100%);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  justify-content: center;
+  padding: 16px;
+  min-height: 132px;
+}
+
+.metric-revenue .metric-label {
+  font-size: 11px;
   color: var(--tg-button-color);
+  opacity: 0.85;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.metric-revenue .metric-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--tg-button-color);
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+}
+
+/* ЗАКАЗЫ */
+.metric-orders {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+/* ПРОДАВЦЫ */
+.metric-sellers {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+/* ВЫКУП */
+.metric-buyout {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+/* ДАТА ОБНОВЛЕНИЯ */
+.metric-date-cell {
+  grid-column: 2;
+  grid-row: 3;
+  justify-content: flex-end;
+  background: transparent;
+  border-radius: 0;
+  padding: 4px 4px 4px 8px;
+  min-height: auto;
+}
+
+.metric-date-cell span {
+  font-size: 11px;
+  color: var(--tg-hint-color);
+  line-height: 1.4;
+  display: block;
+}
+
+/* Общие стили metric value/label */
+.metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--tg-text-color);
+  letter-spacing: -0.3px;
+  line-height: 1.2;
 }
 
 .metric-label {
   font-size: 11px;
   color: var(--tg-hint-color);
-  margin-top: 2px;
+  margin-top: 3px;
+  font-weight: 400;
 }
 
-.data-date {
-  font-size: 11px;
-  color: var(--tg-hint-color);
-  text-align: right;
-  margin-top: 4px;
+/* Переопределение для orders/sellers/buyout: value сверху, label снизу */
+.metric-orders .metric-value,
+.metric-sellers .metric-value,
+.metric-buyout .metric-value {
+  order: -1;
 }
 
-/* ── PDF Buttons ────────────────────────────────────── */
-
+/* ── PDF кнопки ─────────────────────────────────────────── */
 .pdf-buttons {
   display: flex;
   flex-direction: column;
@@ -215,129 +332,175 @@ body {
 .pdf-btn {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 14px;
+  gap: 13px;
+  padding: 16px 18px;
+  border-radius: 16px;
   border: none;
   cursor: pointer;
   font-size: 14px;
   text-align: left;
-  transition: opacity 0.15s;
   width: 100%;
+  min-height: 60px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s;
+  position: relative;
+  overflow: hidden;
 }
 
 .pdf-btn:active {
-  opacity: 0.7;
+  transform: scale(0.97);
 }
 
 .pdf-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
+  transform: none;
 }
 
+/* Basic: акцентная синяя, тень для "приподнятости" */
 .pdf-basic {
   background-color: var(--tg-button-color);
   color: var(--tg-button-text-color);
+  box-shadow: 0 4px 14px var(--accent-a15);
 }
 
+.pdf-basic:active {
+  box-shadow: 0 2px 6px var(--accent-a08);
+}
+
+/* Standard: glass + золотая обводка */
 .pdf-standard {
-  background-color: var(--tg-secondary-bg-color);
+  background: linear-gradient(135deg, var(--glass-bg) 0%, rgba(245,158,11,0.06) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(245,158,11,0.35);
   color: var(--tg-text-color);
-  border: 1.5px solid var(--tg-button-color);
 }
 
+/* Deep: glass + фиолетовая обводка */
 .pdf-deep {
-  background-color: var(--tg-secondary-bg-color);
+  background: linear-gradient(135deg, var(--glass-bg) 0%, rgba(139,92,246,0.08) 100%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(139,92,246,0.35);
   color: var(--tg-text-color);
-  border: 1.5px solid var(--tg-secondary-bg-color);
 }
 
 .pdf-icon {
-  font-size: 22px;
+  font-size: 24px;
   flex-shrink: 0;
 }
 
 .pdf-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .pdf-name {
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 14px;
 }
 
 .pdf-price {
   font-size: 12px;
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
-/* ── PDF Status ─────────────────────────────────────── */
-
+/* ── PDF статус ─────────────────────────────────────────── */
 .pdf-status {
-  border-radius: 12px;
-  padding: 14px;
+  border-radius: 14px;
+  padding: 16px;
   font-size: 14px;
   line-height: 1.5;
 }
 
 .pdf-status.generating {
-  background-color: var(--tg-secondary-bg-color);
-  color: var(--tg-hint-color);
-  text-align: center;
+  background: var(--glass-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
 }
 
 .pdf-status.ready {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background: rgba(34,197,94,0.12);
+  border: 1px solid rgba(34,197,94,0.25);
+  color: var(--tg-text-color);
 }
 
 .pdf-status.pending {
-  background-color: var(--tg-secondary-bg-color);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
   color: var(--tg-text-color);
 }
 
 .pdf-status.error {
-  background-color: #fdecea;
-  color: #c62828;
+  background: rgba(239,68,68,0.10);
+  border: 1px solid rgba(239,68,68,0.25);
+  color: var(--tg-text-color);
 }
 
+/* ── Блок генерации PDF ─────────────────────────────────── */
+.generating-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.gen-ring {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--glass-border);
+  border-top-color: var(--tg-button-color);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+
+.gen-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gen-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tg-text-color);
+}
+
+.gen-sub {
+  font-size: 12px;
+  color: var(--tg-hint-color);
+}
+
+/* ── Кнопка скачивания ──────────────────────────────────── */
 .download-link {
   display: block;
   width: 100%;
-  margin-top: 10px;
-  padding: 12px;
+  margin-top: 12px;
+  padding: 14px;
   background-color: var(--tg-button-color);
   color: var(--tg-button-text-color);
   border: none;
-  border-radius: 10px;
+  border-radius: 14px;
   text-align: center;
-  text-decoration: none;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 14px;
   cursor: pointer;
+  box-shadow: 0 4px 14px var(--accent-a15);
+  transition: transform 0.12s ease;
 }
 
-/* ── Spinner ────────────────────────────────────────── */
-
-.spinner {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--tg-hint-color);
-  border-top-color: var(--tg-button-color);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  vertical-align: middle;
-  margin-right: 8px;
+.download-link:active {
+  transform: scale(0.97);
 }
 
+/* ── Анимации ───────────────────────────────────────────── */
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-/* ── Utility ────────────────────────────────────────── */
-
+/* ── Утилиты ────────────────────────────────────────────── */
 .hidden {
   display: none !important;
 }

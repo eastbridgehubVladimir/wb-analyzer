@@ -12,21 +12,25 @@
 <!-- SCREEN: SEARCH -->
 <div id="screen-search" class="screen active">
   <div class="header">
-    <div class="logo">WBAnalyzer</div>
+    <div class="logo"><span class="logo-icon">📊</span>WBAnalyzer</div>
     <div class="subtitle">Анализ ниш Wildberries</div>
   </div>
-  <div class="search-box">
-    <input
-      id="search-input"
-      type="text"
-      placeholder="Введите название товара или ниши..."
-      autocomplete="off"
-      autocorrect="off"
-      spellcheck="false"
-    >
-    <div class="search-icon">🔍</div>
+
+  <div class="search-card">
+    <div class="search-box">
+      <input
+        id="search-input"
+        type="text"
+        placeholder="Введите название товара или ниши..."
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+      >
+      <div class="search-icon">🔍</div>
+    </div>
+    <div id="search-hint" class="search-hint">Например: вытяжки кухонные, йога коврики, кофемашины</div>
   </div>
-  <div id="search-hint" class="search-hint">Например: вытяжки кухонные, йога коврики, кофемашины</div>
+
   <div id="search-status" class="search-status hidden"></div>
   <div id="results-list" class="results-list"></div>
 </div>
@@ -34,27 +38,31 @@
 <!-- SCREEN: PREVIEW -->
 <div id="screen-preview" class="screen">
   <button id="btn-back" class="btn-back">← Назад</button>
+
   <div id="preview-card" class="preview-card">
     <div class="preview-title" id="preview-title"></div>
-    <div class="metrics-grid">
-      <div class="metric">
+
+    <div class="metrics-bento">
+      <div class="metric metric-revenue">
+        <div class="metric-label">выручка / год</div>
         <div class="metric-value" id="m-revenue"></div>
-        <div class="metric-label">выручка/год</div>
       </div>
-      <div class="metric">
+      <div class="metric metric-orders">
         <div class="metric-value" id="m-orders"></div>
-        <div class="metric-label">заказов/мес</div>
+        <div class="metric-label">заказов / мес</div>
       </div>
-      <div class="metric">
+      <div class="metric metric-sellers">
         <div class="metric-value" id="m-sellers"></div>
         <div class="metric-label">продавцов</div>
       </div>
-      <div class="metric">
+      <div class="metric metric-buyout">
         <div class="metric-value" id="m-buyout"></div>
         <div class="metric-label">выкуп</div>
       </div>
+      <div class="metric metric-date-cell">
+        <span id="m-date"></span>
+      </div>
     </div>
-    <div class="data-date" id="m-date"></div>
   </div>
 
   <div class="pdf-buttons">

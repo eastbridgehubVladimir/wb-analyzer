@@ -28,8 +28,10 @@ from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import (
     BufferedInputFile, CallbackQuery,
-    InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo,
+    InlineKeyboardButton, InlineKeyboardMarkup, Message,
+    ReplyKeyboardRemove, WebAppInfo,
 )
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 sys.path.insert(0, os.path.dirname(__file__))
 import pdf_auto
@@ -261,7 +263,6 @@ _user_ref: dict[int, str] = {}
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     user = message.from_user
-    # Извлекаем реферальный параметр из /start ref_xxx
     args = message.text.split(maxsplit=1)
     ref_source = args[1].strip() if len(args) > 1 else 'direct'
     _user_ref[user.id] = ref_source
@@ -271,22 +272,28 @@ async def cmd_start(message: Message):
         executor, _log_lead, user.id, user.username, None, 'start', ref_source
     )
 
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(
-            text="📊 Открыть WBAnalyzer",
-            web_app=WebAppInfo(url="https://wb-analyzer-production.up.railway.app/miniapp")
-        )
-    ]])
+    # Убираем любой стейл reply keyboard из предыдущих сессий бота
+    rm = await message.answer("👋", reply_markup=ReplyKeyboardRemove())
+    await rm.delete()
+
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="📊 Открыть WBAnalyzer",
+        web_app=WebAppInfo(url="https://wb-analyzer-production.up.railway.app/miniapp")
+    )
 
     await message.answer(
-        "👋 Добро пожаловать в <b>WBAnalyzer</b>!\n\n"
-        "🔍 Анализируй любую нишу Wildberries за 2 минуты:\n"
-        "• Выручка и динамика рынка\n"
-        "• Конкуренты и свободные сегменты\n"
-        "• Готовая юнит-экономика и план входа\n\n"
-        "👇 Нажми чтобы начать:",
-        parse_mode="HTML",
-        reply_markup=keyboard
+        "👋 Добро пожаловать в *WBAnalyzer*!\n\n"
+        "Анализируй ниши Wildberries за 2 минуты:\n\n"
+        "📄 *Basic* — бесплатно\n"
+        "Метрики ниши, графики, топ-20 товаров\n\n"
+        "📊 *Standard* — 2 500 ₽\n"
+        "Мастер-анализ AI, юнит-экономика, стратегия входа\n\n"
+        "📈 *Deep* — 6 000 ₽\n"
+        "Анализ конкурентов, поиск поставщиков, 90-дн. план\n\n"
+        "👇 Нажми чтобы выбрать нишу и получить анализ:",
+        parse_mode="Markdown",
+        reply_markup=builder.as_markup()
     )
 
 @router.message(Command("help"))

@@ -257,11 +257,12 @@ def _list_kb(niches: list) -> InlineKeyboardMarkup:
 def support_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📥 Как скачать PDF?",            callback_data="faq_download")],
-        [InlineKeyboardButton(text="💳 Как оплатить Standard/Deep?", callback_data="faq_payment")],
-        [InlineKeyboardButton(text="📊 Что входит в каждый тариф?", callback_data="faq_tiers")],
+        [InlineKeyboardButton(text="💳 Как заказать Standard/Deep PDF", callback_data="faq_order")],
+        [InlineKeyboardButton(text="📥 Как скачать Basic PDF?",         callback_data="faq_download")],
+        [InlineKeyboardButton(text="📊 Что входит в каждый тариф?",    callback_data="faq_tiers")],
         [InlineKeyboardButton(text="🔍 Ниша не найдена — что делать?", callback_data="faq_niche")],
-        [InlineKeyboardButton(text="✍️ Задать свой вопрос",           callback_data="faq_custom")],
-        [InlineKeyboardButton(text="👤 Написать @vladzzimir напрямую", url="https://t.me/vladzzimir")],
+        [InlineKeyboardButton(text="✍️ Задать свой вопрос",            callback_data="faq_custom")],
+        [InlineKeyboardButton(text="👤 Написать @vladzzimir напрямую",  url="https://t.me/vladzzimir")],
     ])
 
 # ── Handlers ───────────────────────────────────────────────────────────────────
@@ -624,6 +625,31 @@ async def faq_custom(callback: CallbackQuery):
         "✍️ Напиши свой вопрос прямо в этот чат — "
         "AI-агент ответит автоматически.\n\n"
         "Если вопрос сложный — подключится @vladzzimir."
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "faq_order")
+async def faq_order(callback: CallbackQuery):
+    await callback.message.answer(
+        "💳 *Как заказать Standard или Deep PDF*\n\n"
+        "*Шаг 1 — Выбери нишу*\n"
+        "Найди нишу в боте или Mini App, нажми "
+        "Standard PDF или Deep PDF.\n\n"
+        "*Шаг 2 — Переведи оплату*\n"
+        "📊 Standard — 2 500 ₽\n"
+        "📈 Deep — 6 000 ₽\n\n"
+        "Способ оплаты: [PLACEHOLDER_PAYMENT_METHOD]\n"
+        "Реквизиты: [PLACEHOLDER_PAYMENT_DETAILS]\n\n"
+        "*Шаг 3 — Напиши нам*\n"
+        "После оплаты напиши @vladzzimir:\n"
+        "• Название ниши\n"
+        "• Тариф (Standard или Deep)\n"
+        "• Скриншот или номер перевода\n\n"
+        "*Шаг 4 — Получи отчёт*\n"
+        "Отчёт будет готов в течение "
+        "[PLACEHOLDER_DELIVERY_TIME].\n\n"
+        "❓ Остались вопросы? Пиши @vladzzimir",
+        parse_mode="Markdown"
     )
     await callback.answer()
 

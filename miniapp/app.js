@@ -273,6 +273,12 @@ function resetButtons() {
   });
 }
 
+// ── Поддержка ─────────────────────────────────────────────────────────────────
+
+function openSupport() {
+  tg.openTelegramLink('https://t.me/Wbanalyzer_user_bot?start=support');
+}
+
 // ── Поллинг генерации PDF ─────────────────────────────────────────────────────
 
 async function pollJob(jobId) {

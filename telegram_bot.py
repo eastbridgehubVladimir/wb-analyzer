@@ -254,6 +254,16 @@ def _list_kb(niches: list) -> InlineKeyboardMarkup:
         for n in niches
     ])
 
+def support_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📥 Как скачать PDF?",            callback_data="faq_download")],
+        [InlineKeyboardButton(text="💳 Как оплатить Standard/Deep?", callback_data="faq_payment")],
+        [InlineKeyboardButton(text="📊 Что входит в каждый тариф?", callback_data="faq_tiers")],
+        [InlineKeyboardButton(text="🔍 Ниша не найдена — что делать?", callback_data="faq_niche")],
+        [InlineKeyboardButton(text="✍️ Задать свой вопрос",           callback_data="faq_custom")],
+        [InlineKeyboardButton(text="👤 Написать @vladzzimir напрямую", url="https://t.me/vladzzimir")],
+    ])
+
 # ── Handlers ───────────────────────────────────────────────────────────────────
 
 router = Router()
@@ -265,7 +275,8 @@ _user_ref: dict[int, str] = {}
 async def cmd_start(message: Message):
     user = message.from_user
     args = message.text.split(maxsplit=1)
-    ref_source = args[1].strip() if len(args) > 1 else 'direct'
+    raw_arg = args[1].strip() if len(args) > 1 else ''
+    ref_source = raw_arg if raw_arg else 'direct'
     _user_ref[user.id] = ref_source
 
     loop = asyncio.get_event_loop()
@@ -277,11 +288,26 @@ async def cmd_start(message: Message):
     rm = await message.answer("👋", reply_markup=ReplyKeyboardRemove())
     await rm.delete()
 
-    builder = InlineKeyboardBuilder()
-    builder.button(
-        text="📊 Открыть WBAnalyzer",
-        web_app=WebAppInfo(url="https://wb-analyzer-production.up.railway.app/miniapp")
-    )
+    # Пришёл из Mini App через кнопку поддержки
+    if raw_arg == 'support':
+        await message.answer(
+            "❓ *Помощь и поддержка WBAnalyzer*\n\n"
+            "Выберите тему или напишите вопрос в этот чат:",
+            parse_mode="Markdown",
+            reply_markup=support_keyboard()
+        )
+        return
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="📊 Открыть WBAnalyzer",
+            web_app=WebAppInfo(url="https://wb-analyzer-production.up.railway.app/miniapp")
+        )],
+        [InlineKeyboardButton(
+            text="❓ Помощь и поддержка",
+            callback_data="support_menu"
+        )],
+    ])
 
     await message.answer(
         "👋 Добро пожаловать в *WBAnalyzer*!\n\n"
@@ -297,7 +323,7 @@ async def cmd_start(message: Message):
         "FBO/FBS стратегия, карточка товара, 90-дн. план\n\n"
         "👇 Нажми чтобы начать:",
         parse_mode="Markdown",
-        reply_markup=builder.as_markup()
+        reply_markup=keyboard
     )
 
 @router.message(Command("help"))
@@ -505,6 +531,101 @@ async def cb_pdf(callback: CallbackQuery):
     except Exception as e:
         log.error(f"PDF error for {n['name']}: {e}")
         await progress.edit_text("❌ Ошибка при генерации PDF. Попробуйте позже.")
+
+# ── Меню поддержки ────────────────────────────────────────────────────────────
+
+@router.callback_query(F.data == "support_menu")
+async def show_support_menu(callback: CallbackQuery):
+    await callback.message.answer(
+        "❓ *Помощь и поддержка WBAnalyzer*\n\n"
+        "Выберите тему или напишите вопрос прямо в этот чат — "
+        "AI-агент ответит автоматически.\n\n"
+        "Популярные вопросы:",
+        parse_mode="Markdown",
+        reply_markup=support_keyboard()
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "faq_download")
+async def faq_download(callback: CallbackQuery):
+    await callback.message.answer(
+        "📥 *Как скачать PDF*\n\n"
+        "1\\. Найди нишу в боте или Mini App\n"
+        "2\\. Нажми *📄 Basic PDF Бесплатно*\n"
+        "3\\. Подожди 1\\-2 минуты \\(идёт генерация\\)\n"
+        "4\\. Нажми кнопку *⬇️ Скачать Basic PDF*\n"
+        "5\\. PDF откроется в браузере телефона\n\n"
+        "Если кнопка не реагирует — удержи палец 1\\-2 сек, "
+        "выбери «Открыть в\\.\\.\\.» или «Сохранить файл»\\.",
+        parse_mode="MarkdownV2"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "faq_payment")
+async def faq_payment(callback: CallbackQuery):
+    await callback.message.answer(
+        "💳 *Как оплатить Standard или Deep*\n\n"
+        "Онлайн-оплата сейчас настраивается.\n\n"
+        "Чтобы получить отчёт прямо сейчас:\n"
+        "→ Напишите @vladzzimir\n"
+        "→ Укажите нишу и нужный тариф\n"
+        "→ Отчёт будет передан в течение нескольких часов\n\n"
+        "📊 Standard — 2 500 ₽\n"
+        "📈 Deep — 6 000 ₽",
+        parse_mode="Markdown"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "faq_tiers")
+async def faq_tiers(callback: CallbackQuery):
+    await callback.message.answer(
+        "📋 *Что входит в каждый тариф*\n\n"
+        "📄 *Basic — бесплатно*\n"
+        "• Вердикт AI \\(ВХОДИТЬ / ТЕСТИРОВАТЬ / НЕ ВХОДИТЬ\\)\n"
+        "• Ключевые метрики ниши\n"
+        "• 2 графика динамики\n\n"
+        "📊 *Standard — 2 500 ₽*\n"
+        "• Всё из Basic \\+\n"
+        "• Мастер\\-анализ AI с рекомендациями\n"
+        "• 5 графиков, топ\\-20 товаров\n"
+        "• Юнит\\-экономика и ROI\n"
+        "• Рекламная стратегия\n"
+        "• Сезонный план закупок\n\n"
+        "📈 *Deep — 6 000 ₽*\n"
+        "• Всё из Standard \\+\n"
+        "• Анализ топ\\-10 конкурентов\n"
+        "• Поиск поставщиков\n"
+        "• Документы для WB\n"
+        "• Стратегия FBO/FBS\n"
+        "• 90\\-дневный план запуска",
+        parse_mode="MarkdownV2"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "faq_niche")
+async def faq_niche(callback: CallbackQuery):
+    await callback.message.answer(
+        "🔍 *Ниша не найдена — что делать*\n\n"
+        "Попробуй другое написание. Примеры:\n"
+        "✓ «вытяжки кухонные»\n"
+        "✓ «йога коврики»\n"
+        "✓ «кофемашины»\n"
+        "✓ «велосипеды двухколесные»\n\n"
+        "В базе 7 500\\+ ниш WB — если ниша есть на Wildberries, "
+        "скорее всего она есть и у нас\\.\n\n"
+        "Если всё равно не находится — напиши @vladzzimir, добавим\\.",
+        parse_mode="MarkdownV2"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "faq_custom")
+async def faq_custom(callback: CallbackQuery):
+    await callback.message.answer(
+        "✍️ Напиши свой вопрос прямо в этот чат — "
+        "AI-агент ответит автоматически.\n\n"
+        "Если вопрос сложный — подключится @vladzzimir."
+    )
+    await callback.answer()
 
 # ── Функция выдачи PDF после оплаты (заготовка для эквайринга) ────────────────
 

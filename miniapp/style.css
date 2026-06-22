@@ -77,6 +77,39 @@ body {
   letter-spacing: 0.1px;
 }
 
+/* ── Шапка с кнопкой поддержки ──────────────────────────── */
+.header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.header-title {
+  flex: 1;
+}
+
+.support-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14px;
+  transition: background 0.15s;
+}
+
+.support-btn:active {
+  background: var(--accent-a15);
+}
+
 /* ── Поисковая glass-карточка ───────────────────────────── */
 .search-card {
   background: var(--glass-bg);

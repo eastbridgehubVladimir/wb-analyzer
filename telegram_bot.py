@@ -35,6 +35,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 sys.path.insert(0, os.path.dirname(__file__))
 import pdf_auto
+from support_knowledge import SUPPORT_PROMPT
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -350,6 +351,44 @@ async def cmd_stats(message: Message):
         parse_mode="HTML"
     )
 
+# ── AI-агент поддержки ────────────────────────────────────────────────────────
+
+def is_support_question(text: str) -> bool:
+    markers = [
+        '?', 'как ', 'почему', 'когда', 'сколько', 'что такое',
+        'зачем', 'помогите', 'помоги', 'не работает', 'не могу',
+        'ошибка', 'проблема', 'не скачивается', 'не открывается',
+        'оплата', 'оплатить', 'стоит', 'цена', 'тариф', 'basic',
+        'standard', 'deep', 'pdf', 'пдф', 'скачать', 'отчёт',
+        'данные', 'откуда', 'насколько', 'актуально',
+    ]
+    t = text.lower()
+    return any(m in t for m in markers)
+
+
+async def handle_support_question(text: str, user_id: int) -> str:
+    def _call() -> str:
+        import anthropic
+        client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY', ''))
+        msg = client.messages.create(
+            model='claude-sonnet-4-5',
+            max_tokens=500,
+            system=SUPPORT_PROMPT,
+            messages=[{'role': 'user', 'content': text}]
+        )
+        return msg.content[0].text
+
+    loop = asyncio.get_event_loop()
+    try:
+        return await loop.run_in_executor(executor, _call)
+    except Exception as e:
+        log.error(f'Support agent error: {e}')
+        return (
+            'Произошла техническая ошибка. Напишите напрямую '
+            '@vladzzimir — помогу разобраться в течение нескольких часов.'
+        )
+
+
 @router.message(F.text & ~F.text.startswith("/"))
 async def handle_search(message: Message):
     query = message.text.strip()
@@ -362,24 +401,36 @@ async def handle_search(message: Message):
     loop = asyncio.get_event_loop()
 
     niches = await loop.run_in_executor(executor, _search_niches, query)
-    await loop.run_in_executor(executor, _log_lead, user.id, user.username, query, 'search', ref)
 
-    if not niches:
+    if niches:
+        # Нашли нишу → стандартный поиск
+        await loop.run_in_executor(executor, _log_lead, user.id, user.username, query, 'search', ref)
+        if len(niches) == 1:
+            n = niches[0]
+            await loop.run_in_executor(executor, _log_lead, user.id, user.username, n['name'], 'preview_shown', ref)
+            await message.answer(_preview_text(n), reply_markup=_preview_kb(n['id']), parse_mode="HTML")
+        else:
+            await message.answer(
+                f"🔍 По запросу «<b>{query}</b>» найдено {len(niches)} ниши — выберите:",
+                reply_markup=_list_kb(niches),
+                parse_mode="HTML"
+            )
+
+    elif is_support_question(query):
+        # Не ниша, но похоже на вопрос → AI-агент поддержки
+        await loop.run_in_executor(executor, _log_lead, user.id, user.username, query, 'support_question', ref)
+        wait_msg = await message.answer("🤔 Разбираюсь с вашим вопросом...")
+        answer = await handle_support_question(query, user.id)
+        await wait_msg.delete()
+        await message.answer(answer)
+
+    else:
+        # Не нашли ничего и не похоже на вопрос
+        await loop.run_in_executor(executor, _log_lead, user.id, user.username, query, 'search', ref)
         await message.answer(
             f"🔍 По запросу «<b>{query}</b>» ничего не найдено.\n\n"
-            "Попробуйте: <i>смартфоны, детские игрушки, кофемашины</i>",
-            parse_mode="HTML"
-        )
-        return
-
-    if len(niches) == 1:
-        n = niches[0]
-        await loop.run_in_executor(executor, _log_lead, user.id, user.username, n['name'], 'preview_shown', ref)
-        await message.answer(_preview_text(n), reply_markup=_preview_kb(n['id']), parse_mode="HTML")
-    else:
-        await message.answer(
-            f"🔍 По запросу «<b>{query}</b>» найдено {len(niches)} ниши — выберите:",
-            reply_markup=_list_kb(niches),
+            "Попробуйте: <i>смартфоны, детские игрушки, кофемашины</i>\n\n"
+            "Если у вас вопрос о сервисе — просто напишите его, я постараюсь помочь.",
             parse_mode="HTML"
         )
 

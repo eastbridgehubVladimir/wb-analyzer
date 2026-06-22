@@ -28,7 +28,7 @@ from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import (
     BufferedInputFile, CallbackQuery,
-    InlineKeyboardButton, InlineKeyboardMarkup, Message,
+    InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo,
 )
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -271,15 +271,22 @@ async def cmd_start(message: Message):
         executor, _log_lead, user.id, user.username, None, 'start', ref_source
     )
 
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text="📊 Открыть WBAnalyzer",
+            web_app=WebAppInfo(url="https://wb-analyzer-production.up.railway.app/miniapp")
+        )
+    ]])
+
     await message.answer(
-        "👋 Привет! Я <b>WBAnalyzer</b> — помогаю найти прибыльные ниши на Wildberries.\n\n"
-        "🔍 Напиши название товара или категории, и я покажу:\n"
-        "• Объём рынка и выручку ниши\n"
-        "• Количество заказов и активных продавцов\n"
-        "• Процент выкупа\n"
-        "• PDF-отчёт с детальным анализом\n\n"
-        "<i>Пример: вытяжки кухонные, йога коврики, смартфоны</i>",
-        parse_mode="HTML"
+        "👋 Добро пожаловать в <b>WBAnalyzer</b>!\n\n"
+        "🔍 Анализируй любую нишу Wildberries за 2 минуты:\n"
+        "• Выручка и динамика рынка\n"
+        "• Конкуренты и свободные сегменты\n"
+        "• Готовая юнит-экономика и план входа\n\n"
+        "👇 Нажми чтобы начать:",
+        parse_mode="HTML",
+        reply_markup=keyboard
     )
 
 @router.message(Command("help"))

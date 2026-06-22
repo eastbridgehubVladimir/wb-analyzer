@@ -12,6 +12,7 @@ import re
 _pdf_sessions = {}   # {session_id: {level, niche, charts}}
 _pdf_results  = {}   # {key: {'pdf': bytes, 'filename': str}}
 _miniapp_pdf_jobs = {}  # {job_id: {'status': 'generating'|'ready'|'error', 'path': str}}
+_top_niches_cache: dict = {'data': None, 'at': 0.0}  # 24h server-side cache
 import json
 import asyncio
 import subprocess, sys
@@ -7496,6 +7497,64 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_header('Content-Type', 'application/json')
                     self.end_headers()
                     self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+        # ── Mini App: топ-5 ниш (кэш 24ч) ─────────────────────────────────────
+        elif self.path == '/api/miniapp/top-niches':
+            import time as _time
+            _tn_error = None
+            if _top_niches_cache['data'] is None or _time.time() - _top_niches_cache['at'] > 86400:
+                try:
+                    conn = psycopg2.connect(DB)
+                    cur = conn.cursor()
+                    cur.execute("""
+                        SELECT name,
+                               COALESCE(display_name, name) AS display_name,
+                               COALESCE(revenue_with_buyout, revenue, 0) * 12 AS revenue_annual,
+                               COALESCE(orders, 0)             AS orders_monthly,
+                               COALESCE(sellers_with_sales, 0) AS sellers_active,
+                               COALESCE(sellers, 0)            AS sellers_total,
+                               COALESCE(buyout_pct, 0)         AS buyout_pct,
+                               data_updated_at
+                        FROM niches
+                        WHERE revenue_with_buyout IS NOT NULL
+                        ORDER BY revenue_with_buyout DESC LIMIT 5
+                    """)
+                    rows = cur.fetchall()
+                    cur.execute("SELECT COUNT(*) FROM niches WHERE revenue IS NOT NULL")
+                    total = cur.fetchone()[0]
+                    cur.execute("SELECT MAX(data_updated_at) FROM niches")
+                    max_date_row = cur.fetchone()
+                    cur.close(); conn.close()
+                    _top_niches_cache['data'] = {
+                        'niches': [{
+                            'name':           r[0],
+                            'display_name':   r[1],
+                            'revenue_annual': float(r[2] or 0),
+                            'orders_monthly': int(r[3] or 0),
+                            'sellers_active': int(r[4] or 0),
+                            'sellers_total':  int(r[5] or 0),
+                            'buyout_pct':     float(r[6] or 0),
+                            'data_updated_at': r[7].strftime('%d.%m.%Y') if r[7] else None,
+                        } for r in rows],
+                        'max_updated_at': max_date_row[0].strftime('%d.%m.%Y') if max_date_row and max_date_row[0] else None,
+                        'total_niches': total,
+                    }
+                    _top_niches_cache['at'] = _time.time()
+                except Exception as e:
+                    _tn_error = str(e)
+
+            if _tn_error and _top_niches_cache['data'] is None:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': _tn_error}).encode())
+            else:
+                data = _top_niches_cache['data'] or {'niches': [], 'max_updated_at': None, 'total_niches': 0}
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
 
         # ── Mini App: статус генерации PDF ──────────────────────────────────────
         elif self.path.startswith('/api/miniapp/status/'):

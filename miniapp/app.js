@@ -75,6 +75,46 @@ function fmtNum(v) {
   return v.toLocaleString('ru-RU');
 }
 
+// ── Топ ниш и trust-строка ────────────────────────────────────────────────────
+
+async function loadTopNiches() {
+  try {
+    const resp = await fetch('/api/miniapp/top-niches');
+    if (!resp.ok) return;
+    const data = await resp.json();
+
+    // Trust-строка
+    const trustLine = document.getElementById('trust-line');
+    if (trustLine) {
+      const total = data.total_niches ? data.total_niches.toLocaleString('ru-RU') : '7 500+';
+      const date  = data.max_updated_at || '';
+      trustLine.textContent = `📊 ${total} ниш Wildberries · Данные на ${date}`;
+    }
+
+    // Теги топ-ниш
+    if (!data.niches || !data.niches.length) return;
+    const section = document.getElementById('top-niches-section');
+    const list    = document.getElementById('top-niches-list');
+    list.innerHTML = '';
+    data.niches.forEach(n => {
+      const tag = document.createElement('div');
+      tag.className = 'niche-tag';
+      const name = n.display_name || n.name;
+      const shortName = name.length > 20 ? name.slice(0, 20) + '…' : name;
+      tag.innerHTML =
+        `<span class="niche-tag-name">${shortName}</span>` +
+        `<span class="niche-tag-rev">${fmtMoney(n.revenue_annual)}</span>`;
+      tag.addEventListener('click', () => showPreview(n));
+      list.appendChild(tag);
+    });
+    section.classList.remove('hidden');
+  } catch (_) {
+    // Не показываем ошибку пользователю — секция просто не появится
+  }
+}
+
+loadTopNiches();
+
 // ── Поиск ─────────────────────────────────────────────────────────────────────
 
 const searchInput  = document.getElementById('search-input');

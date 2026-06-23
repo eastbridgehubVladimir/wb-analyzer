@@ -154,5 +154,130 @@
 </div>
 
 <script src="/miniapp/app.js"></script>
+
+<!-- Затемнение фона -->
+<div id="faq-overlay" class="faq-overlay" onclick="closeSupport()"></div>
+
+<!-- FAQ панель -->
+<div id="faq-sheet" class="faq-sheet">
+  <div class="faq-header">
+    <div class="faq-drag-handle"></div>
+    <h3>Частые вопросы</h3>
+    <button class="faq-close" onclick="closeSupport()">✕</button>
+  </div>
+
+  <div class="faq-list">
+
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-question">
+        <span>📥 Как скачать PDF?</span>
+        <span class="faq-arrow">›</span>
+      </div>
+      <div class="faq-answer">
+        1. Найди нишу и нажми <b>Basic PDF Бесплатно</b><br>
+        2. Подожди 1-2 минуты (идёт генерация)<br>
+        3. Нажми кнопку <b>⬇️ Скачать Basic PDF</b><br>
+        4. PDF откроется в браузере телефона<br><br>
+        Если кнопка не реагирует — удержи палец 1-2 сек
+        и выбери «Открыть в...» или «Сохранить файл».
+      </div>
+    </div>
+
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-question">
+        <span>💳 Как заказать Standard или Deep?</span>
+        <span class="faq-arrow">›</span>
+      </div>
+      <div class="faq-answer">
+        Онлайн-оплата настраивается.<br><br>
+        Чтобы получить отчёт прямо сейчас:<br>
+        1. Выбери нишу и нажми Standard или Deep<br>
+        2. Напиши <b>@vladzzimir</b><br>
+        3. Укажи нишу и тариф<br>
+        4. Отчёт придёт в течение нескольких часов<br><br>
+        📊 Standard — 2 500 ₽<br>
+        📈 Deep — 6 000 ₽
+      </div>
+    </div>
+
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-question">
+        <span>📊 Что входит в каждый тариф?</span>
+        <span class="faq-arrow">›</span>
+      </div>
+      <div class="faq-answer">
+        <b>Basic — бесплатно</b><br>
+        • Вердикт AI (ВХОДИТЬ / ТЕСТИРОВАТЬ / НЕ ВХОДИТЬ)<br>
+        • Ключевые метрики ниши<br>
+        • 2 графика динамики<br><br>
+        <b>Standard — 2 500 ₽</b><br>
+        • Всё из Basic +<br>
+        • Мастер-анализ AI с рекомендациями<br>
+        • 5 графиков, топ-20 товаров<br>
+        • Юнит-экономика и ROI<br>
+        • Рекламная стратегия + сезонный план<br><br>
+        <b>Deep — 6 000 ₽</b><br>
+        • Всё из Standard +<br>
+        • Анализ топ-10 конкурентов<br>
+        • Поиск поставщиков<br>
+        • Документы для WB<br>
+        • Стратегия FBO/FBS<br>
+        • 90-дневный план запуска
+      </div>
+    </div>
+
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-question">
+        <span>🔍 Ниша не найдена — что делать?</span>
+        <span class="faq-arrow">›</span>
+      </div>
+      <div class="faq-answer">
+        Попробуй другое написание. Примеры:<br>
+        ✓ «вытяжки кухонные»<br>
+        ✓ «йога коврики»<br>
+        ✓ «кофемашины»<br>
+        ✓ «велосипеды двухколесные»<br><br>
+        В базе 7 500+ ниш WB. Если всё равно не находится —
+        напиши @vladzzimir, добавим.
+      </div>
+    </div>
+
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-question">
+        <span>📅 Насколько актуальны данные?</span>
+        <span class="faq-arrow">›</span>
+      </div>
+      <div class="faq-answer">
+        Данные обновляются каждые 2 недели — 1-го и 15-го числа.<br>
+        Дата последнего обновления указана внизу главной страницы.<br><br>
+        Источник: MPStats — профессиональная аналитика маркетплейсов.<br>
+        Погрешность данных: 5-15% (норма для внешней аналитики WB).
+      </div>
+    </div>
+
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-question">
+        <span>⏱ PDF долго генерируется</span>
+        <span class="faq-arrow">›</span>
+      </div>
+      <div class="faq-answer">
+        Генерация занимает 1-3 минуты — это нормально.<br>
+        AI анализирует данные по нише и формирует отчёт.<br><br>
+        Если прошло более 5 минут — попробуй ещё раз.<br>
+        Если проблема повторяется — напиши @vladzzimir.
+      </div>
+    </div>
+
+  </div>
+
+  <div class="faq-contact">
+    <p>Не нашли ответ?</p>
+    <button class="faq-contact-btn" onclick="openDirectSupport()">
+      👤 Написать @vladzzimir напрямую
+    </button>
+  </div>
+
+</div>
+
 </body>
 </html>

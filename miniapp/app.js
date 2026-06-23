@@ -273,10 +273,33 @@ function resetButtons() {
   });
 }
 
-// ── Поддержка ─────────────────────────────────────────────────────────────────
+// ── Поддержка (FAQ bottom sheet) ──────────────────────────────────────────────
 
 function openSupport() {
-  tg.openTelegramLink('https://t.me/Wbanalyzer_user_bot?start=support');
+  document.getElementById('faq-sheet').classList.add('open');
+  document.getElementById('faq-overlay').classList.add('open');
+}
+
+function closeSupport() {
+  document.getElementById('faq-sheet').classList.remove('open');
+  document.getElementById('faq-overlay').classList.remove('open');
+}
+
+function toggleFaq(item) {
+  const isExpanded = item.classList.contains('expanded');
+  document.querySelectorAll('.faq-item.expanded')
+    .forEach(el => el.classList.remove('expanded'));
+  if (!isExpanded) {
+    item.classList.add('expanded');
+  }
+}
+
+function openDirectSupport() {
+  if (window.Telegram?.WebApp?.openTelegramLink) {
+    window.Telegram.WebApp.openTelegramLink('https://t.me/vladzzimir');
+  } else {
+    window.open('https://t.me/vladzzimir', '_blank');
+  }
 }
 
 // ── Поллинг генерации PDF ─────────────────────────────────────────────────────

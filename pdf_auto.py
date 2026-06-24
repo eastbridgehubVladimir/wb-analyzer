@@ -1419,26 +1419,41 @@ _FM_CANONICAL = {
 }
 
 
+def _sec_verdict_placard(master: dict) -> list:
+    """Единственный вердикт-плакат в документе — размещается сразу после метрик."""
+    verdict = str(master.get('final_verdict', '')).strip()
+    if not verdict:
+        return []
+    vc = str(master.get('verdict_color', '#d97706')).strip()
+    rec = str(master.get('final_recommendation', '')).strip()
+    first_sentence = (rec.split('.')[0].strip() + '.') if rec else ''
+    if '#16a34a' in vc or '#22c55e' in vc:
+        bg, tc = HexColor('#f0fdf4'), C_GREEN
+    elif '#dc2626' in vc or '#ef4444' in vc:
+        bg, tc = HexColor('#fef2f2'), C_RED
+    else:
+        bg, tc = HexColor('#fffbeb'), C_AMBER
+    inner = [_p(f'Вердикт AI: {verdict}', size=17, bold=True, color=tc, align=TA_CENTER)]
+    if first_sentence:
+        inner.append(_p(first_sentence, size=10, color=C_TEXT, align=TA_CENTER))
+    tbl = Table([[inner]], colWidths=[COL_W])
+    tbl.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, -1), bg),
+        ('TOPPADDING',    (0, 0), (-1, -1), 14),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 14),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 14),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 14),
+        ('BOX',           (0, 0), (-1, -1), 2, tc),
+    ]))
+    return [_sp(0.1), tbl, _sp(0.15)]
+
+
 def _sec_master(r: dict, niche: dict = None) -> list:
     if not r:
         return []
     level = _CURRENT_LEVEL
     niche = niche or {}
     els = [_h2('Мастер-анализ'), _hr()]
-
-    verdict = str(r.get('final_verdict', ''))
-    vc = r.get('verdict_color', '#d97706')
-    if verdict:
-        vt = Table([[_p(f'Вердикт: {verdict}', size=14, bold=True,
-                        color=HexColor(vc) if vc.startswith('#') else C_AMBER,
-                        align=TA_CENTER)]], colWidths=[COL_W])
-        vt.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,-1), C_LIGHT),
-            ('TOPPADDING', (0,0), (-1,-1), 12), ('BOTTOMPADDING', (0,0), (-1,-1), 12),
-            ('LEFTPADDING', (0,0), (-1,-1), 10), ('RIGHTPADDING', (0,0), (-1,-1), 10),
-        ]))
-        els.append(vt)
-        els.append(_sp(0.1))
 
     if level == 'basic':
         # Три коротких раздела — без конкретики и финансов
@@ -1464,7 +1479,6 @@ def _sec_master(r: dict, niche: dict = None) -> list:
             ('market_analysis',      'Анализ рынка'),
             ('competitive_landscape', 'Конкурентная среда'),
             ('entry_strategy',        'Стратегия входа'),
-            ('final_recommendation',  'Итоговая рекомендация'),
         ]:
             txt = str(r.get(field, ''))
             if txt:
@@ -1594,6 +1608,13 @@ def _sec_master(r: dict, niche: dict = None) -> list:
             f'{int(buyout_pct*100)}%. Инвестиция в тестовую партию отражена в Месяц 01.',
             size=7.5, color=C_GRAY, space_before=3
         ))
+
+    # Итоговая рекомендация — в конце, после всех данных и прогнозов
+    if level != 'basic':
+        final_rec = str(r.get('final_recommendation', ''))
+        if final_rec:
+            els.append(_h3('Итоговая рекомендация'))
+            els.append(_body(final_rec))
 
     els.append(_sp(0.1))
     return els
@@ -1996,14 +2017,6 @@ def _sec_competitors_merged(comp: dict, deep: dict) -> list:
 
     # Сводная таблица входа (из _run_deep)
     if deep:
-        verdict   = str(deep.get('verdict', ''))
-        desc      = str(deep.get('verdict_desc', ''))
-        if verdict:
-            vc = {'ВХОДИТЬ': C_GREEN, 'ТЕСТИРОВАТЬ': C_AMBER, 'НЕ ВХОДИТЬ': C_RED}
-            col = vc.get(verdict.strip().upper(), C_AMBER)
-            els.append(_p(f'Вердикт: {verdict}', size=12, bold=True, color=col))
-        if desc:
-            els.append(_body(desc))
         entry  = deep.get('entry_budget', 0)
         ad_b   = deep.get('ad_budget', 0)
         be     = deep.get('breakeven', 0)
@@ -2199,16 +2212,6 @@ def _sec_supplier(r: dict) -> list:
         els.append(_h3('На что обратить внимание'))
         for f in red_flags:
             els.append(_body(f'🔴 {f}'))
-
-    # ── Оценка первой партии ───────────────────────────────────
-    first_order = r.get('first_order_rub', 0)
-    cert_note   = str(r.get('certification_note', ''))
-    if first_order or cert_note:
-        els.append(_h3('Первый шаг'))
-        if first_order:
-            els.append(_body(f'Рекомендуемый бюджет первой тестовой партии: {_rub(first_order)}'))
-        if cert_note:
-            els.append(_body(f'Сертификация: {cert_note}'))
 
     els.append(_sp(0.1))
     return els
@@ -3045,6 +3048,47 @@ def _sec_toc_deep(sections: list) -> list:
     ]))
     els.append(t)
     els.append(_sp(0.1))
+
+    # Компактный словарь — две колонки, 8pt
+    gl_s = ParagraphStyle('_gl_toc', fontName=FN, fontSize=8, textColor=C_TEXT, leading=11)
+    terms = [
+        ('FBO',             'хранение и отгрузка со склада WB'),
+        ('FBS',             'хранение у продавца, отгрузка при заказе'),
+        ('ДРР',             'доля рекламных расходов = реклама / выручка'),
+        ('CPM',             'цена 1 000 показов рекламы'),
+        ('CTR',             'кликабельность = клики / показы'),
+        ('CR',              'конверсия = заказы / посетители'),
+        ('ROI',             'возврат инвестиций = прибыль / вложения'),
+        ('MOQ',             'минимальный заказ у поставщика'),
+        ('Оборачиваемость', 'дней до продажи товара со склада'),
+        ('Маржа',           'прибыль / выручка × 100%'),
+    ]
+    left_t  = terms[:5]
+    right_t = terms[5:]
+    half    = (COL_W - 0.1 * inch) / 2
+    g_rows  = []
+    for lt, rt in zip(left_t, right_t):
+        g_rows.append([
+            Paragraph(f'<b>{lt[0]}</b>', gl_s), Paragraph(lt[1], gl_s),
+            Paragraph(f'<b>{rt[0]}</b>', gl_s), Paragraph(rt[1], gl_s),
+        ])
+    gt = Table(g_rows, colWidths=[0.85 * inch, half - 0.85 * inch,
+                                   0.85 * inch, half - 0.85 * inch])
+    gt.setStyle(TableStyle([
+        ('TOPPADDING',    (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 5),
+        ('ROWBACKGROUNDS',(0, 0), (-1, -1), [WHITE, C_TABLE_ODD]),
+        ('LINEABOVE',     (0, 0), (-1, 0),  0.4, C_BORDER),
+        ('LINEBELOW',     (0, -1), (-1, -1), 0.4, C_BORDER),
+        ('LINEBEFORE',    (2, 0), (2, -1),  0.4, C_BORDER),
+        ('VALIGN',        (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    els.append(_p('Основные термины', size=9, bold=True, color=C_NAVY,
+                   space_before=10, space_after=4))
+    els.append(gt)
+    els.append(_sp(0.05))
     return els
 
 
@@ -3672,8 +3716,17 @@ def render(level: str, niche: dict, agents: dict,
       STANDARD zone (жёлтая полоса): Мастер-анализ → Юнит-экономика → Реклама
       DEEP zone (фиолетовая полоса): Конкуренты → Поставщики → Документы → Склад → Карточка
     """
-    global _CURRENT_LEVEL
+    global _CURRENT_LEVEL, _FM_CANONICAL
     _CURRENT_LEVEL = level
+    _rc = _compute_finance(niche)
+    _FM_CANONICAL = {
+        'test_batch_units':  _rc['test_units'],
+        'test_batch_cost':   _rc['test_batch_cost'],
+        'monthly_ad_budget': _rc['monthly_ad_budget'],
+        'breakeven_units':   _rc['breakeven_units'],
+        'roi_3months':       _rc['roi_3months'],
+        'payback_months':    _rc['payback_months'],
+    }
 
     t0 = time.time()
     items     = chart_items or []
@@ -3792,6 +3845,7 @@ def render(level: str, niche: dict, agents: dict,
         ])
 
     els += _sec_metrics(niche)
+    els += _sec_verdict_placard(agents.get('master') or {})
 
     browser_charts = dict(charts or {})
     if browser_charts:

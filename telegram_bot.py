@@ -264,7 +264,7 @@ def support_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="📊 Что входит в каждый тариф?",    callback_data="faq_tiers")],
         [InlineKeyboardButton(text="🔍 Ниша не найдена — что делать?", callback_data="faq_niche")],
         [InlineKeyboardButton(text="✍️ Задать свой вопрос",            callback_data="faq_custom")],
-        [InlineKeyboardButton(text="👤 Написать @vladzzimir напрямую",  url="https://t.me/vladzzimir")],
+        [InlineKeyboardButton(text="📩 Написать в поддержку",           url="https://t.me/vladzzimir")],
     ])
 
 # ── Handlers ───────────────────────────────────────────────────────────────────
@@ -413,8 +413,8 @@ async def handle_support_question(text: str, user_id: int) -> str:
     except Exception as e:
         log.error(f'Support agent error: {e}')
         return (
-            'Произошла техническая ошибка. Напишите напрямую '
-            '@vladzzimir — помогу разобраться в течение нескольких часов.'
+            'Произошла техническая ошибка. '
+            'Нажмите «📩 Написать в поддержку» — разберёмся в течение нескольких часов.'
         )
 
 
@@ -503,8 +503,11 @@ async def cb_pdf(callback: CallbackQuery):
         await callback.message.answer(
             f"💳 <b>{level.capitalize()} PDF</b> — {PRICES_STR[level]}\n\n"
             "Оплата временно недоступна — мы дорабатываем платёжную систему.\n\n"
-            f"Напишите <b>@{SUPPORT}</b> — передадим отчёт вручную в течение нескольких часов.",
-            parse_mode="HTML"
+            "Напишите нам — передадим отчёт вручную в течение нескольких часов.",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text="📩 Написать в поддержку", url="https://t.me/vladzzimir")
+            ]])
         )
         return
 
@@ -572,12 +575,14 @@ async def faq_payment(callback: CallbackQuery):
         "💳 *Как оплатить Standard или Deep*\n\n"
         "Онлайн-оплата сейчас настраивается.\n\n"
         "Чтобы получить отчёт прямо сейчас:\n"
-        "→ Напишите @vladzzimir\n"
         "→ Укажите нишу и нужный тариф\n"
         "→ Отчёт будет передан в течение нескольких часов\n\n"
         "📊 Standard — 2 500 ₽\n"
         "📈 Deep — 6 000 ₽",
-        parse_mode="Markdown"
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="📩 Написать в поддержку", url="https://t.me/vladzzimir")
+        ]])
     )
     await callback.answer()
 
@@ -598,11 +603,16 @@ async def faq_tiers(callback: CallbackQuery):
         "• Сезонный план закупок\n\n"
         "📈 *Deep — 6 000 ₽*\n"
         "• Всё из Standard \\+\n"
-        "• Анализ топ\\-10 конкурентов\n"
-        "• Поиск поставщиков\n"
-        "• Документы для WB\n"
-        "• Стратегия FBO/FBS\n"
-        "• 90\\-дневный план запуска",
+        "• Анализ топ\\-10 конкурентов: выручка, доли, слабые места\n"
+        "• Свободные рыночные сегменты для входа\n"
+        "• ROI\\-прогноз на 12 месяцев\n"
+        "• Поиск поставщиков: Китай и Россия\n"
+        "• Документы и сертификаты для WB\n"
+        "• Стратегия FBO/FBS с выбором складов\n"
+        "• Создание карточки: SEO\\-заголовок, описание\n"
+        "• Рекомендации по фото и видео\n"
+        "• 90\\-дневный план запуска по неделям\n"
+        "• Целевые KPI по месяцам",
         parse_mode="MarkdownV2"
     )
     await callback.answer()
@@ -618,8 +628,11 @@ async def faq_niche(callback: CallbackQuery):
         "✓ «велосипеды двухколесные»\n\n"
         "В базе 7 500\\+ ниш WB — если ниша есть на Wildberries, "
         "скорее всего она есть и у нас\\.\n\n"
-        "Если всё равно не находится — напиши @vladzzimir, добавим\\.",
-        parse_mode="MarkdownV2"
+        "Если всё равно не находится — напишите нам, добавим\\.",
+        parse_mode="MarkdownV2",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="📩 Написать в поддержку", url="https://t.me/vladzzimir")
+        ]])
     )
     await callback.answer()
 
@@ -628,7 +641,10 @@ async def faq_custom(callback: CallbackQuery):
     await callback.message.answer(
         "✍️ Напиши свой вопрос прямо в этот чат — "
         "AI-агент ответит автоматически.\n\n"
-        "Если вопрос сложный — подключится @vladzzimir."
+        "Если вопрос сложный — напишите в поддержку напрямую.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="📩 Написать в поддержку", url="https://t.me/vladzzimir")
+        ]])
     )
     await callback.answer()
 
@@ -645,15 +661,17 @@ async def faq_order(callback: CallbackQuery):
         "Способ оплаты: [PLACEHOLDER_PAYMENT_METHOD]\n"
         "Реквизиты: [PLACEHOLDER_PAYMENT_DETAILS]\n\n"
         "*Шаг 3 — Напиши нам*\n"
-        "После оплаты напиши @vladzzimir:\n"
+        "После оплаты напишите в поддержку:\n"
         "• Название ниши\n"
         "• Тариф (Standard или Deep)\n"
         "• Скриншот или номер перевода\n\n"
         "*Шаг 4 — Получи отчёт*\n"
         "Отчёт будет готов в течение "
-        "[PLACEHOLDER_DELIVERY_TIME].\n\n"
-        "❓ Остались вопросы? Пиши @vladzzimir",
-        parse_mode="Markdown"
+        "[PLACEHOLDER_DELIVERY_TIME].",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="📩 Написать в поддержку", url="https://t.me/vladzzimir")
+        ]])
     )
     await callback.answer()
 

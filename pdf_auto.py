@@ -1270,7 +1270,7 @@ def _sec_metrics(niche: dict) -> list:
                 els.append(_tip(
                     f'<b>Оборачиваемость: {turnover:.0f} дней</b> — это сигнал работать по FBS-схеме '
                     f'с небольшими партиями. Именно так успешные продавцы входят в эту нишу: '
-                    f'тест 20 шт → подтверждение спроса → переход на FBO для масштабирования. '
+                    f'тест {_FM_CANONICAL.get("test_batch_units", 20)} шт → подтверждение спроса → переход на FBO для масштабирования. '
                     f'Детальный план — в разделе «Стратегия поставок».'
                 ))
         elif turnover > 45:
@@ -1410,12 +1410,21 @@ def _sec_top_products(items: list, limit: int = 20, level: str = 'standard') -> 
 
 
 _FM_CANONICAL = {
-    'test_batch_units': 20,
-    'test_batch_cost': 220000,
-    'monthly_ad_budget': 45000,
-    'breakeven_units': 9,
-    'roi_3months': '38%',
-    'payback_months': '5',
+    'test_batch_units':      20,
+    'test_batch_cost':       220000,
+    'entry_budget':          275000,
+    'monthly_ad_budget':     45000,
+    'ads_budget_month1':     45000,
+    'breakeven_units':       9,
+    'roi_3months':           '38%',
+    'roi_forecast_pct':      38.0,
+    'payback_months':        5,
+    'margin_pct':            22.0,
+    'profit_per_unit':       330,
+    'turnover_days':         60,
+    'frozen_capital':        220000,
+    'free_cashflow_monthly': 110000,
+    'reserve_2x':            440000,
 }
 
 
@@ -1761,10 +1770,10 @@ def _sec_unit(r: dict) -> list:
 
         # Оборотный капитал
         els.append(_h3('Расчёт оборотного капитала'))
-        turnover       = float(r.get('turnover', 60) or 60)
-        frozen_capital = float(_FM_CANONICAL.get('test_batch_cost', 0) or 0)
-        free_cashflow  = frozen_capital / turnover * 30 if turnover > 0 else 0
-        reserve_2x     = frozen_capital * 2
+        turnover       = float(_FM_CANONICAL.get('turnover_days', 60) or 60)
+        frozen_capital = float(_FM_CANONICAL.get('frozen_capital', 0) or 0)
+        free_cashflow  = float(_FM_CANONICAL.get('free_cashflow_monthly', 0) or 0)
+        reserve_2x     = float(_FM_CANONICAL.get('reserve_2x', 0) or 0)
         reserve_pct    = 30
 
         els.append(_body(
@@ -3159,9 +3168,9 @@ def _sec_30days(niche: dict = None, fm: dict = None) -> list:
     target_sales = max(5, int(monthly_rev / avg_price / sellers_cnt * 0.5)) if (monthly_rev and avg_price and sellers_cnt) else 25
     target_rev   = int(target_sales * avg_price * buyout_pct)
 
-    test_batch   = int(fm.get('test_batch_units') or 20)
-    test_cost    = int(fm.get('test_batch_cost') or int(test_batch * avg_price * 0.35))
-    ad_budget_mo = int(fm.get('monthly_ad_budget') or 45000)
+    test_batch   = int(fm.get('test_batch_units') or _FM_CANONICAL.get('test_batch_units', 20))
+    test_cost    = int(fm.get('test_batch_cost') or _FM_CANONICAL.get('test_batch_cost', int(test_batch * avg_price * 0.35)))
+    ad_budget_mo = int(fm.get('monthly_ad_budget') or _FM_CANONICAL.get('monthly_ad_budget', 45000))
     ad_budget_wk = int(ad_budget_mo / 4)
     reorder_qty  = int(test_batch * 2.5)
     reorder_cost = int(reorder_qty * avg_price * 0.35)
@@ -3727,6 +3736,43 @@ def _sec_browser_charts(charts: dict, level: str, niche: dict = None) -> list:
     return els
 
 
+def validate_report_consistency(fm: dict) -> list:
+    """
+    Проверяет внутреннюю согласованность цифр отчёта.
+    Возвращает список найденных конфликтов (пустой список = всё ок).
+    """
+    errors = []
+
+    entry  = fm.get('entry_budget', 0)
+    tbc    = fm.get('test_batch_cost', 0)
+    be     = fm.get('breakeven_units', 0)
+    tu     = fm.get('test_batch_units', 20)
+    frozen = fm.get('frozen_capital', 0)
+    margin = fm.get('margin_pct', 0)
+
+    if entry and tbc and entry < tbc:
+        errors.append(
+            f"entry_budget ({entry:,}) < test_batch_cost ({tbc:,}) — бюджет входа не может быть меньше партии"
+        )
+
+    if be and tu and be <= tu * 0.5:
+        errors.append(
+            f"breakeven_units ({be}) подозрительно мал относительно партии ({tu} шт) — возможна ошибка расчёта"
+        )
+
+    if frozen and tbc and abs(frozen - tbc) > tbc * 0.2:
+        errors.append(
+            f"frozen_capital ({frozen:,}) расходится с test_batch_cost ({tbc:,}) более чем на 20%"
+        )
+
+    if margin and not (10 <= margin <= 70):
+        errors.append(
+            f"margin_pct = {margin}% за пределами нормального диапазона 10–70%"
+        )
+
+    return errors
+
+
 def render(level: str, niche: dict, agents: dict,
            content_text: str = '', chart_items: list = None,
            charts: dict = None) -> bytes:
@@ -3741,14 +3787,25 @@ def render(level: str, niche: dict, agents: dict,
     """
     global _CURRENT_LEVEL, _FM_CANONICAL
     _CURRENT_LEVEL = level
-    _rc = _compute_finance(niche)
+    _rc  = _compute_finance(niche)
+    _tdays = int(float(niche.get('turnover', 60) or 60))
+    _tc    = _rc['test_batch_cost']
     _FM_CANONICAL = {
-        'test_batch_units':  _rc['test_units'],
-        'test_batch_cost':   _rc['test_batch_cost'],
-        'monthly_ad_budget': _rc['monthly_ad_budget'],
-        'breakeven_units':   _rc['breakeven_units'],
-        'roi_3months':       _rc['roi_3months'],
-        'payback_months':    _rc['payback_months'],
+        'test_batch_units':      _rc['test_units'],
+        'test_batch_cost':       _tc,
+        'entry_budget':          _rc['entry_budget'],
+        'monthly_ad_budget':     _rc['monthly_ad_budget'],
+        'ads_budget_month1':     _rc['monthly_ad_budget'],
+        'breakeven_units':       _rc['breakeven_units'],
+        'roi_3months':           _rc['roi_3months'],
+        'roi_forecast_pct':      float(_rc['roi_pct']),
+        'payback_months':        _rc['payback_months'],
+        'margin_pct':            float(_rc['margin_pct']),
+        'profit_per_unit':       _rc['profit_per_unit'],
+        'turnover_days':         _tdays,
+        'frozen_capital':        _tc,
+        'free_cashflow_monthly': int(_tc / max(_tdays, 1) * 30),
+        'reserve_2x':            _tc * 2,
     }
 
     t0 = time.time()
@@ -3984,4 +4041,12 @@ def render(level: str, niche: dict, agents: dict,
     buf.seek(0)
     pdf = buf.getvalue()
     print(f'[PDF-RENDER] Готово за {time.time()-t0:.1f}s, размер={len(pdf)} байт')
+
+    errors = validate_report_consistency(_FM_CANONICAL)
+    if errors:
+        for e in errors:
+            print(f'[PDF VALIDATOR] ⚠ {e}')
+    else:
+        print('[PDF VALIDATOR] ✓ Все проверки пройдены')
+
     return pdf

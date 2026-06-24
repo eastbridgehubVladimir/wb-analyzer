@@ -1556,8 +1556,7 @@ def _sec_master(r: dict, niche: dict = None) -> list:
             breakeven = 10
 
         els.append(_h3('ROI-прогноз: 12 месяцев'))
-        roi_rows = [['Месяц', 'Продажи, шт', 'Выручка', 'Затраты', 'Прибыль', 'ROI накопл.']]
-        cum_profit = 0.0
+        roi_rows = [['Месяц', 'Продажи, шт', 'Выручка', 'Затраты', 'Прибыль', 'ROI мес.']]
         for mo in range(1, 13):
             # Рост от точки безубыточности: мес1=be, мес2=1.5×be, мес3=2×be, мес4-6 +20%/мес, мес7-12 стабильно
             if mo == 1:
@@ -1575,11 +1574,10 @@ def _sec_master(r: dict, niche: dict = None) -> list:
             revenue        = sales_n * avg_price * buyout_pct
             init_invest    = test_batch_cost if mo == 1 else 0.0
             profit         = revenue * margin_pct - ad_budget - init_invest
-            cum_profit    += profit
-            roi_pct        = cum_profit / (test_batch_cost or 1) * 100
             cogs           = revenue * (1 - margin_pct) + ad_budget + init_invest
-            roi_cell = _p(f'{roi_pct:+.0f}%', size=7.5, bold=True,
-                          color=C_GREEN if roi_pct > 0 else C_RED, align=TA_CENTER)
+            roi_month_pct  = profit / cogs * 100 if cogs != 0 else 0
+            roi_cell = _p(f'{roi_month_pct:+.0f}%', size=7.5, bold=True,
+                          color=C_GREEN if roi_month_pct > 0 else C_RED, align=TA_CENTER)
             roi_rows.append([
                 f'Мес {mo:02d}',
                 str(sales_n),
@@ -1604,8 +1602,8 @@ def _sec_master(r: dict, niche: dict = None) -> list:
         ]))
         els.append(roi_t)
         els.append(_p(
-            '* Прогноз базируется на 5% доле ниши, среднерыночной цене и выкупе '
-            f'{int(buyout_pct*100)}%. Инвестиция в тестовую партию отражена в Месяц 01.',
+            '* ROI рассчитан за каждый месяц отдельно (прибыль / затраты × 100%). '
+            'Месяц 1 включает единовременные затраты на тестовую партию.',
             size=7.5, color=C_GRAY, space_before=3
         ))
 
@@ -1763,15 +1761,39 @@ def _sec_unit(r: dict) -> list:
 
         # Оборотный капитал
         els.append(_h3('Расчёт оборотного капитала'))
-        turnover = float(r.get('turnover', 60) or 60)
-        batch    = float(r.get('test_batch', 20) or 20)
-        frozen   = cost * batch if cost > 0 else 0
-        free_mo  = frozen / (turnover / 30) if turnover > 0 else 0
-        els.append(_info(
-            f'При оборачиваемости <b>{turnover:.0f} дней</b> и партии <b>{batch:.0f} шт</b>:<br/>'
-            f'Заморожено в товаре: <b>{_rub(frozen)}</b><br/>'
-            f'Свободный оборот товара: <b>≈ {_rub(free_mo)}/мес</b><br/>'
-            'Планируйте оборотный капитал с запасом на 2 оборота до выхода на самоокупаемость.'
+        turnover       = float(r.get('turnover', 60) or 60)
+        frozen_capital = float(_FM_CANONICAL.get('test_batch_cost', 0) or 0)
+        free_cashflow  = frozen_capital / turnover * 30 if turnover > 0 else 0
+        reserve_2x     = frozen_capital * 2
+        reserve_pct    = 30
+
+        els.append(_body(
+            f'Оборотный капитал — это деньги, которые постоянно «крутятся» в бизнесе: '
+            f'часть заморожена в товаре на складе, часть приходит от продаж. '
+            f'При оборачиваемости {turnover:.0f} дней ваш товар в среднем проводит '
+            f'на складе {turnover:.0f} дней до продажи — значительная часть вложений '
+            f'будет недоступна в течение этого срока.'
+        ))
+        wc_rows = [
+            ['Показатель',                              'Значение'],
+            ['Заморожено в товаре (тестовая партия)',   _rub(frozen_capital)],
+            ['Свободный денежный поток',                f'≈ {_rub(free_cashflow)}/мес'],
+            ['Рекомендуемый резерв (2 оборота)',        _rub(reserve_2x)],
+        ]
+        els.append(_tbl(wc_rows, col_widths=[COL_W * 0.58, COL_W * 0.42]))
+        els.append(_sp(0.08))
+        els.append(_warning(
+            f'Не вкладывайте в товар все свободные деньги. Держите резерв минимум '
+            f'{reserve_pct}% от стоимости партии на операционные расходы: реклама, '
+            f'возвраты, непредвиденные затраты. При оборачиваемости свыше 90 дней '
+            f'это особенно критично.'
+        ))
+        els.append(_sp(0.08))
+        els.append(_tip(
+            f'Как считать: перед каждым дозаказом убедитесь, что у вас есть свободные '
+            f'средства на рекламный бюджет следующих {turnover:.0f} дней плюс стоимость '
+            f'новой партии. Иначе вы окажетесь в ситуации, когда товар есть, деньги '
+            f'заморожены в стоке, а рекламу запустить не на что.'
         ))
 
     return els
@@ -2057,27 +2079,28 @@ def _sec_competitors_merged(comp: dict, deep: dict) -> list:
         ]))
         els.append(comp_tbl2)
 
-    # Слабые места конкурентов (из _run_competitors)
+    # Где конкуренты проигрывают (из _run_competitors)
     weak = str(comp.get('weak_spots_summary', ''))
     if weak:
-        els.append(_h3('Слабые места конкурентов'))
+        els.append(_h3('Где конкуренты проигрывают'))
         els.append(_body(weak))
 
-    # Конкурентный анализ (из _run_deep)
+    # Расстановка сил на рынке (из _run_deep)
     if deep:
         ca = str(deep.get('competitive_analysis', ''))
         if ca:
-            els.append(_h3('Конкурентный анализ'))
+            els.append(_h3('Расстановка сил на рынке'))
             els.append(_body(ca))
-        fs = str(deep.get('free_segments', ''))
-        if fs:
-            els.append(_h3('Свободные сегменты (расширенный анализ)'))
-            els.append(_body(fs))
 
-    # Свободные сегменты (из _run_competitors)
+    # Где есть место для входа — объединяем free_segments из обоих источников
+    fs   = str(deep.get('free_segments', '')) if deep else ''
     segs = list(comp.get('free_segments') or [])
-    if segs:
-        els.append(_h3('Свободные рыночные сегменты'))
+    if fs or segs:
+        els.append(_h3('Где есть место для входа'))
+        if fs:
+            els.append(_body(fs))
+        if fs and segs:
+            els.append(_hr())
         for seg in segs:
             els.append(_bullet(str(seg)))
 

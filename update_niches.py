@@ -29,6 +29,41 @@ if not TOKEN or not DB:
     print('ОШИБКА: MPSTATS_TOKEN или DATABASE_URL не заданы в .env')
     sys.exit(1)
 
+
+def get_niches_to_update(limit: int = 100) -> list[str]:
+    """
+    Умный порядок обновления:
+    1. Ниши которые запрашивали пользователи за 14 дней (по данным telegram_leads)
+    2. Ниши без data_updated_at или старше 30 дней — дополняем до limit
+    """
+    conn = psycopg2.connect(DB)
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT DISTINCT n.name
+        FROM niches n
+        JOIN telegram_leads tl ON LOWER(tl.niche_searched) ILIKE LOWER(n.name)
+        WHERE tl.created_at > NOW() - INTERVAL '14 days'
+        ORDER BY n.name
+        LIMIT %s
+    """, (limit,))
+    priority = [row[0] for row in cur.fetchall()]
+
+    remaining = limit - len(priority)
+    if remaining > 0:
+        exclude = tuple(priority) if priority else ('__none__',)
+        cur.execute("""
+            SELECT name FROM niches
+            WHERE name NOT IN %s
+            ORDER BY data_updated_at ASC NULLS FIRST
+            LIMIT %s
+        """, (exclude, remaining))
+        priority.extend(row[0] for row in cur.fetchall())
+
+    conn.close()
+    print(f'Умный крон: будет обновлено {len(priority)} ниш (из них из telegram_leads: {len(priority)})')
+    return priority
+
 HEADERS = {'X-Mpstats-TOKEN': TOKEN, 'Content-Type': 'application/json'}
 TODAY = date.today()
 NOW = datetime.utcnow()

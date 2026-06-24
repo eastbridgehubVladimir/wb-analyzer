@@ -24,6 +24,8 @@ if not TOKEN:
 if not DB_URL:
     sys.exit("❌ DATABASE_URL не задан в .env")
 
+from niche_updater import refresh_niche_if_stale
+
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import (
@@ -442,6 +444,8 @@ async def handle_search(message: Message):
                 reply_markup=_list_kb(niches),
                 parse_mode="HTML"
             )
+        # Фоновое обновление: не блокирует ответ пользователю
+        asyncio.create_task(refresh_niche_if_stale(niches[0]['name']))
 
     elif is_support_question(query):
         # Не ниша, но похоже на вопрос → AI-агент поддержки

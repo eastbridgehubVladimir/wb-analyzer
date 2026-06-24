@@ -7492,6 +7492,16 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_header('Access-Control-Allow-Origin', '*')
                     self.end_headers()
                     self.wfile.write(json.dumps(results, ensure_ascii=False).encode('utf-8'))
+
+                    # Фоновое обновление если ниша найдена и данные устарели
+                    if results:
+                        import threading
+                        from niche_updater import sync_refresh_niche
+                        threading.Thread(
+                            target=sync_refresh_niche,
+                            args=(results[0]['name'],),
+                            daemon=True,
+                        ).start()
                 except Exception as e:
                     self.send_response(500)
                     self.send_header('Content-Type', 'application/json')

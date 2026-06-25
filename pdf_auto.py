@@ -799,8 +799,9 @@ def _run_warehouse(n: dict) -> dict:
     commission = float(n.get('commission', 0))
 
     prompt = (
-        "Ты эксперт по логистике WB. Компания из Беларуси.\n"
-        "Склады-приоритеты: Смоленск, Коледино, Подольск, Электросталь.\n\n"
+        "Ты эксперт по логистике WB.\n"
+        "Рекомендуй склады WB исходя из характеристик товара (габарит, оборачиваемость, сезонность). "
+        "Основные склады: Коледино, Казань, Краснодар, Екатеринбург, Новосибирск, Подольск, Электросталь, Смоленск (для СНГ-поставщиков).\n\n"
         f"НИША: {name} | Цена: {avg_price} ₽ | Выручка: {revenue:,.0f} ₽\n"
         f"Оборачиваемость: {turnover:.0f} дней | Выкуп: {buyout_pct*100:.1f}% | Маржа: {profit_pct*100:.1f}%\n\n"
         "ONLY JSON:\n"
@@ -1169,6 +1170,15 @@ def _sec_cover(niche: dict, level: str) -> list:
         ]))
         els.append(pf)
 
+    # ── Дисклеймер мелким шрифтом ───────────────────────────────────────────
+    els.append(_sp(0.3))
+    els.append(_wp(
+        'Аналитический инструмент на основе данных MPStats и алгоритмов AI. '
+        'Не является инвестиционной рекомендацией. '
+        'Точность данных 85–95%. Решение принимает пользователь.',
+        size=7, color=HexColor('#64748b'), align=TA_CENTER,
+    ))
+
     return els
 
 
@@ -1434,17 +1444,27 @@ def _sec_verdict_placard(master: dict) -> list:
     if not verdict:
         return []
     vc = str(master.get('verdict_color', '#d97706')).strip()
-    rec = str(master.get('final_recommendation', '')).strip()
-    first_sentence = (rec.split('.')[0].strip() + '.') if rec else ''
+    _VERDICT_MAP = {
+        'ВХОДИТЬ':     ('Потенциал ниши: ВЫСОКИЙ',
+                        'Ниша показывает привлекательные показатели для входа при текущем бюджете. '
+                        'Полное обоснование и риски — ниже.'),
+        'ТЕСТИРОВАТЬ': ('Потенциал ниши: СРЕДНИЙ',
+                        'Ниша имеет перспективы, но требует осторожного тестового входа. '
+                        'Ключевые риски и условия успеха — ниже.'),
+        'НЕ ВХОДИТЬ':  ('Потенциал ниши: НИЗКИЙ',
+                        'Ниша показывает высокие риски при текущих условиях. '
+                        'Детальный анализ причин — ниже.'),
+    }
+    display_title, display_sub = _VERDICT_MAP.get(verdict, (f'Потенциал ниши: {verdict}', ''))
     if '#16a34a' in vc or '#22c55e' in vc:
         bg, tc = HexColor('#f0fdf4'), C_GREEN
     elif '#dc2626' in vc or '#ef4444' in vc:
         bg, tc = HexColor('#fef2f2'), C_RED
     else:
         bg, tc = HexColor('#fffbeb'), C_AMBER
-    inner = [_p(f'Вердикт AI: {verdict}', size=17, bold=True, color=tc, align=TA_CENTER)]
-    if first_sentence:
-        inner.append(_p(first_sentence, size=10, color=C_TEXT, align=TA_CENTER))
+    inner = [_p(display_title, size=17, bold=True, color=tc, align=TA_CENTER)]
+    if display_sub:
+        inner.append(_p(display_sub, size=10, color=C_TEXT, align=TA_CENTER))
     tbl = Table([[inner]], colWidths=[COL_W])
     tbl.setStyle(TableStyle([
         ('BACKGROUND',    (0, 0), (-1, -1), bg),
@@ -2605,6 +2625,29 @@ def _sec_seasonal_plan(r: dict) -> list:
     return [_h2('Сезонный план'), _hr(), t, _sp(0.1)]
 
 
+def _sec_disclaimer() -> list:
+    """Дисклеймер — серый блок мелким шрифтом для всех уровней отчёта."""
+    C_DIS_BG  = HexColor('#f5f5f5')
+    C_DIS_TXT = HexColor('#666666')
+    text = (
+        '⚠ Важно: данный отчёт является аналитическим инструментом на основе статистических данных '
+        'и алгоритмов AI. Отчёт не является инвестиционной рекомендацией и не гарантирует результат. '
+        'Решение о входе в нишу принимается исключительно пользователем на основе собственного анализа '
+        'и оценки рисков. Точность данных MPStats составляет 85–95% — погрешность 5–15% является нормой '
+        'для внешней аналитики маркетплейсов.'
+    )
+    dis_p = _p(text, size=7.5, color=C_DIS_TXT)
+    tbl = Table([[dis_p]], colWidths=[COL_W])
+    tbl.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, -1), C_DIS_BG),
+        ('TOPPADDING',    (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
+    ]))
+    return [_sp(0.15), tbl, _sp(0.1)]
+
+
 def _sec_conclusion(level: str, agents: dict) -> list:
     """Итоговый вывод — выделенный блок в конце аналитического контента."""
     master  = agents.get('master') or {}
@@ -2624,8 +2667,13 @@ def _sec_conclusion(level: str, agents: dict) -> list:
     inner = []
     inner.append(_p('Итоговый вывод', size=10, bold=True, color=tc,
                     space_before=0, space_after=4))
+    _VERDICT_SHORT = {
+        'ВХОДИТЬ':     'ВЫСОКИЙ ПОТЕНЦИАЛ',
+        'ТЕСТИРОВАТЬ': 'СРЕДНИЙ ПОТЕНЦИАЛ',
+        'НЕ ВХОДИТЬ':  'НИЗКИЙ ПОТЕНЦИАЛ',
+    }
     if verdict:
-        inner.append(_p(f'Решение: {verdict}', size=13, bold=True, color=tc,
+        inner.append(_p(f'Потенциал ниши: {_VERDICT_SHORT.get(verdict, verdict)}', size=13, bold=True, color=tc,
                         space_before=2, space_after=4))
     if rec:
         inner.append(_p(rec, size=9, color=C_TEXT, space_before=2, space_after=2))
@@ -2639,7 +2687,7 @@ def _sec_conclusion(level: str, agents: dict) -> list:
         ('RIGHTPADDING',  (0,0), (-1,-1), 14),
         ('BOX',           (0,0), (-1,-1), 1.5, bord),
     ]))
-    return [_hr(), _sp(0.05), tbl, _sp(0.15)]
+    return [_hr(), _sp(0.05), tbl, _sp(0.15)] + _sec_disclaimer()
 
 
 def _sec_upsell(current_level: str) -> list:

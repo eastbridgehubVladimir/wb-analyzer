@@ -113,9 +113,19 @@ def get_mpstats_cached(path, d1, d2):
         json={'startRow': 0, 'endRow': 500, 'sortModel': [{'colId': 'revenue', 'sort': 'desc'}]},
         timeout=30
     )
-    print(f'MPStats status: {r.status_code}, path: {path}')
-    data = r.json()
-    print(f'MPStats total: {data.get("total")}, items: {len(data.get("data", []))}')
+    print(f'[MPStats] status: {r.status_code}, path: {path}')
+    if r.status_code == 429:
+        print('[MPStats] 429 Too Many Requests — возвращаем пустой кэш')
+        return {"data": [], "error": "rate_limit"}
+    if r.status_code != 200:
+        print(f'[MPStats] Ошибка {r.status_code} — возвращаем пустой кэш')
+        return {"data": [], "error": f"http_{r.status_code}"}
+    try:
+        data = r.json()
+    except Exception as e:
+        print(f'[MPStats] JSON parse error: {e}')
+        return {"data": [], "error": "parse_error"}
+    print(f'[MPStats] total: {data.get("total")}, items: {len(data.get("data", []))}')
     _mpstats_cache[cache_key] = (data, now)
     return data
 
@@ -1890,10 +1900,13 @@ async function loadCharts(name) {
     if (data.error || !data.labels || data.labels.length === 0) {
       const chartArea = document.getElementById('chart-loading');
       if (chartArea) {
-        const msg = data.error === 'no_data'
-          ? '⚠️ MPStats не вернул данных по этой нише. Попробуйте позже или выберите другую нишу.'
-          : '⚠️ Нет данных для графиков — ниша не найдена в MPStats.';
-        chartArea.innerHTML = '<div style="padding:12px;color:#888;font-size:12px;text-align:center;">' + msg + '</div>';
+        chartArea.innerHTML =
+          '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+          'gap:6px;padding:24px 12px;text-align:center;">' +
+          '<span style="font-size:32px;line-height:1;">📊</span>' +
+          '<span style="font-size:14px;font-weight:600;color:var(--tg-text-color,#333);">Графики обновляются</span>' +
+          '<span style="font-size:11px;color:var(--tg-hint-color,#888);">Данные ещё загружаются — попробуйте через несколько минут</span>' +
+          '</div>';
         chartArea.style.display = 'block';
       }
       return;

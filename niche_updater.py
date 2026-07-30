@@ -10,6 +10,7 @@ On-demand обновление данных ниши из MPStats.
   - app.py:          threading.Thread(target=sync_refresh_niche, ...).start()
 """
 import os
+import time
 import logging
 import requests
 import psycopg2
@@ -20,6 +21,19 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 logger = logging.getLogger(__name__)
+
+# ── Circuit breaker ───────────────────────────────────────────────────────────
+
+_mpstats_backoff_until: float = 0
+
+def is_mpstats_available() -> bool:
+    return time.time() > _mpstats_backoff_until
+
+def set_mpstats_backoff(seconds: int = 3600) -> None:
+    global _mpstats_backoff_until
+    _mpstats_backoff_until = time.time() + seconds
+    logger.warning(f'[MPStats] Circuit breaker активирован на {seconds}с')
+
 
 STALE_DAYS = 14
 _DB  = os.getenv('DATABASE_URL')
@@ -87,6 +101,10 @@ def _fetch_and_update_niche(niche_name: str) -> bool:
             json={'startRow': 0, 'endRow': 9999, 'filterModel': {}, 'sortModel': []},
             timeout=60,
         )
+        if r.status_code == 429:
+            logger.error("MPStats 429 Too Many Requests")
+            set_mpstats_backoff(3600)
+            return False
         if r.status_code != 200:
             logger.error(f"MPStats HTTP {r.status_code}")
             return False
@@ -198,6 +216,9 @@ def sync_refresh_niche(niche_name: str, triggered_by: str = 'on_demand') -> bool
     Sync-версия для threading.Thread в app.py.
     threading.Thread(target=sync_refresh_niche, args=(name,), daemon=True).start()
     """
+    if not is_mpstats_available():
+        logger.info('[MPStats] Circuit breaker активен — пропускаем обновление')
+        return False
     updated_at = _get_updated_at(niche_name)
     stale = is_niche_stale(updated_at)
 

@@ -95,6 +95,25 @@ COL_W  = W - 2 * MARGIN
 # Текущий уровень документа (устанавливается в render())
 _CURRENT_LEVEL = 'basic'
 
+# ── Ниши повышенного риска (военные товары и товары двойного назначения) ───────
+# Добавлено 30.07.2026 на фоне атак БПЛА на склады WB.
+HIGH_RISK_NICHES = [
+    "fpv", "дрон", "бпла", "беспилотник", "квадрокоптер",
+    "бронежилет", "каска", "шлем тактический", "берцы",
+    "разгрузка", "разгрузочный жилет", "баллистический",
+    "тепловизор", "прибор ночного видения", "монокуляр",
+    "рация", "радиостанция", "средства связи военные",
+    "рэб", "глушилка", "подавитель сигнала",
+    "навигационный модуль", "антенна бпла",
+    "аптечка тактическая", "жгут тактический",
+    "маскировочная сеть", "сво",
+]
+
+
+def _check_high_risk_niche(niche_name: str) -> bool:
+    name_lower = (niche_name or '').lower()
+    return any(keyword in name_lower for keyword in HIGH_RISK_NICHES)
+
 # ── Форматирование чисел ──────────────────────────────────────────────────────
 
 def _rub(v):
@@ -303,7 +322,10 @@ def _compute_finance(n: dict) -> dict:
     """Детерминированный расчёт — одни цифры для всех агентов и разделов PDF."""
     avg_price  = max(float(n.get('avg_price', 0)), 1)
     buyout_pct = float(n.get('buyout_pct', 0.7)) or 0.7
-    comm_raw   = float(n.get('commission', 0.25))
+    # Дефолт обновлён 30.07.2026 по новой оферте WB (КВВ формула)
+    # FBW медиана ~30%, FBS ~32%, DBS ~45%
+    # Следующая проверка: при обновлении MPStats
+    comm_raw   = float(n.get('commission', 0.30))
     commission = comm_raw if comm_raw <= 1 else comm_raw / 100
 
     cost   = round(avg_price * 0.35)              # себестоимость из Китая
@@ -556,7 +578,10 @@ def _run_deep(n: dict, master_verdict: str = '') -> dict:
 def _run_unit(n: dict) -> dict:
     avg_price = float(n.get('avg_price', 0))
     buyout_pct = float(n.get('buyout_pct', 0.7))
-    commission = float(n.get('commission', 0.25))
+    # Дефолт обновлён 30.07.2026 по новой оферте WB (КВВ формула)
+    # FBW медиана ~30%, FBS ~32%, DBS ~45%
+    # Следующая проверка: при обновлении MPStats
+    commission = float(n.get('commission', 0.30))
     name = n.get('name', '')
     if avg_price < 100:
         return {}
@@ -801,7 +826,10 @@ def _run_warehouse(n: dict) -> dict:
     prompt = (
         "Ты эксперт по логистике WB.\n"
         "Рекомендуй склады WB исходя из характеристик товара (габарит, оборачиваемость, сезонность). "
-        "Основные склады: Коледино, Казань, Краснодар, Екатеринбург, Новосибирск, Подольск, Электросталь, Смоленск (для СНГ-поставщиков).\n\n"
+        "Основные склады: Казань, Екатеринбург, Новосибирск, Коледино (уточняйте актуальный статус), "
+        "Подольск (работа ограничена), Смоленск (для СНГ-поставщиков). "
+        "НЕ рекомендуй склады Электросталь, Краснодар, Невинномысск, Шушары, Новосаратовка, Котовск, Симферополь — "
+        "они пострадали от атак БПЛА в июле 2026 и временно не работают в штатном режиме.\n\n"
         f"НИША: {name} | Цена: {avg_price} ₽ | Выручка: {revenue:,.0f} ₽\n"
         f"Оборачиваемость: {turnover:.0f} дней | Выкуп: {buyout_pct*100:.1f}% | Маржа: {profit_pct*100:.1f}%\n\n"
         "ONLY JSON:\n"
@@ -1435,7 +1463,45 @@ _FM_CANONICAL = {
     'frozen_capital':        220000,
     'free_cashflow_monthly': 110000,
     'reserve_2x':            440000,
+    'commission_last_updated': '2026-07-20',
+    'commission_note':       'Актуально после новой оферты WB от 20.07.2026',
 }
+
+
+def _sec_high_risk_warning(niche: dict) -> list:
+    """Красный блок для ниш военного назначения/двойного использования.
+    Показывается сразу после плашки вердикта. Добавлено 30.07.2026."""
+    name = niche.get('display_name') or niche.get('name') or ''
+    if not _check_high_risk_niche(name):
+        return []
+
+    C_HR_BG = HexColor('#fef2f2')
+    inner = [
+        _p('🔴 ВНИМАНИЕ: Ниша высокого риска', size=11, bold=True, color=C_RED,
+           space_before=0, space_after=4),
+        _p(
+            'Данная ниша относится к товарам военного назначения или двойного использования. '
+            'Склады Wildberries, хранящие такие товары, подвергаются повышенному риску атак.',
+            size=8.5, color=C_TEXT, space_before=2, space_after=4,
+        ),
+        _p('WBAnalyzer не рекомендует входить в эту нишу в текущих условиях.',
+           size=9, bold=True, color=C_RED, space_before=2, space_after=4),
+        _p(
+            'Если вы всё же рассматриваете эту нишу — используйте исключительно FBS (хранение у себя) '
+            'и минимальный товарный запас (7-14 дней оборота).',
+            size=8.5, color=C_TEXT, space_before=2, space_after=0,
+        ),
+    ]
+    tbl = Table([[inner]], colWidths=[COL_W])
+    tbl.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, -1), C_HR_BG),
+        ('TOPPADDING',    (0, 0), (-1, -1), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 14),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 14),
+        ('BOX',           (0, 0), (-1, -1), 1.5, C_RED),
+    ]))
+    return [_sp(0.08), tbl, _sp(0.1)]
 
 
 def _sec_verdict_placard(master: dict) -> list:
@@ -2375,11 +2441,20 @@ def _sec_warehouse(r: dict) -> list:
         els.append(_sp(0.1))
 
     # Нейтральная рекомендация по складам (независимо от AI-агента)
-    els.append(_info(
-        '<b>Выбор склада:</b> ориентируйтесь на ваш регион и скорость приёмки. '
-        'Топ складов WB: <b>Коледино</b> (Московская обл.), <b>Подольск</b>, '
-        '<b>Электросталь</b>, <b>Казань</b>, <b>Краснодар</b>, <b>Екатеринбург</b>. '
-        'Для поставщиков из Беларуси: Смоленск и транзит через белорусские склады.'
+    # Список пересмотрен 30.07.2026 после атак БПЛА на склады WB (18-24.07.2026):
+    # Электросталь, Краснодар, Невинномысск, Шушары, Новосаратовка, Котовск, Симферополь исключены.
+    els.append(_h3('Актуальные склады WB (статус на июль 2026)'))
+    rows = [['Склад', 'Статус']]
+    rows.append(['Казань', 'работает в штатном режиме'])
+    rows.append(['Екатеринбург', 'работает в штатном режиме'])
+    rows.append(['Новосибирск', 'работает в штатном режиме'])
+    rows.append(['Коледино (МО)', 'работает, уточняйте статус'])
+    rows.append(['Смоленск', 'работает (для СНГ-поставщиков)'])
+    els.append(_tbl(rows, col_widths=[COL_W * 0.5, COL_W * 0.5]))
+    els.append(_sp(0.08))
+    els.append(_warning(
+        'Ряд складов WB временно приостановлен или работает в ограниченном режиме в связи '
+        'с атаками БПЛА в июле 2026. Перед отгрузкой уточняйте актуальный статус на seller.wildberries.ru'
     ))
     els.append(_sp(0.08))
 
@@ -2645,7 +2720,47 @@ def _sec_disclaimer() -> list:
         ('LEFTPADDING',   (0, 0), (-1, -1), 10),
         ('RIGHTPADDING',  (0, 0), (-1, -1), 10),
     ]))
-    return [_sp(0.15), tbl, _sp(0.1)]
+
+    # Блок актуальности данных: риски БПЛА-атак на склады WB и отмена компенсаций
+    # за форс-мажор в оферте WB с 07.07.2026. Добавлен 30.07.2026.
+    C_RISK_BG  = HexColor('#fffbeb')
+    C_RISK_TXT = HexColor('#78350f')
+    risk_inner = [
+        _p('⚠️ Актуальность данных в текущих условиях', size=9, bold=True, color=C_RISK_TXT,
+           space_before=0, space_after=4),
+        _p(
+            'В июле 2026 года ряд складов Wildberries подвергся атакам и работает в ограниченном режиме. '
+            'Компания изменила оферту: с 7 июля 2026 потери товара вследствие форс-мажора '
+            '(включая атаки БПЛА) не компенсируются маркетплейсом.',
+            size=7.5, color=C_RISK_TXT, space_before=2, space_after=4,
+        ),
+        _p('Рекомендации WBAnalyzer с учётом текущей ситуации:', size=7.5, bold=True,
+           color=C_RISK_TXT, space_before=2, space_after=2),
+    ]
+    for tip in (
+        'Приоритет FBS — храните товар на собственном складе',
+        'Ограничьте размер партии до 30-45 дней оборота',
+        'Диверсифицируйте хранение между несколькими складами',
+        'Рассмотрите страхование товарного запаса',
+        'Уточняйте статус рекомендуемых складов перед отгрузкой',
+    ):
+        risk_inner.append(_p(f'• {tip}', size=7.5, color=C_RISK_TXT, space_before=0, space_after=1))
+    risk_inner.append(_p(
+        'Данные о комиссиях актуальны на дату генерации отчёта. '
+        'Wildberries изменяет тарифы без предварительного уведомления.',
+        size=7.5, color=C_RISK_TXT, space_before=4, space_after=0,
+    ))
+    risk_tbl = Table([[risk_inner]], colWidths=[COL_W])
+    risk_tbl.setStyle(TableStyle([
+        ('BACKGROUND',    (0, 0), (-1, -1), C_RISK_BG),
+        ('TOPPADDING',    (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('LEFTPADDING',   (0, 0), (-1, -1), 12),
+        ('RIGHTPADDING',  (0, 0), (-1, -1), 12),
+        ('BOX',           (0, 0), (-1, -1), 1, HexColor('#f59e0b')),
+    ]))
+
+    return [_sp(0.15), tbl, _sp(0.08), risk_tbl, _sp(0.1)]
 
 
 def _sec_conclusion(level: str, agents: dict) -> list:
@@ -3854,6 +3969,8 @@ def render(level: str, niche: dict, agents: dict,
         'frozen_capital':        _tc,
         'free_cashflow_monthly': int(_tc / max(_tdays, 1) * 30),
         'reserve_2x':            _tc * 2,
+        'commission_last_updated': '2026-07-20',
+        'commission_note':       'Актуально после новой оферты WB от 20.07.2026',
     }
 
     t0 = time.time()
@@ -3974,6 +4091,7 @@ def render(level: str, niche: dict, agents: dict,
 
     els += _sec_metrics(niche)
     els += _sec_verdict_placard(agents.get('master') or {})
+    els += _sec_high_risk_warning(niche)
 
     browser_charts = dict(charts or {})
     if browser_charts:

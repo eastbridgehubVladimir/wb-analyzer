@@ -5363,6 +5363,9 @@ function showUnitEconomy() {
   const avgHei = window._nichePackageData?.avg_height || '';
   const avgWgt = window._nichePackageData?.avg_weight || '';
 
+  // Дефолт обновлён 30.07.2026 по новой оферте WB (КВВ формула)
+  // FBW медиана ~30%, FBS ~32%, DBS ~45%
+  // Следующая проверка: при обновлении MPStats
   const sym = symbols[currentCurrency];
   const rate = rates[currentCurrency];
 
@@ -5388,7 +5391,7 @@ function showUnitEconomy() {
         </div>
         <div>
           <div style="font-size:11px;color:#555;margin-bottom:4px;">КОМИССИЯ WB (%)</div>
-          <input id="ue-commission" type="number" value="${Math.round(d.commission||15)}" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
+          <input id="ue-commission" type="number" value="${Math.round(d.commission||30)}" style="width:100%;background:#0f1117;border:1px solid #2d3748;border-radius:6px;padding:8px;color:#fff;font-size:13px;box-sizing:border-box;">
         </div>
       </div>
 
@@ -5513,7 +5516,10 @@ async function runUnitEconomy() {
     cost_rub: costRub,
     cost_local: costLocal,
     cost_currency: window._unitCurrency,
-    commission_pct: parseFloat(document.getElementById('ue-commission')?.value) || (d.commission||15),
+    // Дефолт обновлён 30.07.2026 по новой оферте WB (КВВ формула)
+    // FBW медиана ~30%, FBS ~32%, DBS ~45%
+    // Следующая проверка: при обновлении MPStats
+    commission_pct: parseFloat(document.getElementById('ue-commission')?.value) || (d.commission||30),
     buyout_pct: (d.buyout_pct || 0.7) * 100,
     length_cm: parseFloat(document.getElementById('ue-length')?.value) || 0,
     width_cm: parseFloat(document.getElementById('ue-width')?.value) || 0,
@@ -8231,7 +8237,10 @@ class Handler(BaseHTTPRequestHandler):
                 cost_rub = body.get('cost_rub', 0)
                 cost_local = body.get('cost_local', 0)
                 cost_currency = body.get('cost_currency', 'cny')
-                commission_pct = body.get('commission_pct', 15)
+                # Дефолт обновлён 30.07.2026 по новой оферте WB (КВВ формула)
+                # FBW медиана ~30%, FBS ~32%, DBS ~45%
+                # Следующая проверка: при обновлении MPStats
+                commission_pct = body.get('commission_pct', 30)
                 buyout_pct = body.get('buyout_pct', 70)
                 length_cm = body.get('length_cm', 20)
                 width_cm = body.get('width_cm', 15)
@@ -9196,7 +9205,7 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
 
                 prompt = f"""Ты эксперт по логистике и поставкам на Wildberries. Проанализируй данные топ-30 SKU ниши и дай конкретные рекомендации по стратегии поставок.
 
-РЕКОМЕНДАЦИИ ПО СКЛАДАМ: Рекомендуй склады WB исходя из характеристик товара (габарит, оборачиваемость, сезонность). Основные склады: Коледино, Казань, Краснодар, Екатеринбург, Новосибирск, Подольск, Электросталь, Смоленск (для СНГ-поставщиков). Указывай точное количество товара для каждого склада.
+РЕКОМЕНДАЦИИ ПО СКЛАДАМ: Рекомендуй склады WB исходя из характеристик товара (габарит, оборачиваемость, сезонность). Основные склады: Казань, Екатеринбург, Новосибирск, Коледино (уточняйте актуальный статус), Подольск (работа ограничена), Смоленск (для СНГ-поставщиков). НЕ рекомендуй склады Электросталь, Краснодар, Невинномысск, Шушары, Новосаратовка, Котовск, Симферополь — они пострадали от атак БПЛА в июле 2026 и временно не работают в штатном режиме. Указывай точное количество товара для каждого склада.
 
 НИША: {niche_name}
 ДАННЫЕ НИШИ:
@@ -10194,7 +10203,10 @@ def handle_unit_stream(handler, body):
     cost_rub = body.get('cost_rub', 0)
     cost_local = body.get('cost_local', 0)
     cost_currency = body.get('cost_currency', 'cny')
-    commission_pct = body.get('commission_pct', 15)
+    # Дефолт обновлён 30.07.2026 по новой оферте WB (КВВ формула)
+    # FBW медиана ~30%, FBS ~32%, DBS ~45%
+    # Следующая проверка: при обновлении MPStats
+    commission_pct = body.get('commission_pct', 30)
     buyout_pct = body.get('buyout_pct', 70)
     length_cm = body.get('length_cm', 20)
     width_cm = body.get('width_cm', 15)
@@ -10491,7 +10503,10 @@ def handle_warehouse_stream(handler, body):
     prompt = (
         "Ты эксперт по логистике и поставкам на Wildberries. Проанализируй данные топ-30 SKU ниши.\n\n"
         "РЕКОМЕНДАЦИИ ПО СКЛАДАМ: Рекомендуй склады WB исходя из характеристик товара (габарит, оборачиваемость, сезонность). "
-        "Основные склады: Коледино, Казань, Краснодар, Екатеринбург, Новосибирск, Подольск, Электросталь, Смоленск (для СНГ-поставщиков).\n\n"
+        "Основные склады: Казань, Екатеринбург, Новосибирск, Коледино (уточняйте актуальный статус), "
+        "Подольск (работа ограничена), Смоленск (для СНГ-поставщиков). "
+        "НЕ рекомендуй склады Электросталь, Краснодар, Невинномысск, Шушары, Новосаратовка, Котовск, Симферополь — "
+        "они пострадали от атак БПЛА в июле 2026 и временно не работают в штатном режиме.\n\n"
         f"НИША: {niche_name}\n"
         f"Средняя цена: {avg_price} руб | Выручка: {revenue:,.0f} руб\n"
         f"Оборачиваемость: {turnover} дней | Выкуп: {buyout_pct*100:.1f}%\n"

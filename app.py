@@ -1058,7 +1058,8 @@ async function confirmMoveToPortfolio(idx) {
 
   // Считаем маржу
   var buyRub = _pmCur === 'usd' ? buyCny * 90 : buyCny * 12.5;
-  var commission = (n.commission || 0.25) * sellRub;
+  // Комиссия обновлена 30.07.2026 по новой оферте WB
+  var commission = (n.commission || 0.30) * sellRub;
   var logistics = 150;
   var profit = sellRub - buyRub - commission - logistics;
   var marginPct = sellRub > 0 ? Math.round(profit / sellRub * 100) : 0;
@@ -3200,7 +3201,8 @@ function showAppliedPriceResult(priceUsd, batchQty) {
   var priceRub = priceUsd * usdRate;
   var avgPrice = d.avg_price || 0;
 
-  var commission = (d.commission > 1 ? d.commission / 100 : d.commission) || 0.25;
+  // Комиссия обновлена 30.07.2026 по новой оферте WB
+  var commission = (d.commission > 1 ? d.commission / 100 : d.commission) || 0.30;
   var wbComm = avgPrice * commission;
   var wbLog = avgPrice < 1000 ? 75 : avgPrice < 5000 ? 120 : 200;
   var profitPerUnit = avgPrice - priceRub - wbComm - wbLog;
@@ -4034,7 +4036,8 @@ function renderCashflow() {
     var _totalMargin = 0;
     _pfWithPrice.forEach(function(i) {
       var buyRub = i.cur === 'USD' ? i.price * 90 : i.price * 12.5;
-      var commission = 0.25 * i.sell_price;
+      // Комиссия обновлена 30.07.2026 по новой оферте WB
+      var commission = 0.30 * i.sell_price;
       var logistics = 150;
       var profit = i.sell_price - buyRub - commission - logistics;
       _totalMargin += profit / i.sell_price;
@@ -4074,7 +4077,8 @@ function renderCashflow() {
   const phaseEnd3   = s.phase3_end   || 12;
   const returnStart = s.return_start || 9;
 
-  const wbCommission = (s.wb_commission || 25) / 100;
+  // Комиссия обновлена 30.07.2026 по новой оферте WB
+  const wbCommission = (s.wb_commission || 30) / 100;
   const wbReturns    = (s.wb_returns   ||  8) / 100;
   const wbLogistics  = (s.wb_logistics ||  6) / 100;
   const taxRate      = s.tax_mode === 'usn15' ? 0.15 : s.tax_mode === 'osn' ? 0.20 : 0.06;
@@ -4238,7 +4242,8 @@ function renderCashflow() {
       <div style="color:#e2e8f0;font-size:13px;font-weight:600;margin-bottom:10px;">⚙️ Параметры WB</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px;">
         ${[
-          {key:'wb_commission',label:'Комиссия WB %',val:s.wb_commission||25,min:10,max:40},
+          // Комиссия обновлена 30.07.2026 по новой оферте WB
+          {key:'wb_commission',label:'Комиссия WB %',val:s.wb_commission||30,min:10,max:40},
           {key:'wb_returns',   label:'Возвраты товара %', val:s.wb_returns||8, min:0, max:20},
           {key:'wb_logistics', label:'Логистика WB %',val:s.wb_logistics||6, min:2, max:15},
         ].map(f=>`<div style="background:#1e2433;border-radius:8px;padding:10px;">
@@ -4810,7 +4815,8 @@ function renderPortfolioSection() {
         var marginPct = 0;
         if (sellPrice > 0 && buyPrice > 0) {
           var buyRub = buyCur === 'USD' ? buyPrice * 90 : buyPrice * 12.5;
-          var commission = 0.25 * sellPrice;
+          // Комиссия обновлена 30.07.2026 по новой оферте WB
+          var commission = 0.30 * sellPrice;
           var logistics = 150;
           var profit = sellPrice - buyRub - commission - logistics;
           marginPct = Math.round(profit / sellPrice * 100);

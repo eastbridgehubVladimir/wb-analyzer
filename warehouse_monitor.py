@@ -46,16 +46,19 @@ import subprocess
 def _ensure_deps():
     """Подстраховка на случай, если build-шаг Railway не поставил зависимости
     (ровно это происходило дважды с сервисом trustworthy-presence). Если пакет
-    уже есть — pip install не запускается, лишнего времени на прогон не тратится."""
+    уже есть — pip install не запускается, лишнего времени на прогон не тратится.
+
+    psycopg2-binary НЕ включён сюда: это скомпилированный бинарный wheel,
+    nixpacks на этапе сборки ставит его корректно (там есть нужные пакеты и
+    подобранный под платформу wheel), а в runtime-окружении нет pg_config —
+    попытка pip install здесь падает "Failed to build psycopg2-binary from
+    source". Если psycopg2 всё же не установлен nixpacks — падать с понятной
+    ImportError лучше, чем тут же ловить ещё один build-error поверх первого."""
     pkgs = []
     try:
         import requests  # noqa
     except ImportError:
         pkgs.append('requests==2.31.0')
-    try:
-        import psycopg2  # noqa
-    except ImportError:
-        pkgs.append('psycopg2-binary==2.9.9')
     try:
         import anthropic  # noqa
     except ImportError:

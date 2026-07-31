@@ -63,7 +63,7 @@ def _ensure_deps():
     try:
         import anthropic  # noqa
     except ImportError:
-        pkgs.append('anthropic==0.25.0')
+        pkgs.append('anthropic>=0.40.0')
     try:
         import dotenv  # noqa
     except ImportError:

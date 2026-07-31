@@ -147,6 +147,31 @@ COMPETITOR_SEARCH_QUERIES = [
 
 VALID_STATUSES = {'active', 'limited', 'closed', 'attacked'}
 
+# Фильтр свежести: складам за 13 дней уже досталось, старые статьи (нашлась даже
+# статья 2022 года про пожар на складе Ozon) только шумят и путают агрегацию
+# уровней доверия. 'qdr:w' — Google-style time-based search, "за последнюю неделю".
+FRESHNESS_TBS = 'qdr:w'
+FRESHNESS_MAX_DAYS = 7
+
+
+def _is_recent_enough(metadata: dict, max_days: int = FRESHNESS_MAX_DAYS) -> bool:
+    """Вторая линия защиты поверх tbs: если в метаданных есть ОДНА однозначная
+    дата публикации/изменения — проверяем её. Если дат нет или их несколько
+    (списком — как на агрегаторных страницах) — не отбрасываем результат,
+    доверяем tbs: лучше пропустить погранично старую статью, чем потерять
+    свежую из-за неоднозначных метаданных."""
+    for key in ('publishedTime', 'article:published_time', 'modifiedTime', 'article:modified_time'):
+        val = metadata.get(key)
+        if isinstance(val, str) and val:
+            try:
+                dt = datetime.fromisoformat(val.replace('Z', '+00:00'))
+                if dt.tzinfo:
+                    dt = dt.replace(tzinfo=None)
+                return (datetime.now() - dt).days <= max_days
+            except (ValueError, TypeError):
+                continue
+    return True
+
 
 def _firecrawl_search(query: str, limit: int = 5) -> list:
     """Ищет новости через Firecrawl REST API. Возвращает [{title, url, text}]."""
@@ -160,6 +185,7 @@ def _firecrawl_search(query: str, limit: int = 5) -> list:
             json={
                 'query': query,
                 'limit': limit,
+                'tbs': FRESHNESS_TBS,
                 'scrapeOptions': {'formats': ['markdown'], 'onlyMainContent': True},
             },
             timeout=30,
@@ -170,12 +196,18 @@ def _firecrawl_search(query: str, limit: int = 5) -> list:
         # который REST API вообще не принимает — 400 Unrecognized key "sources").
         results = resp.json().get('data') or []
         out = []
+        skipped_old = 0
         for r in results:
+            if not _is_recent_enough(r.get('metadata') or {}):
+                skipped_old += 1
+                continue
             out.append({
                 'title': r.get('title', ''),
                 'url': r.get('url', ''),
                 'text': (r.get('markdown') or r.get('description') or '')[:4000],
             })
+        if skipped_old:
+            print(f'[warehouse_monitor]   отфильтровано как устаревшее (>{FRESHNESS_MAX_DAYS} дн.): {skipped_old}')
         return out
     except Exception as e:
         print(f'[warehouse_monitor] Firecrawl search error ({query!r}): {e}')

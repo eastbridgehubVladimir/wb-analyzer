@@ -114,6 +114,41 @@ def _check_high_risk_niche(niche_name: str) -> bool:
     name_lower = (niche_name or '').lower()
     return any(keyword in name_lower for keyword in HIGH_RISK_NICHES)
 
+
+# ── Статус складов WB из БД (таблица warehouse_status) ──────────────────────────
+# Добавлено 31.07.2026: раньше список складов был захардкожен в коде и требовал
+# правки при каждой атаке. Теперь источник правды — БД, которую обновляет
+# warehouse_monitor.py (см. Задачу 1Г).
+
+def _get_active_warehouses() -> list:
+    """Читает актуальные склады (active/limited) из warehouse_status.
+    При недоступности БД возвращает пустой список — вызывающий код
+    (_sec_warehouse) должен показать fallback-предупреждение."""
+    import psycopg2
+    db_url = os.getenv('DATABASE_URL')
+    if not db_url:
+        return []
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT name, city, region, status, status_note, updated_at
+            FROM warehouse_status
+            WHERE status IN ('active', 'limited')
+            ORDER BY status DESC, region
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [
+            {'name': r[0], 'city': r[1], 'region': r[2], 'status': r[3],
+             'status_note': r[4], 'updated_at': r[5]}
+            for r in rows
+        ]
+    except Exception as e:
+        print(f'[pdf_auto] _get_active_warehouses error: {e}')
+        return []
+
 # ── Форматирование чисел ──────────────────────────────────────────────────────
 
 def _rub(v):
@@ -841,7 +876,10 @@ def _run_warehouse(n: dict) -> dict:
         '"stock":{"min_units":0,"opt_units":0,"max_units":0,"min_rub":0,"opt_rub":0,"max_rub":0,"comment":"логика"},'
         '"risks":["риск 1","риск 2","риск 3"]}'
     )
-    return _json(_claude(prompt, 1200))
+    # 1200 не хватало: расширенный список исключённых складов (БПЛА-атаки) увеличил
+    # промпт и ответ модели (более длинные warehouse_tips) — ответ обрезался,
+    # JSON не парсился, весь раздел "Стратегия поставок" пропадал молча. См. 31.07.2026.
+    return _json(_claude(prompt, 1800))
 
 
 def _run_content(n: dict) -> str:
@@ -2441,18 +2479,35 @@ def _sec_warehouse(r: dict) -> list:
         els.append(_body(detail))
         els.append(_sp(0.1))
 
-    # Нейтральная рекомендация по складам (независимо от AI-агента)
-    # Список пересмотрен 31.07.2026 после атак БПЛА на склады WB (18-31.07.2026):
-    # Электросталь, Краснодар, Невинномысск, Шушары, Новосаратовка, Котовск, Симферополь, Волгоград исключены.
-    els.append(_h3('Актуальные склады WB (статус на июль 2026)'))
-    rows = [['Склад', 'Статус']]
-    rows.append(['Казань', 'работает в штатном режиме'])
-    rows.append(['Екатеринбург', 'работает в штатном режиме'])
-    rows.append(['Новосибирск', 'работает в штатном режиме'])
-    rows.append(['Коледино (МО)', 'работает, уточняйте статус'])
-    rows.append(['Смоленск', 'работает (для СНГ-поставщиков)'])
-    els.append(_tbl(rows, col_widths=[COL_W * 0.5, COL_W * 0.5]))
-    els.append(_sp(0.08))
+    # Нейтральная рекомендация по складам (независимо от AI-агента).
+    # Источник данных — БД (warehouse_status), не хардкод. См. Задачу 1В (31.07.2026).
+    els.append(_h3('Актуальные склады WB'))
+    warehouses = _get_active_warehouses()
+    if warehouses:
+        rows = [['Склад', 'Регион', 'Статус']]
+        last_updated = None
+        for w in warehouses:
+            if w['status'] == 'limited':
+                label = w.get('status_note') or 'уточняйте актуальный статус'
+                status_cell = f'<font color="#ea580c">{label}</font>'
+            else:
+                status_cell = w.get('status_note') or 'работает в штатном режиме'
+            rows.append([w['name'], w.get('region') or '—', status_cell])
+            wu = w.get('updated_at')
+            if wu and (last_updated is None or wu > last_updated):
+                last_updated = wu
+        els.append(_tbl(rows, col_widths=[COL_W * 0.28, COL_W * 0.34, COL_W * 0.38]))
+        els.append(_sp(0.05))
+        if last_updated:
+            els.append(_p(f'Данные о статусе складов обновлены: {last_updated.strftime("%d.%m.%Y %H:%M")}',
+                           size=7, color=C_GRAY, space_before=0, space_after=0))
+        els.append(_sp(0.08))
+    else:
+        els.append(_info(
+            'Не удалось получить актуальный список складов из базы данных. '
+            'Уточняйте статус складов на seller.wildberries.ru перед отгрузкой.'
+        ))
+        els.append(_sp(0.08))
     els.append(_warning(
         'Ряд складов WB временно приостановлен или работает в ограниченном режиме в связи '
         'с атаками БПЛА в июле 2026. Перед отгрузкой уточняйте актуальный статус на seller.wildberries.ru'

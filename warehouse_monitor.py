@@ -45,15 +45,16 @@ import subprocess
 
 def _ensure_deps():
     """Подстраховка на случай, если build-шаг Railway не поставил зависимости
-    (ровно это происходило дважды с сервисом trustworthy-presence). Если пакет
-    уже есть — pip install не запускается, лишнего времени на прогон не тратится.
+    (ровно это происходило со службой trustworthy-presence уже несколько раз).
+    Если пакет уже есть — pip install не запускается, лишнего времени на прогон
+    не тратится.
 
-    psycopg2-binary НЕ включён сюда: это скомпилированный бинарный wheel,
-    nixpacks на этапе сборки ставит его корректно (там есть нужные пакеты и
-    подобранный под платформу wheel), а в runtime-окружении нет pg_config —
-    попытка pip install здесь падает "Failed to build psycopg2-binary from
-    source". Если psycopg2 всё же не установлен nixpacks — падать с понятной
-    ImportError лучше, чем тут же ловить ещё один build-error поверх первого."""
+    psycopg2 ставится ОТДЕЛЬНО, через --only-binary=:all: — без этого флага pip
+    в runtime-окружении Railway (там нет pg_config) при отсутствии подходящего
+    wheel пытается собрать psycopg2-binary из исходников и падает с
+    "Failed to build psycopg2-binary from source". С флагом pip либо возьмёт
+    готовый бинарный wheel, либо сразу и honestly скажет, что подходящего
+    wheel нет — не будет пытаться компилировать."""
     pkgs = []
     try:
         import requests  # noqa
@@ -73,6 +74,19 @@ def _ensure_deps():
         import importlib as _il
         _il.invalidate_caches()
         print('[warehouse_monitor] Установка завершена')
+
+    try:
+        import psycopg2  # noqa
+    except ImportError:
+        print('[warehouse_monitor] psycopg2 отсутствует, ставлю psycopg2-binary (только бинарный wheel, без компиляции)')
+        subprocess.check_call([
+            sys.executable, '-m', 'pip', 'install', '-q',
+            '--only-binary=:all:',
+            'psycopg2-binary==2.9.9',
+        ])
+        import importlib as _il
+        _il.invalidate_caches()
+        print('[warehouse_monitor] psycopg2-binary установлен')
 
 
 _ensure_deps()

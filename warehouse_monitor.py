@@ -17,8 +17,50 @@ TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_ID.
 
 Запуск вручную: python3 warehouse_monitor.py
 Railway cron:   каждые 4 часа, команда: python3 warehouse_monitor.py
+
+Сервис trustworthy-presence на Railway дважды падал с ModuleNotFoundError,
+несмотря на requirements-monitor.txt и отдельный railway-monitor.json —
+build-конфиг второго сервиса из общего репозитория почему-то не подхватывался.
+Поэтому скрипт сам проверяет и при необходимости ставит зависимости при
+старте (см. _ensure_deps ниже) — это не зависит от того, как Railway
+собрал образ, и гарантированно работает при любом build-конфиге.
 """
 import os
+import sys
+import subprocess
+
+
+def _ensure_deps():
+    """Подстраховка на случай, если build-шаг Railway не поставил зависимости
+    (ровно это происходило дважды с сервисом trustworthy-presence). Если пакет
+    уже есть — pip install не запускается, лишнего времени на прогон не тратится."""
+    pkgs = []
+    try:
+        import requests  # noqa
+    except ImportError:
+        pkgs.append('requests==2.31.0')
+    try:
+        import psycopg2  # noqa
+    except ImportError:
+        pkgs.append('psycopg2-binary==2.9.9')
+    try:
+        import anthropic  # noqa
+    except ImportError:
+        pkgs.append('anthropic==0.25.0')
+    try:
+        import dotenv  # noqa
+    except ImportError:
+        pkgs.append('python-dotenv==1.0.1')
+    if pkgs:
+        print(f'[warehouse_monitor] Отсутствуют зависимости, ставлю: {pkgs}')
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q'] + pkgs)
+        import importlib as _il
+        _il.invalidate_caches()
+        print('[warehouse_monitor] Установка завершена')
+
+
+_ensure_deps()
+
 import json
 from datetime import datetime
 
@@ -56,14 +98,15 @@ def _firecrawl_search(query: str, limit: int = 5) -> list:
             json={
                 'query': query,
                 'limit': limit,
-                'sources': [{'type': 'news'}],
                 'scrapeOptions': {'formats': ['markdown'], 'onlyMainContent': True},
             },
             timeout=30,
         )
         resp.raise_for_status()
-        data = resp.json().get('data', {})
-        results = data.get('news') or data.get('web') or []
+        # v1/search возвращает {"success": true, "data": [...]} — плоский список,
+        # без вложенных ключей news/web (в отличие от параметра sources у MCP-обёртки,
+        # который REST API вообще не принимает — 400 Unrecognized key "sources").
+        results = resp.json().get('data') or []
         out = []
         for r in results:
             out.append({
@@ -77,19 +120,33 @@ def _firecrawl_search(query: str, limit: int = 5) -> list:
         return []
 
 
-def _extract_with_claude(text: str) -> dict:
+def _get_known_warehouse_names(conn) -> list:
+    """Список канонических названий складов из warehouse_status — Claude должен
+    сопоставлять найденный текст с этим списком, а не придумывать своё название
+    (иначе 'Koledino' и 'Wildberries Екатеринбург' создают дубли вместо апдейта
+    существующих строк 'Коледино'/'Екатеринбург' — реальный баг, найденный на проверке)."""
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM warehouse_status ORDER BY name")
+    names = [r[0] for r in cur.fetchall()]
+    cur.close()
+    return names
+
+
+def _extract_with_claude(text: str, known_names: list) -> dict:
     """Просит Claude извлечь структурированные данные об атаке/закрытии склада."""
     if not ANTHROPIC_API_KEY:
         print('[warehouse_monitor] ANTHROPIC_API_KEY не задан — извлечение пропущено')
         return {'found': False}
     import anthropic
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    names_list = ', '.join(known_names)
     prompt = (
         "Найди в тексте упоминания конкретных складов WB (Wildberries). "
-        "Если склад атакован/закрыт/эвакуирован — верни JSON: "
-        '{"warehouse": "название", "status": "attacked/closed/limited", '
+        f"Список известных складов (используй ТОЛЬКО эти названия, ровно как написано): {names_list}.\n"
+        "Если склад из этого списка атакован/закрыт/эвакуирован — верни JSON ОДНИМ объектом (не массивом): "
+        '{"warehouse": "название ровно из списка выше", "status": "attacked/closed/limited", '
         '"date": "дата", "summary": "краткое описание"}. '
-        'Если ничего не найдено — верни {"found": false}.\n\n'
+        "Если упомянутого склада нет в списке или ничего не найдено — верни {\"found\": false}.\n\n"
         f"ТЕКСТ:\n{text}\n\nONLY JSON, без пояснений."
     )
     try:
@@ -100,7 +157,13 @@ def _extract_with_claude(text: str) -> dict:
         )
         raw = msg.content[0].text.strip().replace('```json', '').replace('```', '').strip()
         result = json.loads(raw)
-        if not result or result.get('found') is False:
+        if isinstance(result, list):
+            result = result[0] if result else {}
+        if not isinstance(result, dict) or not result or result.get('found') is False:
+            return {'found': False}
+        if str(result.get('warehouse', '')).strip() not in known_names:
+            # Claude всё равно не попал в список — не создаём дубль, пропускаем находку.
+            print(f"[warehouse_monitor] warehouse {result.get('warehouse')!r} не в известном списке — пропущено")
             return {'found': False}
         result['found'] = True
         result['raw_response'] = raw
@@ -111,7 +174,9 @@ def _extract_with_claude(text: str) -> dict:
 
 
 def _update_warehouse_status(conn, finding: dict) -> bool:
-    """Обновляет/создаёт запись в warehouse_status. Возвращает True, если статус изменился."""
+    """Обновляет существующую запись в warehouse_status. Возвращает True, если статус изменился.
+    Название уже проверено против known_names в _extract_with_claude — новые строки не создаём,
+    чтобы не плодить дубли под слегка другим написанием того же склада."""
     name = str(finding.get('warehouse', '')).strip()
     status = str(finding.get('status', '')).strip().lower()
     if not name or status not in VALID_STATUSES:
@@ -121,21 +186,18 @@ def _update_warehouse_status(conn, finding: dict) -> bool:
     cur = conn.cursor()
     cur.execute("SELECT status FROM warehouse_status WHERE name = %s", (name,))
     row = cur.fetchone()
-    if row and row[0] == status:
+    if not row:
+        cur.close()
+        return False  # защита: имени нет в БД — не создаём новую строку
+    if row[0] == status:
         cur.close()
         return False  # статус не изменился — обновлять нечего
-    if row:
-        cur.execute("""
-            UPDATE warehouse_status
-            SET status = %s, status_note = %s, updated_at = NOW(), source_url = %s,
-                attacked_at = CASE WHEN %s = 'attacked' THEN NOW() ELSE attacked_at END
-            WHERE name = %s
-        """, (status, note, source_url, status, name))
-    else:
-        cur.execute("""
-            INSERT INTO warehouse_status (name, status, status_note, source_url, attacked_at)
-            VALUES (%s, %s, %s, %s, CASE WHEN %s = 'attacked' THEN NOW() ELSE NULL END)
-        """, (name, status, note, source_url, status))
+    cur.execute("""
+        UPDATE warehouse_status
+        SET status = %s, status_note = %s, updated_at = NOW(), source_url = %s,
+            attacked_at = CASE WHEN %s = 'attacked' THEN NOW() ELSE attacked_at END
+        WHERE name = %s
+    """, (status, note, source_url, status, name))
     conn.commit()
     cur.close()
     return True
@@ -162,6 +224,7 @@ def run():
         return
 
     conn = psycopg2.connect(DATABASE_URL)
+    known_names = _get_known_warehouse_names(conn)
     all_findings = []
     updated = []
 
@@ -172,7 +235,7 @@ def run():
         for r in results:
             if not r['text']:
                 continue
-            finding = _extract_with_claude(r['text'])
+            finding = _extract_with_claude(r['text'], known_names)
             if not finding.get('found'):
                 continue
             finding['source_url'] = r['url']

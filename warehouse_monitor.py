@@ -76,11 +76,21 @@ FIRECRAWL_API_KEY  = os.getenv('FIRECRAWL_API_KEY')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_ADMIN_ID  = os.getenv('TELEGRAM_ADMIN_ID')
 
+# Надёжные источники — только им доверяем при обновлении статуса склада.
+# Добавлено 31.07.2026: агент по YouTube-шортсу и агрегатору dw.com ошибочно
+# пометил Коледино и Екатеринбург как 'attacked' — оба склада на деле работают.
+TRUSTED_DOMAINS = ['kommersant.ru', 'rbc.ru', 'lenta.ru', 'wildberries.ru', 'wb.ru']
+
+# v1/search REST API не принимает includeDomains как поле JSON (только query:
+# 'sources' и 'includeDomains' — фичи MCP-обёртки, не голого REST) — фильтр по
+# домену делаем через оператор site: прямо в строке запроса.
+_DOMAIN_FILTER = ' OR '.join(f'site:{d}' for d in TRUSTED_DOMAINS)
+
 # Запросы для мониторинга. Второй специально сужен на РБК/Коммерсант —
 # источники с наиболее оперативными и достоверными новостями об атаках.
 SEARCH_QUERIES = [
-    "Wildberries склад атака пожар БПЛА",
-    "Wildberries склад",
+    f"Wildberries склад атака пожар БПЛА ({_DOMAIN_FILTER})",
+    f"Wildberries склад ({_DOMAIN_FILTER})",
 ]
 
 VALID_STATUSES = {'active', 'limited', 'closed', 'attacked'}
@@ -132,7 +142,7 @@ def _get_known_warehouse_names(conn) -> list:
     return names
 
 
-def _extract_with_claude(text: str, known_names: list) -> dict:
+def _extract_with_claude(text: str, known_names: list, source_url: str = '') -> dict:
     """Просит Claude извлечь структурированные данные об атаке/закрытии склада."""
     if not ANTHROPIC_API_KEY:
         print('[warehouse_monitor] ANTHROPIC_API_KEY не задан — извлечение пропущено')
@@ -140,13 +150,20 @@ def _extract_with_claude(text: str, known_names: list) -> dict:
     import anthropic
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     names_list = ', '.join(known_names)
+    trusted_list = ', '.join(TRUSTED_DOMAINS)
     prompt = (
         "Найди в тексте упоминания конкретных складов WB (Wildberries). "
-        f"Список известных складов (используй ТОЛЬКО эти названия, ровно как написано): {names_list}.\n"
-        "Если склад из этого списка атакован/закрыт/эвакуирован — верни JSON ОДНИМ объектом (не массивом): "
-        '{"warehouse": "название ровно из списка выше", "status": "attacked/closed/limited", '
-        '"date": "дата", "summary": "краткое описание"}. '
-        "Если упомянутого склада нет в списке или ничего не найдено — верни {\"found\": false}.\n\n"
+        f"Список известных складов (используй ТОЛЬКО эти названия, ровно как написано): {names_list}.\n\n"
+        f"ИСТОЧНИК ТЕКСТА: {source_url or 'неизвестен'}\n"
+        f"Используй ТОЛЬКО надёжные источники: Коммерсант, РБК, Lenta.ru, официальные каналы WB "
+        f"(домены: {trusted_list}). Если источник — YouTube, любая соцсеть (VK, Telegram-каналы "
+        "неофициальных лиц, Instagram и т.п.), агрегатор или блог без указания первоисточника — "
+        'верни {"found": false}, ДАЖЕ ЕСЛИ текст выглядит релевантным и достоверным на вид.\n\n'
+        "Если склад из списка выше атакован/закрыт/эвакуирован и источник надёжный — верни JSON "
+        'ОДНИМ объектом (не массивом): {"warehouse": "название ровно из списка выше", '
+        '"status": "attacked/closed/limited", "date": "дата", "summary": "краткое описание"}. '
+        "Если упомянутого склада нет в списке, источник ненадёжен или ничего не найдено — "
+        'верни {"found": false}.\n\n'
         f"ТЕКСТ:\n{text}\n\nONLY JSON, без пояснений."
     )
     try:
@@ -235,7 +252,7 @@ def run():
         for r in results:
             if not r['text']:
                 continue
-            finding = _extract_with_claude(r['text'], known_names)
+            finding = _extract_with_claude(r['text'], known_names, r['url'])
             if not finding.get('found'):
                 continue
             finding['source_url'] = r['url']

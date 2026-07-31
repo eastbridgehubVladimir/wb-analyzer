@@ -1,4 +1,4 @@
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.12
 requests==2.31.0
 urllib3<2.0,>=1.26
 anthropic==0.25.0

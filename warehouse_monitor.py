@@ -82,7 +82,7 @@ def _ensure_deps():
         subprocess.check_call([
             sys.executable, '-m', 'pip', 'install', '-q',
             '--only-binary=:all:',
-            'psycopg2-binary==2.9.9',
+            'psycopg2-binary==2.9.12',
         ])
         import importlib as _il
         _il.invalidate_caches()

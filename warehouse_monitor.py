@@ -151,9 +151,11 @@ _DOMAIN_FILTER = ' OR '.join(f'site:{d}' for d in _ALL_SOURCE_DOMAINS)
 # не пишутся.
 COMPETITOR_KEYWORDS = ['Ozon', 'Яндекс Маркет', 'СДЭК', 'Почта России']
 
-# Запросы для мониторинга складов WB.
+# Запросы для мониторинга складов WB. Расширено 03.08.2026: не все источники
+# явно пишут "БПЛА" — например заголовки вида "горит склад Wildberries" или
+# "склад уничтожен" тоже нужно ловить, иначе теряем реальные атаки.
 SEARCH_QUERIES = [
-    f"Wildberries склад атака пожар БПЛА ({_DOMAIN_FILTER})",
+    f"Wildberries склад атака пожар горит уничтожен БПЛА ({_DOMAIN_FILTER})",
     f"Wildberries склад ({_DOMAIN_FILTER})",
 ]
 
@@ -190,8 +192,11 @@ def _is_recent_enough(metadata: dict, max_days: int = FRESHNESS_MAX_DAYS) -> boo
     return True
 
 
-def _firecrawl_search(query: str, limit: int = 5) -> list:
-    """Ищет новости через Firecrawl REST API. Возвращает [{title, url, text}]."""
+def _firecrawl_search(query: str, limit: int = 10) -> list:
+    """Ищет новости через Firecrawl REST API. Возвращает [{title, url, text}].
+    limit=5 пропускал релевантные статьи ниже топ-5 (unian.net про Владимирскую
+    область оказывалась 2-й при limit=10, но не входила в выдачу при limit=5) —
+    увеличено 03.08.2026."""
     if not FIRECRAWL_API_KEY:
         print('[warehouse_monitor] FIRECRAWL_API_KEY не задан — поиск пропущен')
         return []
@@ -218,10 +223,21 @@ def _firecrawl_search(query: str, limit: int = 5) -> list:
             if not _is_recent_enough(r.get('metadata') or {}):
                 skipped_old += 1
                 continue
+            # title+description всегда ставим первыми: для "коротких" форматов
+            # некоторых сайтов (напр. rbc.ru/rbcfreenews) onlyMainContent иногда
+            # вытаскивает не текст статьи, а ленту других заголовков сайта —
+            # markdown при этом непустой, но бесполезный, а нужный факт был
+            # только в description. Из-за этого 03.08.2026 агент не заметил
+            # атаку на склад во Владимирской области, хотя рабочая ссылка на
+            # rbc.ru была в выдаче с самого начала.
+            title = r.get('title', '')
+            description = r.get('description', '')
+            markdown = r.get('markdown', '')
+            combined = f"{title}. {description}\n\n{markdown}".strip()
             out.append({
-                'title': r.get('title', ''),
+                'title': title,
                 'url': r.get('url', ''),
-                'text': (r.get('markdown') or r.get('description') or '')[:4000],
+                'text': combined[:4000],
             })
         if skipped_old:
             print(f'[warehouse_monitor]   отфильтровано как устаревшее (>{FRESHNESS_MAX_DAYS} дн.): {skipped_old}')
@@ -260,15 +276,30 @@ def _confidence(tiers: list, source_urls: list) -> str:
 
 
 def _get_known_warehouse_names(conn) -> list:
-    """Список канонических названий складов из warehouse_status — Claude должен
-    сопоставлять найденный текст с этим списком, а не придумывать своё название
-    (иначе 'Koledino' и 'Wildberries Екатеринбург' создают дубли вместо апдейта
-    существующих строк 'Коледино'/'Екатеринбург' — реальный баг, найденный на проверке)."""
+    """Список канонических названий складов из warehouse_status."""
     cur = conn.cursor()
     cur.execute("SELECT name FROM warehouse_status ORDER BY name")
     names = [r[0] for r in cur.fetchall()]
     cur.close()
     return names
+
+
+def _resolve_warehouse_name(candidate: str, known_names: list) -> str:
+    """Сопоставляет предложенное Claude название с уже известным складом по
+    регистронезависимому вхождению в обе стороны ('Koledino' / 'Wildberries
+    Екатеринбург' → 'Коледино' / 'Екатеринбург' — реальный баг, найденный
+    31.07.2026). Если совпадений нет — считаем это НОВЫМ складом и возвращаем
+    имя как есть: раньше находки с именем не из списка просто отбрасывались,
+    из-за чего 03.08.2026 агент не заметил атаку на склад во Владимирской
+    области — его вообще не было в known_names, и система structurally не
+    могла его обнаружить."""
+    c = candidate.strip()
+    cl = c.lower()
+    for name in known_names:
+        nl = name.lower()
+        if cl == nl or nl in cl or cl in nl:
+            return name
+    return c
 
 
 def _extract_with_claude(text: str, known_names: list, source_url: str = '') -> dict:
@@ -286,21 +317,33 @@ def _extract_with_claude(text: str, known_names: list, source_url: str = '') -> 
     names_list = ', '.join(known_names)
     competitors_list = ', '.join(COMPETITOR_KEYWORDS)
     prompt = (
-        "Найди в тексте упоминания складов, пострадавших от атак/пожаров/аварий.\n\n"
-        f"Известные склады Wildberries (используй ТОЛЬКО эти названия, ровно как написано): "
-        f"{names_list}.\n"
+        "Найди в тексте упоминания складов Wildberries, пострадавших от атак/пожаров/аварий "
+        "(в том числе НОВЫХ складов, которых нет в списке ниже — это нормально, WB регулярно "
+        "теряет новые склады, список известных — не исчерпывающий).\n\n"
+        f"Уже известные склады Wildberries: {names_list}.\n"
+        "Если склад из текста совпадает с одним из известных (тот же город/регион, просто "
+        "иначе написан, например с приставкой 'Wildberries' или на латинице) — используй ЕГО "
+        "название СТРОГО как в списке выше. Если это НОВЫЙ склад, которого в списке нет — "
+        "верни его коротким названием ближайшего крупного города или региона (например "
+        "'Владимир', а не название посёлка вроде 'Хрястово'), не пропускай его только из-за "
+        "того, что его нет в списке.\n\n"
         f"Также отслеживай склады конкурентов: {competitors_list}.\n\n"
         f"ИСТОЧНИК ТЕКСТА: {source_url or 'неизвестен'}\n"
         "Если статья сама указывает, что пересказывает непроверенный вторичный источник "
         "(например, анонимный Telegram-канал без первоисточника, слухи, неподтверждённые "
         'данные) — не доверяй такому фрагменту и верни {"found": false}.\n\n'
-        "Если найден склад WB из списка — верни JSON ОДНИМ объектом (не массивом): "
-        '{"company": "WB", "warehouse": "название ровно из списка WB выше", '
+        "ВАЖНО: если текст сам не уверен, что пострадал именно склад WB, а не соседний/другой "
+        "объект (например: 'что именно горит — пока неизвестно', 'возможно горит склад "
+        "соседней компании рядом с Wildberries', 'по предварительным данным') — это НЕ "
+        'достаточное подтверждение для склада WB, верни {"found": false} для этого склада, '
+        "даже если WB упоминается в тексте по соседству.\n\n"
+        "Если найден склад WB (известный или новый) — верни JSON ОДНИМ объектом (не массивом): "
+        '{"company": "WB", "warehouse": "название города/региона", '
         '"status": "attacked/closed/limited", "date": "дата", "summary": "краткое описание"}.\n'
         "Если найден склад конкурента — верни: "
         '{"company": "Ozon|Яндекс Маркет|СДЭК|Почта России", "warehouse": "название/город склада", '
         '"status": "attacked/closed/limited", "date": "дата", "summary": "краткое описание"}.\n'
-        "Если ни склада WB из списка, ни склада конкурента не упомянуто — верни "
+        "Если ни склада WB, ни склада конкурента не упомянуто — верни "
         '{"found": false}.\n\n'
         f"ТЕКСТ:\n{text}\n\nONLY JSON, без пояснений."
     )
@@ -316,11 +359,12 @@ def _extract_with_claude(text: str, known_names: list, source_url: str = '') -> 
             result = result[0] if result else {}
         if not isinstance(result, dict) or not result or result.get('found') is False:
             return {'found': False}
-        company = str(result.get('company', '')).strip()
-        if company == 'WB' and str(result.get('warehouse', '')).strip() not in known_names:
-            # Claude всё равно не попал в список — не создаём дубль, пропускаем находку.
-            print(f"[warehouse_monitor] warehouse {result.get('warehouse')!r} не в известном списке — пропущено")
+        if not str(result.get('warehouse', '')).strip():
             return {'found': False}
+        # Сопоставление с известными складами (фаззи-матч на случай другого написания)
+        # или регистрация нового склада — делается централизованно в run() через
+        # _resolve_warehouse_name(), чтобы результат был согласован при группировке
+        # находок из разных источников по одному и тому же складу.
         result['found'] = True
         result['raw_response'] = raw
         return result
@@ -330,9 +374,10 @@ def _extract_with_claude(text: str, known_names: list, source_url: str = '') -> 
 
 
 def _update_warehouse_status(conn, finding: dict) -> bool:
-    """Обновляет существующую запись в warehouse_status. Возвращает True, если статус изменился.
-    Название уже проверено против known_names в _extract_with_claude — новые строки не создаём,
-    чтобы не плодить дубли под слегка другим написанием того же склада."""
+    """Обновляет запись в warehouse_status, либо создаёт новую, если склад
+    обнаружен впервые (имя уже нормализовано через _resolve_warehouse_name() —
+    см. run() — так что дубль под другим написанием того же склада исключён).
+    Возвращает True, если в БД что-то реально изменилось."""
     name = str(finding.get('warehouse', '')).strip()
     status = str(finding.get('status', '')).strip().lower()
     if not name or status not in VALID_STATUSES:
@@ -342,18 +387,27 @@ def _update_warehouse_status(conn, finding: dict) -> bool:
     cur = conn.cursor()
     cur.execute("SELECT status FROM warehouse_status WHERE name = %s", (name,))
     row = cur.fetchone()
-    if not row:
-        cur.close()
-        return False  # защита: имени нет в БД — не создаём новую строку
-    if row[0] == status:
-        cur.close()
-        return False  # статус не изменился — обновлять нечего
-    cur.execute("""
-        UPDATE warehouse_status
-        SET status = %s, status_note = %s, updated_at = NOW(), source_url = %s,
-            attacked_at = CASE WHEN %s = 'attacked' THEN NOW() ELSE attacked_at END
-        WHERE name = %s
-    """, (status, note, source_url, status, name))
+    if row:
+        if row[0] == status:
+            cur.close()
+            return False  # статус не изменился — обновлять нечего
+        cur.execute("""
+            UPDATE warehouse_status
+            SET status = %s, status_note = %s, updated_at = NOW(), source_url = %s,
+                attacked_at = CASE WHEN %s = 'attacked' THEN NOW() ELSE attacked_at END
+            WHERE name = %s
+        """, (status, note, source_url, status, name))
+    else:
+        # Новый склад — раньше эта ветка была убрана, чтобы не плодить дубли по
+        # неточному имени (см. инцидент с 'Koledino'/'Wildberries Екатеринбург'
+        # 31.07.2026). Теперь имя уже прогнано через фаззи-сопоставление в run(),
+        # так что добавление новой строки безопасно, а без этой ветки агент
+        # структурно не может обнаружить впервые атакованный склад — именно это
+        # произошло 03.08.2026 со складом во Владимирской области.
+        cur.execute("""
+            INSERT INTO warehouse_status (name, status, status_note, source_url, attacked_at)
+            VALUES (%s, %s, %s, %s, CASE WHEN %s = 'attacked' THEN NOW() ELSE NULL END)
+        """, (name, status, note, source_url, status))
     conn.commit()
     cur.close()
     return True
@@ -364,11 +418,23 @@ def _notify_admin(text: str):
         print('[warehouse_monitor] TELEGRAM_BOT_TOKEN/TELEGRAM_ADMIN_ID не заданы — уведомление пропущено')
         return
     try:
-        requests.post(
+        resp = requests.post(
             f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage',
             json={'chat_id': TELEGRAM_ADMIN_ID, 'text': text, 'parse_mode': 'HTML'},
             timeout=10,
         )
+        # Раньше ответ Telegram не проверялся вообще — если chat_id неверный или
+        # бот не может писать в этот чат, Telegram вернёт 200 с {"ok": false, ...}
+        # (или 4xx), а скрипт молча считал уведомление отправленным.
+        data = {}
+        try:
+            data = resp.json()
+        except ValueError:
+            pass
+        if not resp.ok or data.get('ok') is False:
+            print(f'[warehouse_monitor] Telegram notify FAILED: HTTP {resp.status_code}, ответ: {data or resp.text[:300]}')
+        else:
+            print('[warehouse_monitor] Telegram-уведомление отправлено')
     except Exception as e:
         print(f'[warehouse_monitor] Telegram notify error: {e}')
 
@@ -393,6 +459,12 @@ def run():
             finding = _extract_with_claude(r['text'], known_names, r['url'])
             if not finding.get('found'):
                 continue
+            if str(finding.get('company', '')).strip().upper() == 'WB':
+                resolved = _resolve_warehouse_name(str(finding.get('warehouse', '')).strip(), known_names)
+                if resolved not in known_names:
+                    print(f"[warehouse_monitor]   новый склад, не встречавшийся ранее: {resolved!r}")
+                    known_names.append(resolved)  # чтобы находки в этом же прогоне тоже сгруппировались
+                finding['warehouse'] = resolved
             finding['source_url'] = r['url']
             finding['_tier'] = _classify_source_tier(r['url'])
             raw_findings.append(finding)
@@ -453,6 +525,13 @@ def run():
         print(f'[warehouse_monitor] Обновлено складов: {len(updated)}')
     if uncertain:
         print(f'[warehouse_monitor] Находок с низкой уверенностью: {len(uncertain)} — требуют ручной проверки (см. лог)')
+        # Раньше uncertain-находки не попадали в Telegram вообще — только print в
+        # консоль Railway, которую никто не читает между запусками. Теперь хотя бы
+        # слабый сигнал доходит до админа, явно помеченный как неподтверждённый.
+        lines = [f"• {f.get('warehouse')} → {f.get('status')} (источник: {f.get('source_url')})"
+                  for f in uncertain]
+        _notify_admin("❓ warehouse_monitor: возможная атака (НЕ подтверждено, единственный источник)\n\n"
+                      + "\n".join(lines))
     if competitor_findings:
         lines = [f"• {f.get('company')}: {f.get('warehouse')} → {f.get('status')} ({f.get('source_url')})"
                   for f in competitor_findings]

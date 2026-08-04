@@ -275,6 +275,36 @@ def _confidence(tiers: list, source_urls: list) -> str:
     return 'uncertain'
 
 
+def _ensure_schema(conn):
+    """Идемпотентно добавляет notified_warehouses в warehouse_monitor_log, если
+    колонки ещё нет — самомиграция вместо отдельного .py-скрипта (задача явно
+    просила менять только warehouse_monitor.py). Безопасно вызывать на каждом
+    запуске: ADD COLUMN IF NOT EXISTS ничего не делает, если колонка уже есть."""
+    cur = conn.cursor()
+    cur.execute("ALTER TABLE warehouse_monitor_log ADD COLUMN IF NOT EXISTS notified_warehouses TEXT")
+    conn.commit()
+    cur.close()
+
+
+def _get_recently_notified(conn, hours: int = 24) -> set:
+    """Названия складов, о которых уже уведомляли за последние `hours` часов —
+    чтобы не слать одно и то же уведомление каждые 4 часа из одной и той же
+    старой статьи (реальная жалоба: агент дублировал уведомления)."""
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT notified_warehouses FROM warehouse_monitor_log
+        WHERE run_at > NOW() - INTERVAL '24 hours' AND notified_warehouses IS NOT NULL
+    """)
+    names = set()
+    for (raw,) in cur.fetchall():
+        try:
+            names.update(json.loads(raw))
+        except (TypeError, ValueError):
+            continue
+    cur.close()
+    return names
+
+
 def _get_known_warehouse_names(conn) -> list:
     """Список канонических названий складов из warehouse_status."""
     cur = conn.cursor()
@@ -413,6 +443,16 @@ def _update_warehouse_status(conn, finding: dict) -> bool:
     return True
 
 
+# Кнопка под каждым уведомлением — ссылка на бота WBAnalyzer.
+_OPEN_APP_BUTTON = {
+    "inline_keyboard": [[
+        {"text": "📊 Открыть WBAnalyzer", "url": "https://t.me/Wbanalyzer_user_bot"}
+    ]]
+}
+
+_STATUS_VERB = {'attacked': 'атакован', 'limited': 'ограничен', 'closed': 'закрыт'}
+
+
 def _notify_admin(text: str):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_ADMIN_ID:
         print('[warehouse_monitor] TELEGRAM_BOT_TOKEN/TELEGRAM_ADMIN_ID не заданы — уведомление пропущено')
@@ -420,7 +460,12 @@ def _notify_admin(text: str):
     try:
         resp = requests.post(
             f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage',
-            json={'chat_id': TELEGRAM_ADMIN_ID, 'text': text, 'parse_mode': 'HTML'},
+            json={
+                'chat_id': TELEGRAM_ADMIN_ID,
+                'text': text,
+                'parse_mode': 'HTML',
+                'reply_markup': _OPEN_APP_BUTTON,
+            },
             timeout=10,
         )
         # Раньше ответ Telegram не проверялся вообще — если chat_id неверный или
@@ -446,6 +491,7 @@ def run():
         return
 
     conn = psycopg2.connect(DATABASE_URL)
+    _ensure_schema(conn)
     known_names = _get_known_warehouse_names(conn)
     raw_findings = []  # каждая находка + '_tier' (уровень доверия источника)
 
@@ -499,13 +545,30 @@ def run():
         if _update_warehouse_status(conn, best):
             updated.append(best)
 
+    # Дедуп уведомлений: не слать одно и то же за последние 24 часа, кроме
+    # confirmed — подтверждённая атака (уровень источника 1/2) отправляется
+    # всегда, даже если склад уже упоминался. probable/uncertain фильтруются,
+    # иначе агент шлёт один и тот же факт из одной старой статьи каждые 4 часа.
+    recently_notified = _get_recently_notified(conn)
+    to_notify_updated = [
+        f for f in updated
+        if f.get('confidence') == 'confirmed' or f.get('warehouse') not in recently_notified
+    ]
+    to_notify_uncertain = [
+        f for f in uncertain
+        if f.get('warehouse') not in recently_notified
+    ]
+    notified_names = [f.get('warehouse') for f in to_notify_updated] + \
+                      [f.get('warehouse') for f in to_notify_uncertain]
+
     # Один сводный лог на запуск: found=True, если было хоть одно распознанное упоминание
     # (включая конкурентов и uncertain-находки — они тоже идут в raw_response для ручной проверки).
     all_for_log = wb_findings + competitor_findings
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO warehouse_monitor_log (found, warehouse, status, summary, source_url, raw_response)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO warehouse_monitor_log
+            (found, warehouse, status, summary, source_url, raw_response, notified_warehouses)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
     """, (
         bool(all_for_log),
         all_for_log[0].get('warehouse') if all_for_log else None,
@@ -513,33 +576,42 @@ def run():
         '; '.join(f"{f.get('company')}/{f.get('warehouse')}→{f.get('status')}" for f in all_for_log) or None,
         all_for_log[0].get('source_url') if all_for_log else None,
         json.dumps(all_for_log, ensure_ascii=False, default=str) if all_for_log else None,
+        json.dumps(notified_names, ensure_ascii=False) if notified_names else None,
     ))
     conn.commit()
     cur.close()
     conn.close()
 
-    if updated:
-        lines = [f"• {f.get('warehouse')} → {f.get('status')} [{f.get('confidence')}] ({f.get('date', '—')})"
-                  for f in updated]
-        _notify_admin("⚠️ warehouse_monitor: обновлён статус складов WB\n\n" + "\n".join(lines))
-        print(f'[warehouse_monitor] Обновлено складов: {len(updated)}')
-    if uncertain:
-        print(f'[warehouse_monitor] Находок с низкой уверенностью: {len(uncertain)} — требуют ручной проверки (см. лог)')
-        # Раньше uncertain-находки не попадали в Telegram вообще — только print в
-        # консоль Railway, которую никто не читает между запусками. Теперь хотя бы
-        # слабый сигнал доходит до админа, явно помеченный как неподтверждённый.
-        lines = [f"• {f.get('warehouse')} → {f.get('status')} (источник: {f.get('source_url')})"
-                  for f in uncertain]
-        _notify_admin("❓ warehouse_monitor: возможная атака (НЕ подтверждено, единственный источник)\n\n"
-                      + "\n".join(lines))
+    if to_notify_updated:
+        lines = []
+        for f in to_notify_updated:
+            verb = _STATUS_VERB.get(f.get('status'), f.get('status'))
+            lines.append(f"- {f.get('warehouse')} — {verb} {f.get('date', '—')}")
+            lines.append(f"  Источник: {f.get('source_url')}")
+        _notify_admin("🔴 Новая атака на склад WB\n\n" + "\n".join(lines))
+        print(f'[warehouse_monitor] Обновлено складов: {len(updated)} (уведомлено: {len(to_notify_updated)})')
+    elif updated:
+        print(f'[warehouse_monitor] Обновлено складов: {len(updated)} '
+              f'(уведомление подавлено — уже сообщали за последние 24ч)')
+
+    if to_notify_uncertain:
+        lines = [f"- {f.get('warehouse')} → {f.get('status')} (1 источник)" for f in to_notify_uncertain]
+        _notify_admin("⚠️ Возможная атака (требует проверки)\n\n" + "\n".join(lines))
+        print(f'[warehouse_monitor] Находок с низкой уверенностью: {len(uncertain)} '
+              f'(уведомлено: {len(to_notify_uncertain)})')
+    elif uncertain:
+        print(f'[warehouse_monitor] Находок с низкой уверенностью: {len(uncertain)} '
+              f'(уведомление подавлено — уже сообщали за последние 24ч)')
+
     if competitor_findings:
         lines = [f"• {f.get('company')}: {f.get('warehouse')} → {f.get('status')} ({f.get('source_url')})"
                   for f in competitor_findings]
         print('[warehouse_monitor] Упоминания складов конкурентов:\n' + '\n'.join(lines))
         _notify_admin("ℹ️ warehouse_monitor: упоминания складов конкурентов (информационно, в БД не пишем)\n\n"
                       + '\n'.join(lines))
-    if not (updated or uncertain or competitor_findings):
-        print('[warehouse_monitor] Упоминаний складов не найдено')
+
+    if not (to_notify_updated or to_notify_uncertain or competitor_findings):
+        print('[warehouse_monitor] Тишина — новых событий нет (или все уже под дедупом за 24ч)')
 
     print(f'[warehouse_monitor] Готово: {datetime.now().isoformat()}')
 

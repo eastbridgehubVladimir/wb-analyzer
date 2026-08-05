@@ -781,6 +781,24 @@ def _run_supplier(n: dict) -> dict:
                 'description': plat.get('note', ''),
                 'moq':         plat.get('moq', ''),
             })
+        # Агенты в Китае — гарантированно показываем, даже если из-за будущих
+        # изменений PLATFORMS['china'] или порядка скоринга они выпадут из
+        # обычного среза топ-3 (см. Правку 4). Раньше агенты стояли 5-ми и
+        # никогда не доходили до пользователя — критичный для закупки в
+        # Китае инструмент был фактически скрыт.
+        if opt.country == 'china' and not any(
+            l['country'] == opt.label and 'Агент' in l['platform'] for l in search_links
+        ):
+            agent_plat = next((p for p in _si.PLATFORMS.get('china', []) if 'Агент' in p['name']), None)
+            if agent_plat:
+                url = _si.platform_url(agent_plat, search_terms)
+                search_links.append({
+                    'platform':    agent_plat['name'],
+                    'country':     opt.label,
+                    'url':         url or '',
+                    'description': agent_plat.get('note', ''),
+                    'moq':         agent_plat.get('moq', ''),
+                })
 
     return {
         # Данные из sourcing_intel (детерминированные)
@@ -2317,13 +2335,23 @@ def _sec_supplier(r: dict) -> list:
                               textColor=C_TEXT, leading=11,
                               spaceBefore=0, spaceAfter=0)
 
+    # Группируем уже готовые ссылки (товар подставлен в шаблон) по стране.
+    # Раньше таблица строилась из сырых platforms[].url_tpl — шаблон вида
+    # ".../search?q={ru}" рендерился БЕЗ подстановки, и ссылка в PDF вела на
+    # буквальный текст "%7Bru%7D" вместо реального поиска по товару. Баг
+    # найден и исправлен 05.08.2026 — search_links (см. _run_supplier) уже
+    # содержит готовые URL, их и используем.
+    links_by_country = {}
+    for link in (r.get('search_links') or []):
+        links_by_country.setdefault(link.get('country', ''), []).append(link)
+
     for opt in options:
         country = str(opt.get('country', ''))
         risks   = str(opt.get('risks', ''))
         cert    = str(opt.get('certification', ''))
-        plats   = list(opt.get('platforms') or [])
+        links   = links_by_country.get(country) or []
 
-        if not plats:
+        if not links:
             continue
 
         els.append(_h3(f'{country}'))
@@ -2333,11 +2361,11 @@ def _sec_supplier(r: dict) -> list:
             els.append(_body(f'📋 Документы: {cert}'))
 
         link_rows = [['Площадка', 'MOQ', 'Описание / Ссылка']]
-        for plat in plats:
-            url  = str(plat.get('url_tpl') or '')
-            note = str(plat.get('note', ''))[:90]
-            moq  = str(plat.get('moq', ''))
-            name = str(plat.get('name', ''))
+        for link in links:
+            url  = str(link.get('url') or '')
+            note = str(link.get('description', ''))[:90]
+            moq  = str(link.get('moq', ''))
+            name = str(link.get('platform', ''))
             if url and url.startswith('http'):
                 short = (url[:48] + '…') if len(url) > 51 else url
                 cell  = Paragraph(f'<link href="{url}"><u>{short}</u></link><br/>{note}', _link_s)
@@ -2345,6 +2373,22 @@ def _sec_supplier(r: dict) -> list:
                 cell = Paragraph(note or '—', _desc_s)
             link_rows.append([name, moq, cell])
         els.append(_tbl(link_rows, col_widths=[1.25*inch, 1.1*inch, COL_W - 2.35*inch]))
+
+        # Отдельный инструктивный блок про агентов — для Китая всегда, текст
+        # длиннее 90-символьного лимита обычной строки таблицы, поэтому не
+        # втискиваем в неё, а выносим отдельно (Правка 4, 05.08.2026).
+        if 'Китай' in country:
+            agent_guide = '<br/>'.join([
+                '<b>Как работать с агентом в Китае:</b>',
+                '1. Найти агента: Supplyia.com, Chinabrands.com, или через рекомендации в сообществах WB-продавцов',
+                '2. Агент берёт 5–10% комиссию от суммы заказа',
+                '3. Что делает агент: проверка качества (QC), фото отчёт партии, упаковка под ваш бренд, '
+                'консолидация грузов, оформление документов, карго-доставка в РФ/РБ',
+                '4. Минимальная партия: от 1 упаковки (тест качества)',
+                '5. Срок доставки карго: 25–40 дней',
+            ])
+            els.append(_sp(0.05))
+            els.append(_info(agent_guide))
 
     # ── Поисковые запросы (от Claude) ─────────────────────────
     sq = r.get('search_queries') or {}

@@ -34,6 +34,8 @@ except ImportError:
 
 import requests as mpstats_req
 
+from niche_updater import is_mpstats_available, set_mpstats_backoff
+
 
 
 import datetime
@@ -105,6 +107,9 @@ def get_mpstats_cached(path, d1, d2):
         if (now - ts) < MPSTATS_CACHE_TTL:
             print(f"[CACHE] MPStats из кэша: {path}")
             return data
+    if not is_mpstats_available():
+        print(f'[MPStats] Circuit breaker активен — пропускаем запрос: {path}')
+        return {"data": [], "error": "circuit_breaker"}
     headers = {'X-Mpstats-TOKEN': MPSTATS_TOKEN, 'Content-Type': 'application/json'}
     r = mpstats_req.post(
         'https://mpstats.io/api/wb/get/category',
@@ -115,7 +120,8 @@ def get_mpstats_cached(path, d1, d2):
     )
     print(f'[MPStats] status: {r.status_code}, path: {path}')
     if r.status_code == 429:
-        print('[MPStats] 429 Too Many Requests — возвращаем пустой кэш')
+        print('[MPStats] 429 Too Many Requests — включаем circuit breaker на 1ч')
+        set_mpstats_backoff(3600)
         return {"data": [], "error": "rate_limit"}
     if r.status_code != 200:
         print(f'[MPStats] Ошибка {r.status_code} — возвращаем пустой кэш')
@@ -126,6 +132,49 @@ def get_mpstats_cached(path, d1, d2):
         print(f'[MPStats] JSON parse error: {e}')
         return {"data": [], "error": "parse_error"}
     print(f'[MPStats] total: {data.get("total")}, items: {len(data.get("data", []))}')
+    _mpstats_cache[cache_key] = (data, now)
+    return data
+
+def get_mpstats_subjects_cached():
+    """
+    Кэш ответа /get/subjects/select для /charts (используется для масштабирования
+    графиков ниши к реальному объёму рынка). Запрос не зависит от ниши — возвращает
+    один и тот же полный каталог для любой ниши, поэтому кэшируется одним общим
+    ключом на сутки, а не по нише (иначе просмотр каждой новой ниши за день
+    заново тянул бы одинаковые ~10000 строк).
+    """
+    global _mpstats_cache
+    cache_key = f"charts_subjects_all_{datetime.date.today().isoformat()}"
+    now = time.time()
+    if cache_key in _mpstats_cache:
+        data, ts = _mpstats_cache[cache_key]
+        if (now - ts) < MPSTATS_CACHE_TTL:
+            print("[CACHE] MPStats subjects/select из кэша")
+            return data
+    if not is_mpstats_available():
+        print('[MPStats] Circuit breaker активен — пропускаем subjects/select')
+        return []
+    headers = {'X-Mpstats-TOKEN': MPSTATS_TOKEN, 'Content-Type': 'application/json'}
+    r = mpstats_req.get(
+        'https://mpstats.io/api/wb/get/subjects/select',
+        headers=headers,
+        params={'fbs': 1},
+        json={'startRow': 0, 'endRow': 10000, 'filterModel': {}, 'sortModel': []},
+        timeout=30,
+    )
+    print(f'[MPStats] subjects/select status: {r.status_code}')
+    if r.status_code == 429:
+        print('[MPStats] 429 Too Many Requests (subjects/select) — включаем circuit breaker на 1ч')
+        set_mpstats_backoff(3600)
+        return []
+    if r.status_code != 200:
+        print(f'[MPStats] Ошибка {r.status_code} (subjects/select)')
+        return []
+    try:
+        data = r.json()
+    except Exception as e:
+        print(f'[MPStats] JSON parse error (subjects/select): {e}')
+        return []
     _mpstats_cache[cache_key] = (data, now)
     return data
 
@@ -6833,18 +6882,9 @@ class Handler(BaseHTTPRequestHandler):
                     niche_total_revenue = 0
                     niche_scale_factor = 1.0
                     try:
-                        subj_r = get_mpstats_cached.__func__ if hasattr(get_mpstats_cached, '__func__') else None
-                        import requests as _req
-                        _subj = _req.get(
-                            'https://mpstats.io/api/wb/get/subjects/select',
-                            headers={'X-Mpstats-TOKEN': MPSTATS_TOKEN, 'Content-Type': 'application/json'},
-                            params={'fbs': 1},
-                            json={'startRow': 0, 'endRow': 10000, 'filterModel': {}, 'sortModel': []},
-                            timeout=30,
-                        )
-                        if _subj.status_code == 200:
-                            _all = _subj.json()
-                            _name_lower = niche_name.lower()
+                        _all = get_mpstats_subjects_cached()
+                        _name_lower = niche_name.lower()
+                        if _all:
                             _row = next((x for x in _all if x.get('name', '').lower() == _name_lower), None)
                             if not _row:
                                 # мягкий поиск

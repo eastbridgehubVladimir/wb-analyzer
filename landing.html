@@ -281,6 +281,177 @@
   .risk-card h3 { color: #fff; margin: 12px 0 8px; }
   .risk-card p { color: #888; font-size: 14px; line-height: 1.5; }
 
+  /* ── WAREHOUSES MAP ── */
+  .warehouses-section {
+    padding: 80px 0;
+    background: #0d1117;
+  }
+  .warehouses-section h2 {
+    text-align: center;
+    color: #e0e6ff;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  .section-subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 40px;
+    font-size: 14px;
+  }
+  .wh-counters {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .wh-counter {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .wh-num {
+    display: block;
+    font-size: 36px;
+    font-weight: 600;
+    color: #e0e6ff;
+  }
+  .wh-label {
+    font-size: 13px;
+    color: #666;
+  }
+  .wh-danger .wh-num { color: #ff4444; }
+  .wh-success .wh-num { color: #44ff88; }
+  .wh-warning .wh-num { color: #ffaa44; }
+
+  .wh-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .wh-filter {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid #21262d;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+  .wh-filter.active, .wh-filter:hover {
+    background: #1a237e;
+    border-color: #3949ab;
+    color: #90caf9;
+  }
+
+  .wh-table-wrap {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid #21262d;
+  }
+  .wh-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .wh-table th {
+    background: #161b22;
+    color: #666;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 500;
+    border-bottom: 1px solid #21262d;
+  }
+  .wh-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #21262d;
+    color: #c0c0c0;
+  }
+  .wh-table tr:last-child td { border-bottom: none; }
+  .wh-table tr.row-attacked { background: rgba(255,68,68,0.05); }
+  .wh-table tr.row-limited  { background: rgba(255,170,68,0.05); }
+  .wh-table tr.row-active   { background: rgba(68,255,136,0.03); }
+
+  .status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .status-attacked {
+    background: rgba(255,68,68,0.15);
+    color: #ff6b6b;
+  }
+  .status-active {
+    background: rgba(68,255,136,0.15);
+    color: #44ff88;
+  }
+  .status-limited {
+    background: rgba(255,170,68,0.15);
+    color: #ffaa44;
+  }
+
+  .wh-update {
+    text-align: right;
+    font-size: 12px;
+    color: #444;
+    margin-top: 12px;
+  }
+
+  /* ── NEWS FEED ── */
+  .news-section {
+    padding: 80px 0;
+    background: #0a0d12;
+  }
+  .news-section h2 {
+    text-align: center;
+    color: #e0e6ff;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  .news-feed {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .news-item {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .news-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .news-body { flex: 1; }
+  .news-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: #e0e6ff;
+    margin-bottom: 4px;
+  }
+  .news-meta {
+    font-size: 12px;
+    color: #555;
+    display: flex;
+    gap: 12px;
+  }
+  .news-source {
+    color: #3949ab;
+    text-decoration: none;
+  }
+  .news-source:hover { color: #90caf9; }
+
   /* ── WHAT'S INSIDE ── */
   .report-preview {
     background: var(--card); border: 1px solid var(--border); border-radius: 20px;
@@ -356,6 +527,8 @@
   <a class="logo" href="/">WB<span>Analyzer</span></a>
   <div class="nav-links">
     <a href="#how">Как работает</a>
+    <a href="#news">📰 События</a>
+    <a href="#warehouses">🗺️ Склады</a>
     <a href="#pricing">Цены</a>
     <a href="#faq">FAQ</a>
     <a href="/login" class="btn-nav">Войти</a>
@@ -619,6 +792,85 @@
            склад WB — узнаёшь первым</p>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- WAREHOUSES MAP -->
+<section class="warehouses-section" id="warehouses">
+  <div class="container">
+
+    <!-- Заголовок -->
+    <h2>Склады Wildberries — живой мониторинг</h2>
+    <p class="section-subtitle">
+      Обновляется каждые 4 часа · данные из открытых источников
+    </p>
+
+    <!-- Счётчики (заполняются через AJAX) -->
+    <div class="wh-counters">
+      <div class="wh-counter">
+        <span class="wh-num" id="wh-total">—</span>
+        <span class="wh-label">отслеживается</span>
+      </div>
+      <div class="wh-counter wh-danger">
+        <span class="wh-num" id="wh-attacked">—</span>
+        <span class="wh-label">атаковано</span>
+      </div>
+      <div class="wh-counter wh-success">
+        <span class="wh-num" id="wh-active">—</span>
+        <span class="wh-label">работают</span>
+      </div>
+      <div class="wh-counter wh-warning">
+        <span class="wh-num" id="wh-limited">—</span>
+        <span class="wh-label">ограничено</span>
+      </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="wh-filters">
+      <button class="wh-filter active" data-filter="all">Все</button>
+      <button class="wh-filter" data-filter="attacked">Атакованы</button>
+      <button class="wh-filter" data-filter="active">Работают</button>
+      <button class="wh-filter" data-filter="limited">Ограничены</button>
+    </div>
+
+    <!-- Таблица складов (заполняется через AJAX) -->
+    <div class="wh-table-wrap">
+      <table class="wh-table" id="wh-table">
+        <thead>
+          <tr>
+            <th>Склад</th>
+            <th>Регион</th>
+            <th>Статус</th>
+            <th>Дата атаки</th>
+            <th>Примечание</th>
+          </tr>
+        </thead>
+        <tbody id="wh-tbody">
+          <tr><td colspan="5" style="text-align:center;
+            color:#666">Загрузка...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="wh-update" id="wh-updated"></p>
+  </div>
+</section>
+
+<!-- NEWS FEED -->
+<section class="news-section" id="news">
+  <div class="container">
+
+    <h2>Последние события</h2>
+    <p class="section-subtitle">
+      Атаки на склады · решения WB · изменения рынка
+    </p>
+
+    <div class="news-feed" id="news-feed">
+      <div style="text-align:center; color:#666">
+        Загрузка новостей...
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -1052,6 +1304,124 @@ function checkNiche() {
       res.innerHTML = '<div class="wr-not-found">Ошибка соединения — попробуйте ещё раз</div>';
     });
 }
+
+// ── WAREHOUSES MAP ──
+async function loadWarehouses() {
+  try {
+    const r = await fetch('/api/warehouses');
+    const d = await r.json();
+
+    document.getElementById('wh-total').textContent = d.total;
+    document.getElementById('wh-attacked').textContent = d.attacked;
+    document.getElementById('wh-active').textContent = d.active;
+    document.getElementById('wh-limited').textContent = d.limited || 0;
+
+    const updated = new Date(d.last_updated);
+    document.getElementById('wh-updated').textContent =
+      'Обновлено: ' + updated.toLocaleString('ru-RU');
+
+    window._whData = d.warehouses;
+    renderTable('all');
+  } catch(e) {
+    console.error('Warehouses load error:', e);
+  }
+}
+
+function renderTable(filter) {
+  const data = window._whData || [];
+  const filtered = filter === 'all'
+    ? data
+    : data.filter(w => w.status === filter);
+
+  const tbody = document.getElementById('wh-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="5"'
+      + ' style="text-align:center;color:#444">'
+      + 'Нет данных</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(w => {
+    const statusLabel = {
+      attacked: 'Атакован',
+      active: 'Работает',
+      limited: 'Ограничен'
+    }[w.status] || w.status;
+
+    const attackedDate = w.attacked_at
+      ? new Date(w.attacked_at).toLocaleDateString('ru-RU')
+      : '—';
+
+    return '<tr class="row-' + w.status + '">'
+      + '<td><strong>' + w.name + '</strong></td>'
+      + '<td>' + (w.region || '—') + '</td>'
+      + '<td><span class="status-badge status-' + w.status + '">'
+      + statusLabel + '</span></td>'
+      + '<td>' + attackedDate + '</td>'
+      + '<td style="color:#555;font-size:12px">'
+      + (w.status_note || '—') + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+document.querySelectorAll('.wh-filter').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.wh-filter')
+      .forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTable(btn.dataset.filter);
+  });
+});
+
+// ── NEWS FEED ──
+async function loadNews() {
+  try {
+    const r = await fetch('/api/warehouse-news?limit=15');
+    const d = await r.json();
+    const feed = document.getElementById('news-feed');
+
+    if (!d.news || !d.news.length) {
+      feed.innerHTML = '<div style="text-align:center;'
+        + 'color:#444">Нет новостей</div>';
+      return;
+    }
+
+    const icons = { attacked: '🔴', limited: '🟡',
+                    active: '🟢' };
+
+    feed.innerHTML = d.news.map(n => {
+      const date = new Date(n.run_at)
+        .toLocaleString('ru-RU', {
+          day:'2-digit', month:'2-digit',
+          hour:'2-digit', minute:'2-digit'
+        });
+      const icon = icons[n.status] || '📋';
+      const sourceHost = n.source_url
+        ? new URL(n.source_url).hostname : '';
+
+      return '<div class="news-item">'
+        + '<div class="news-icon">' + icon + '</div>'
+        + '<div class="news-body">'
+        + '<div class="news-title">'
+        + n.warehouse + ' → ' + (n.summary || n.status)
+        + '</div>'
+        + '<div class="news-meta">'
+        + '<span>' + date + '</span>'
+        + (n.source_url
+          ? '<a href="' + n.source_url
+            + '" target="_blank" class="news-source">'
+            + sourceHost + '</a>'
+          : '')
+        + '</div>'
+        + '</div></div>';
+    }).join('');
+  } catch(e) {
+    console.error('News load error:', e);
+  }
+}
+
+loadWarehouses();
+loadNews();
 </script>
 </body>
 </html>

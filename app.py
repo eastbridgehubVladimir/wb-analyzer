@@ -6519,7 +6519,96 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
 
+        elif self.path == '/api/warehouses':
+            try:
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT name, region, status, status_note, attacked_at, updated_at
+                    FROM warehouse_status
+                    ORDER BY
+                        CASE status
+                            WHEN 'attacked' THEN 1
+                            WHEN 'limited' THEN 2
+                            WHEN 'active' THEN 3
+                            ELSE 4
+                        END, name
+                """)
+                rows = cur.fetchall()
+                cur.close(); conn.close()
 
+                warehouses = []
+                last_updated = None
+                counts = {'active': 0, 'attacked': 0, 'limited': 0}
+                for name, region, status, status_note, attacked_at, updated_at in rows:
+                    if status in counts:
+                        counts[status] += 1
+                    if updated_at and (last_updated is None or updated_at > last_updated):
+                        last_updated = updated_at
+                    warehouses.append({
+                        'name': name,
+                        'region': region,
+                        'status': status,
+                        'status_note': status_note,
+                        'attacked_at': attacked_at.isoformat() if attacked_at else None,
+                        'updated_at': updated_at.isoformat() if updated_at else None,
+                    })
+
+                result = {
+                    'total': len(warehouses),
+                    'active': counts['active'],
+                    'attacked': counts['attacked'],
+                    'limited': counts['limited'],
+                    'last_updated': last_updated.isoformat() if last_updated else None,
+                    'warehouses': warehouses,
+                }
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps(result, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
+
+        elif self.path.startswith('/api/warehouse-news'):
+            try:
+                from urllib.parse import parse_qs, urlparse
+                raw_limit = parse_qs(urlparse(self.path).query).get('limit', ['20'])[0]
+                try:
+                    limit = max(1, min(100, int(raw_limit)))
+                except ValueError:
+                    limit = 20
+
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT run_at, warehouse, status, summary, source_url
+                    FROM warehouse_monitor_log
+                    WHERE warehouse IS NOT NULL AND source_url IS NOT NULL
+                    ORDER BY run_at DESC LIMIT %s
+                """, (limit,))
+                rows = cur.fetchall()
+                cur.close(); conn.close()
+
+                news = [{
+                    'run_at': run_at.isoformat() if run_at else None,
+                    'warehouse': warehouse,
+                    'status': status,
+                    'summary': summary,
+                    'source_url': source_url,
+                } for run_at, warehouse, status, summary, source_url in rows]
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({'news': news}, ensure_ascii=False).encode('utf-8'))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': str(e)}).encode())
 
         elif self.path.startswith('/portfolio'):
             try:

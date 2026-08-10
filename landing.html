@@ -6,206 +6,180 @@
 <title>WBAnalyzer — Аналитика ниш Wildberries с AI</title>
 <meta name="description" content="Анализ прибыльности любой ниши WB за 5 минут. Выручка, конкуренция, маржа, AI-рекомендации, риски складов. PDF-отчёт с готовым планом входа.">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --em: #10b981;
-    --em-light: rgba(16,185,129,0.12);
-    --em-border: rgba(16,185,129,0.25);
+    --em: #059669;
+    --em-light: rgba(5,150,105,0.12);
+    --em-border: rgba(5,150,105,0.3);
     --dark: #0a1628;
-    --hero-bg: #0d1f3c;
-    --white: #ffffff;
-    --gray-50: #fafafa;
-    --gray-100: #f1f5f9;
-    --gray-200: #e5e7eb;
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
-    --text-muted: #94a3b8;
+    --hero: #0d1f3c;
+    --bg: #f1f5f9;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #e2e8f0;
+    --border-light: #f1f5f9;
+    --text-1: #1e293b;
+    --text-2: #64748b;
+    --text-3: #94a3b8;
+    --text-4: #475569;
     --danger: #ef4444;
-    --danger-bg: rgba(248,113,113,0.12);
+    --danger-bg: rgba(239,68,68,0.08);
+    --danger-border: rgba(239,68,68,0.18);
     --warning: #f59e0b;
+    --tg: #38bdf8;
+    --tg-bg: rgba(0,136,204,0.15);
+    --tg-border: rgba(0,136,204,0.3);
   }
 
-  html { scroll-behavior: smooth; }
   body {
-    background: var(--white);
-    color: var(--text-primary);
-    font-family: system-ui, -apple-system, 'Inter', sans-serif;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    color: var(--text-1);
     line-height: 1.5;
   }
 
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
+  [id] { scroll-margin-top: 60px; }
+
   /* ── NAV ── */
   nav {
-    height: 48px;
-    background: var(--dark);
     position: sticky; top: 0; z-index: 100;
+    background: var(--dark);
+    height: 52px; padding: 0 28px;
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
   }
-  .logo { color: #fff; text-decoration: none; font-weight: 700; font-size: 16px; }
-  .logo span { color: var(--em); }
-  .nav-right { display: flex; align-items: center; gap: 20px; }
-  .nav-right a.nav-link { font-size: 12px; color: var(--text-muted); text-decoration: none; }
-  .nav-right a.nav-link:hover { color: var(--white); }
+  .nav-links { display: flex; gap: 24px; align-items: center; }
+  .nav-links a.nl { font-size: 13px; color: var(--text-3); text-decoration: none; }
+  .nav-links a.nl:hover { color: #fff; }
   .nav-tg {
     background: var(--em-light); border: 1px solid var(--em-border); color: var(--em);
-    border-radius: 20px; padding: 5px 14px; font-size: 12px; text-decoration: none;
+    padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; text-decoration: none;
   }
-
-  section, [id] { scroll-margin-top: 56px; }
 
   /* ── HERO ── */
-  .hero {
-    background: var(--hero-bg);
-    padding: 28px 32px 0;
-    display: grid; grid-template-columns: 1fr 300px; gap: 28px;
-  }
+  .hero { background: var(--hero); padding: 28px 28px 24px; }
 
   .tag-pill {
     display: inline-flex; align-items: center; gap: 6px;
-    background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25);
-    border-radius: 20px; padding: 3px 12px;
+    background: var(--em-light); border: 1px solid var(--em-border);
+    border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #34d399;
+    margin-bottom: 16px;
   }
-  .tag-pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--em);
-    box-shadow: 0 0 0 3px rgba(16,185,129,0.2); animation: pulse 2s infinite; }
-  .tag-pill span.txt { font-size: 11px; color: var(--em); }
-
-  .hero-left h1 {
-    font-size: 26px; font-weight: 700; color: #f1f5f9; margin-top: 14px; line-height: 1.25;
+  .tag-pill .dot {
+    width: 7px; height: 7px; background: var(--em); border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(5,150,105,0.3); animation: pulse 2s infinite;
   }
-  .hero-left h1 em { color: var(--em); font-style: normal; }
-  .hero-sub { font-size: 13px; color: #64748b; margin: 10px 0 20px; max-width: 480px; }
 
-  .hero-search-row { display: flex; gap: 8px; }
+  h1 { font-size: 28px; font-weight: 700; color: #f1f5f9; line-height: 1.2; margin-bottom: 10px; }
+  h1 em { color: var(--em); font-style: normal; }
+
+  .hero-sub { font-size: 13px; color: var(--text-2); margin-bottom: 20px; line-height: 1.5; max-width: 560px; }
+
+  #search-bar { display: flex; gap: 8px; margin-bottom: 20px; }
   #hero-search {
-    flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 8px; padding: 9px 16px; color: #e2e8f0; font-size: 13px;
+    flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px; padding: 10px 16px; font-size: 13px; color: #e2e8f0;
     font-family: inherit; outline: none;
   }
   #hero-search::placeholder { color: #334155; }
   .btn-check {
-    background: var(--em); color: #fff; border: none; padding: 9px 20px;
-    border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer;
+    background: var(--em); color: #fff; border: none; padding: 10px 22px;
+    border-radius: 8px; font-size: 13px; font-weight: 500; white-space: nowrap; cursor: pointer;
   }
-  .btn-check:disabled { opacity: .6; cursor: not-allowed; }
-  .btn-hero-tg {
-    background: rgba(0,136,204,0.15); border: 1px solid rgba(0,136,204,0.3); color: #38bdf8;
-    padding: 9px 14px; border-radius: 8px; font-size: 13px; text-decoration: none;
+  .btn-tg-hero {
+    background: var(--tg-bg); border: 1px solid var(--tg-border); color: var(--tg);
+    padding: 10px 16px; border-radius: 8px; font-size: 13px; white-space: nowrap; text-decoration: none;
     display: inline-flex; align-items: center;
   }
 
   #hero-result {
-    display: none; background: rgba(255,255,255,0.06); border-radius: 8px;
-    padding: 12px; margin-top: 8px; color: #e2e8f0; font-size: 13px;
-  }
-  #hero-result.show { display: block; }
-  #hero-result .hr-name { font-size: 12px; color: #94a3b8; margin-bottom: 8px; }
-  #hero-result .hr-name strong { color: #f1f5f9; }
-  #hero-result .hr-row { display: flex; align-items: center; gap: 12px; }
-  #hero-result .hr-score {
-    width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center;
-    justify-content: center; font-size: 17px; font-weight: 800; flex-shrink: 0;
-  }
-  #hero-result .hr-score.buy { background: rgba(52,211,153,0.15); color: #34d399; }
-  #hero-result .hr-score.test { background: rgba(245,158,11,0.15); color: var(--warning); }
-  #hero-result .hr-score.skip { background: rgba(248,113,113,0.15); color: #f87171; }
-  #hero-result .hr-verdict { font-size: 13px; font-weight: 700; }
-  #hero-result .hr-metrics { display: flex; gap: 16px; margin-top: 4px; font-size: 11px; color: #94a3b8; }
-  #hero-result .hr-metrics b { color: #e2e8f0; font-size: 12px; }
-  #hero-result a.hr-cta {
-    display: inline-block; margin-top: 10px; color: var(--em); font-size: 12px;
-    text-decoration: none; font-weight: 600;
+    display: none; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px; padding: 14px 16px; margin-top: 8px; color: #e2e8f0; font-size: 13px;
   }
 
-  .hero-stats { display: flex; gap: 28px; padding: 20px 0; }
-  .hero-stats .stat .num { font-size: 24px; font-weight: 700; }
-  .hero-stats .stat .lbl { font-size: 11px; color: #475569; margin-top: 2px; }
+  .hero-stats { display: flex; gap: 28px; padding-top: 4px; }
+  .hero-stats .st-num { font-size: 24px; font-weight: 700; line-height: 1; }
+  .hero-stats .st-lbl { font-size: 11px; color: var(--text-4); margin-top: 2px; }
 
-  /* ── HERO PANEL (склады) ── */
-  .hero-panel {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-bottom: none;
-    border-radius: 10px 10px 0 0;
-    padding: 16px;
-    align-self: end;
-  }
-  .panel-head { display: flex; justify-content: space-between; align-items: center; }
-  .panel-head .ph-title { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
-  .panel-head .ph-live { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--em); }
-  .panel-head .ph-live .dot-sm { width: 5px; height: 5px; border-radius: 50%; background: var(--em); animation: pulse 2s infinite; }
+  /* ── ОСНОВНАЯ СЕТКА ── */
+  .grid { display: grid; grid-template-columns: 1fr 380px; min-height: 400px; }
+  .left { border-right: 1px solid var(--border); }
 
-  .panel-counters { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 10px 0; }
-  .pc { background: rgba(0,0,0,0.25); border-radius: 6px; padding: 10px; }
-  .pc .pc-num { font-size: 20px; font-weight: 700; }
-  .pc .pc-lbl { font-size: 10px; color: var(--text-muted); }
+  #events { padding: 20px 22px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  #warehouses { padding: 20px 22px; background: var(--surface); }
 
-  .wh-r { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-  .wh-r:last-child { border-bottom: none; }
-  .wh-n { font-size: 12px; color: #cbd5e1; }
-  .b-r { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.2);
-    font-size: 10px; padding: 2px 8px; border-radius: 4px; }
-  .b-g { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.2);
-    font-size: 10px; padding: 2px 8px; border-radius: 4px; }
+  .col-title { font-size: 11px; text-transform: uppercase; color: var(--text-3); letter-spacing: .07em; font-weight: 600; margin-bottom: 14px; }
 
-  /* ── MID (события + аналитика) ── */
-  .mid { display: grid; grid-template-columns: 1fr 320px; }
-
-  .events-col { padding: 24px 28px; border-right: 1px solid var(--gray-200); }
-  .col-title { font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px; letter-spacing: .5px; }
-
-  .ni { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f8fafc; }
+  .ni { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f8fafc; }
   .ni:last-child { border-bottom: none; }
-  .ni-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
-  .dot-r { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-bg); }
-  .dot-y { background: var(--warning); box-shadow: 0 0 0 3px rgba(245,158,11,0.12); }
-  .ni-title { font-size: 13px; font-weight: 500; color: var(--text-primary); }
-  .ni-meta { display: flex; gap: 12px; font-size: 11px; color: var(--text-muted); margin-top: 3px; }
-  .ni-src { color: var(--em); text-decoration: none; }
-  .ni-src:hover { text-decoration: underline; }
+  .ndot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .dr { background: var(--danger); box-shadow: 0 0 0 2px rgba(239,68,68,0.15); }
+  .dy { background: var(--warning); box-shadow: 0 0 0 2px rgba(245,158,11,0.15); }
+  .nt { font-size: 13px; font-weight: 500; color: var(--text-1); }
+  .nm { font-size: 11px; color: var(--text-3); margin-top: 3px; }
 
-  .analytics-col { padding: 20px; background: var(--gray-50); }
-
-  .plan-card { background: #fff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 14px; margin-bottom: 8px; }
-  .plan-card.popular { border: 1px solid var(--em); background: #f0fdf9; }
-  .plan-name { font-size: 10px; text-transform: uppercase; color: var(--text-muted); }
-  .plan-card.popular .plan-name { color: var(--em); }
-  .plan-price { font-size: 18px; font-weight: 700; color: var(--text-primary); margin: 4px 0 8px; }
-  .plan-features { list-style: none; margin-bottom: 10px; }
-  .plan-features li { font-size: 11px; color: var(--text-secondary); padding: 2px 0; }
-  .plan-features li .ck { color: var(--em); margin-right: 4px; }
-  .plan-btn {
-    display: block; width: 100%; text-align: center; padding: 7px; border-radius: 6px;
-    font-size: 11px; text-decoration: none; cursor: pointer;
-    border: 1px solid var(--gray-200); background: transparent; color: var(--text-muted);
+  .wh-counters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .wh-counters .wc {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px; text-align: center;
   }
-  .plan-card.popular .plan-btn { background: var(--em); border: none; color: #fff; }
+  .wh-counters .wc-num { font-size: 22px; font-weight: 700; }
+  .wh-counters .wc-lbl { font-size: 11px; color: var(--text-3); }
 
-  /* ── FAQ STRIP ── */
-  .faq-strip { display: flex; border-top: 1px solid var(--gray-200); border-bottom: 1px solid var(--gray-200); }
-  .faq-item { flex: 1; padding: 14px 20px; border-right: 1px solid var(--gray-200); }
-  .faq-item:last-child { border-right: none; }
-  .faq-item .fq { font-size: 12px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
-  .faq-item .fa { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+  .wr { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border-light); }
+  .wr:last-child { border-bottom: none; }
+  .wn { font-size: 13px; color: var(--text-1); }
+  .ba { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border);
+    font-size: 11px; padding: 2px 10px; border-radius: 4px; }
+  .bg { background: var(--em-light); color: var(--em); border: 1px solid var(--em-border);
+    font-size: 11px; padding: 2px 10px; border-radius: 4px; }
+
+  /* ── ПРАВАЯ КОЛОНКА / АНАЛИТИКА ── */
+  .right { padding: 18px; background: var(--surface-2); display: flex; flex-direction: column; gap: 10px; }
+
+  .plan { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .plan.popular { border: 2px solid var(--em) !important; background: #f0fdf4; }
+  .plan-head { display: flex; justify-content: space-between; align-items: flex-start; }
+  .plan-name { font-size: 11px; text-transform: uppercase; color: var(--text-3); letter-spacing: .06em; }
+  .plan.popular .plan-name { color: var(--em); font-weight: 600; }
+  .plan-price { font-size: 20px; font-weight: 700; color: var(--text-1); margin-top: 4px; }
+  .plan-badge { background: var(--em); color: #fff; font-size: 10px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+  .plan-div { height: 1px; background: var(--border-light); margin: 10px 0; }
+  .pf { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+  .pf.one-col { grid-template-columns: 1fr; }
+  .pf li { font-size: 11px; color: var(--text-2); padding: 2px 0; display: flex; align-items: flex-start; gap: 4px; line-height: 1.4; }
+  .pf li::before { content: '✓'; color: var(--em); font-weight: 700; flex-shrink: 0; }
+  .plan-btn {
+    display: block; width: 100%; padding: 8px; border-radius: 6px; font-size: 12px;
+    margin-top: 10px; cursor: pointer; text-align: center; text-decoration: none;
+    border: 1px solid var(--border); background: transparent; color: var(--text-3);
+  }
+  .plan-btn.primary { background: var(--em); border-color: var(--em); color: #fff; font-weight: 500; }
+
+  /* ── FAQ ── */
+  .faq { display: flex; background: var(--surface); border-top: 1px solid var(--border); }
+  .fi { flex: 1; padding: 14px 20px; border-right: 1px solid var(--border-light); }
+  .fi:last-child { border-right: none; }
+  .fi .fq { font-size: 12px; font-weight: 600; color: var(--text-1); margin-bottom: 4px; }
+  .fi .fa { font-size: 11px; color: var(--text-3); line-height: 1.4; }
 
   /* ── FOOTER ── */
-  footer {
-    background: var(--dark); padding: 14px 32px;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  footer .f-left { font-size: 11px; color: #334155; }
-  footer a.f-tg { font-size: 11px; color: var(--em); text-decoration: none; }
+  footer { background: var(--dark); padding: 13px 28px; display: flex; justify-content: space-between; align-items: center; }
+  footer .fl { font-size: 11px; color: #334155; }
+  footer .ftg { font-size: 11px; color: var(--em); text-decoration: none; }
 
   @media (max-width: 768px) {
-    .hero { grid-template-columns: 1fr; }
-    .hero-panel { display: none; }
-    .mid { grid-template-columns: 1fr; }
-    .events-col { border-right: none; }
-    .faq-strip { flex-direction: column; }
-    .faq-item { border-right: none; border-bottom: 1px solid var(--gray-200); }
-    .nav-right a.nav-link { display: none; }
+    .grid { grid-template-columns: 1fr; }
+    .left { border-right: none; }
+    .right { border-top: 1px solid var(--border); }
+    .faq { flex-direction: column; }
+    .fi { border-right: none !important; border-bottom: 1px solid var(--border-light); }
+    .fi:last-child { border-bottom: none; }
+    .nav-links a.nl { display: none; }
+    .pf { grid-template-columns: 1fr !important; }
     .hero-stats { flex-wrap: wrap; gap: 16px; }
   }
 </style>
@@ -213,123 +187,140 @@
 <body>
 
 <nav>
-  <a class="logo" href="/">WB<span>Analyzer</span></a>
-  <div class="nav-right">
-    <a href="#events" class="nav-link">События</a>
-    <a href="#warehouses" class="nav-link">Склады</a>
-    <a href="#analytics" class="nav-link">Аналитика</a>
-    <a href="#faq" class="nav-link">FAQ</a>
-    <a href="https://t.me/Wbanalyzer_user_bot" class="nav-tg">Telegram</a>
+  <a href="/landing" style="text-decoration:none">
+    <span style="font-size:17px;font-weight:700;color:#fff">WB<span style="color:var(--em)">Analyzer</span></span>
+  </a>
+  <div class="nav-links">
+    <a href="#events" class="nl">События</a>
+    <a href="#warehouses" class="nl">Склады</a>
+    <a href="#analytics" class="nl">Аналитика</a>
+    <a href="#faq" class="nl">FAQ</a>
+    <a href="https://t.me/Wbanalyzer_user_bot" target="_blank" class="nav-tg">Telegram</a>
   </div>
 </nav>
 
 <div class="hero">
-  <div class="hero-left">
-    <div class="tag-pill"><span class="dot"></span><span class="txt">Live · 22 склада отслеживается</span></div>
-    <h1>Аналитика ниш Wildberries<br><em>с учётом военных рисков</em></h1>
-    <p class="hero-sub">Узнайте прибыльность любой ниши за 5 минут. Данные о складах, рисках и конкурентах — в одном PDF-отчёте.</p>
+  <div class="tag-pill"><span class="dot"></span>Live · <span id="hero-wh-count">22</span> складов отслеживается</div>
 
-    <div class="hero-search-row">
-      <input id="hero-search" placeholder="Введите нишу: Кроссовки, Органайзеры..."
-        onkeydown="if(event.key==='Enter') checkNiche()">
-      <button class="btn-check" id="hero-check-btn" onclick="checkNiche()">Проверить бесплатно</button>
-      <a href="https://t.me/Wbanalyzer_user_bot" class="btn-hero-tg">Telegram</a>
+  <h1>Аналитика ниш Wildberries<br><em>с учётом военных рисков</em></h1>
+  <p class="hero-sub">Узнайте прибыльность любой ниши за 5 минут. Данные о складах, рисках и конкурентах — в одном PDF-отчёте.</p>
+
+  <div id="search-bar">
+    <input id="hero-search" placeholder="Введите нишу: Кроссовки, Органайзеры..."
+      onkeydown="if(event.key==='Enter') checkNiche()">
+    <button class="btn-check" onclick="checkNiche()">Проверить бесплатно</button>
+    <a href="https://t.me/Wbanalyzer_user_bot" target="_blank" class="btn-tg-hero">Telegram</a>
+  </div>
+  <div id="hero-result"></div>
+
+  <div class="hero-stats">
+    <div><div class="st-num" id="stat-total" style="color:#f1f5f9">7 500+</div><div class="st-lbl">ниш в базе</div></div>
+    <div><div class="st-num" id="stat-attacked" style="color:#f87171">—</div><div class="st-lbl">складов атаковано</div></div>
+    <div><div class="st-num" id="stat-active" style="color:#34d399">—</div><div class="st-lbl">работают</div></div>
+    <div><div class="st-num" style="color:#a78bfa">AI</div><div class="st-lbl">анализ Claude</div></div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="left">
+    <div id="events">
+      <div class="col-title">Последние события</div>
+      <div id="events-feed">
+        <div style="text-align:center;color:var(--text-3);font-size:12px;padding:16px 0;">Загрузка...</div>
+      </div>
     </div>
-    <div id="hero-result"></div>
 
-    <div class="hero-stats">
-      <div class="stat"><div class="num" style="color:#f1f5f9">7 500+</div><div class="lbl">ниш в базе</div></div>
-      <div class="stat"><div class="num" id="stat-attacked" style="color:#f87171">—</div><div class="lbl">складов атаковано</div></div>
-      <div class="stat"><div class="num" id="stat-active" style="color:#34d399">—</div><div class="lbl">работают</div></div>
-      <div class="stat"><div class="num" style="color:#a78bfa">AI</div><div class="lbl">анализ Claude</div></div>
+    <div id="warehouses">
+      <div class="col-title">Склады Wildberries — живой мониторинг</div>
+      <div class="wh-counters">
+        <div class="wc"><div class="wc-num" id="wh-attacked-count" style="color:var(--danger)">—</div><div class="wc-lbl">атаковано</div></div>
+        <div class="wc"><div class="wc-num" id="wh-active-count" style="color:var(--em)">—</div><div class="wc-lbl">работают</div></div>
+      </div>
+      <div id="wh-list">
+        <div style="text-align:center;color:var(--text-3);font-size:12px;padding:16px 0;">Загрузка...</div>
+      </div>
     </div>
   </div>
 
-  <div class="hero-panel" id="warehouses">
-    <div class="panel-head">
-      <span class="ph-title">Склады WB — статус</span>
-      <span class="ph-live"><span class="dot-sm"></span>live</span>
+  <div class="right" id="analytics">
+    <div class="col-title">Аналитика ниш — выберите глубину</div>
+
+    <div class="plan">
+      <div class="plan-head">
+        <div><div class="plan-name">Экспресс</div><div class="plan-price">Бесплатно</div></div>
+      </div>
+      <div class="plan-div"></div>
+      <ul class="pf one-col">
+        <li>Выручка ниши и динамика</li>
+        <li>Уровень конкуренции</li>
+        <li>Средний чек и маржа WB</li>
+        <li>Score 0–100 + вердикт AI</li>
+        <li>3 анализа бесплатно</li>
+      </ul>
+      <button class="plan-btn" onclick="document.getElementById('hero-search').focus()">Попробовать бесплатно</button>
     </div>
-    <div class="panel-counters">
-      <div class="pc"><div class="pc-num" id="panel-attacked" style="color:#f87171">—</div><div class="pc-lbl">атаковано</div></div>
-      <div class="pc"><div class="pc-num" id="panel-active" style="color:#34d399">—</div><div class="pc-lbl">работают</div></div>
+
+    <div class="plan popular">
+      <div class="plan-head">
+        <div><div class="plan-name">★ Стандартный</div><div class="plan-price">2 500 ₽</div></div>
+        <span class="plan-badge">Популярный</span>
+      </div>
+      <div class="plan-div"></div>
+      <ul class="pf">
+        <li>Всё из Экспресса</li>
+        <li>PDF-отчёт ~15 страниц</li>
+        <li>AI-мастер-анализ рынка</li>
+        <li>Топ-20 товаров ниши</li>
+        <li>Юнит-экономика (3 сценария)</li>
+        <li>Рекламная стратегия WB</li>
+        <li>Сезонный план закупок</li>
+        <li>Стратегия входа по месяцам</li>
+      </ul>
+      <a href="/order?level=standard" class="plan-btn primary">Получить отчёт →</a>
     </div>
-    <div id="panel-wh-list">
-      <div style="text-align:center;color:var(--text-muted);font-size:12px;padding:12px 0;">Загрузка...</div>
+
+    <div class="plan">
+      <div class="plan-head">
+        <div><div class="plan-name">Максимальный</div><div class="plan-price">6 000 ₽</div></div>
+      </div>
+      <div class="plan-div"></div>
+      <ul class="pf">
+        <li>Всё из Стандартного</li>
+        <li>PDF-отчёт ~30 страниц</li>
+        <li>Анализ топ-10 конкурентов</li>
+        <li>Поиск поставщиков (Китай/РФ)</li>
+        <li>Документы и сертификаты WB</li>
+        <li>Карточка товара + SEO</li>
+        <li>90-дневный план запуска</li>
+        <li>KPI и точки контроля</li>
+      </ul>
+      <a href="/order?level=deep" class="plan-btn">Заказать максимальный</a>
     </div>
   </div>
 </div>
 
-<div class="mid">
-  <div class="events-col" id="events">
-    <div class="col-title">Последние события</div>
-    <div id="events-feed">
-      <div style="text-align:center;color:var(--text-muted);font-size:12px;padding:20px 0;">Загрузка...</div>
-    </div>
-  </div>
-
-  <div class="analytics-col" id="analytics">
-    <div class="col-title">Аналитика ниш</div>
-
-    <div class="plan-card">
-      <div class="plan-name">Экспресс</div>
-      <div class="plan-price">Бесплатно</div>
-      <ul class="plan-features">
-        <li><span class="ck">✓</span>Выручка и конкуренция ниши</li>
-        <li><span class="ck">✓</span>Score 0–100 + вердикт AI</li>
-        <li><span class="ck">✓</span>3 анализа бесплатно</li>
-      </ul>
-      <a href="/login" class="plan-btn">Попробовать</a>
-    </div>
-
-    <div class="plan-card popular">
-      <div class="plan-name">★ Стандартный</div>
-      <div class="plan-price">2 500 ₽</div>
-      <ul class="plan-features">
-        <li><span class="ck">✓</span>PDF-отчёт ~15 страниц</li>
-        <li><span class="ck">✓</span>AI-анализ и стратегия входа</li>
-        <li><span class="ck">✓</span>Топ-20 товаров ниши</li>
-        <li><span class="ck">✓</span>Юнит-экономика (3 сценария)</li>
-      </ul>
-      <a href="/order?level=standard" class="plan-btn">Получить отчёт</a>
-    </div>
-
-    <div class="plan-card">
-      <div class="plan-name">Максимальный</div>
-      <div class="plan-price">6 000 ₽</div>
-      <ul class="plan-features">
-        <li><span class="ck">✓</span>PDF-отчёт ~30 страниц</li>
-        <li><span class="ck">✓</span>Анализ топ-10 конкурентов</li>
-        <li><span class="ck">✓</span>90-дневный план запуска</li>
-        <li><span class="ck">✓</span>Поиск поставщиков (Китай/РФ)</li>
-      </ul>
-      <a href="/order?level=deep" class="plan-btn">Заказать</a>
-    </div>
-  </div>
-</div>
-
-<div class="faq-strip" id="faq">
-  <div class="faq-item">
+<div class="faq" id="faq">
+  <div class="fi">
     <div class="fq">Насколько актуальны данные?</div>
-    <div class="fa">Ниши обновляются каждые 14 дней. Склады — каждые 4 часа.</div>
+    <div class="fa">Ниши обновляются каждые 14 дней через MPStats API. Склады — каждые 4 часа автоматически.</div>
   </div>
-  <div class="faq-item">
+  <div class="fi">
     <div class="fq">Чем отличается от MPStats?</div>
-    <div class="fa">MPStats даёт данные. Мы даём решение — входить или нет.</div>
+    <div class="fa">MPStats даёт данные. Мы даём решение — входить или нет и почему.</div>
   </div>
-  <div class="faq-item">
+  <div class="fi">
     <div class="fq">Как оплатить из России?</div>
-    <div class="fa">Картой через защищённый шлюз. Доступно после регистрации.</div>
+    <div class="fa">Картой Visa/Mastercard через защищённый шлюз. Доступно после регистрации.</div>
   </div>
-  <div class="faq-item">
+  <div class="fi">
     <div class="fq">Можно попробовать бесплатно?</div>
     <div class="fa">Да — 3 анализа бесплатно прямо сейчас, без регистрации.</div>
   </div>
 </div>
 
 <footer>
-  <span class="f-left">WBAnalyzer · Аналитика ниш Wildberries · Данные через MPStats API</span>
-  <a href="https://t.me/wbanalyzer" class="f-tg">Telegram</a>
+  <span class="fl">WBAnalyzer · Аналитика ниш Wildberries · Данные через MPStats API</span>
+  <a href="https://t.me/wbanalyzer" target="_blank" class="ftg">Telegram</a>
 </footer>
 
 <script>
@@ -337,101 +328,76 @@ async function loadPageData() {
   try {
     const r = await fetch('/api/warehouses');
     const d = await r.json();
-
+    const total = d.total || '22';
+    document.getElementById('hero-wh-count').textContent = total;
     document.getElementById('stat-attacked').textContent = d.attacked;
     document.getElementById('stat-active').textContent = d.active;
-    document.getElementById('panel-attacked').textContent = d.attacked;
-    document.getElementById('panel-active').textContent = d.active;
-
-    const list = document.getElementById('panel-wh-list');
-    const top5 = d.warehouses.slice(0, 5);
-    list.innerHTML = top5.map(w => {
+    document.getElementById('wh-attacked-count').textContent = d.attacked;
+    document.getElementById('wh-active-count').textContent = d.active;
+    const warehouses = d.warehouses || [];
+    const top7 = warehouses.slice(0, 7);
+    document.getElementById('wh-list').innerHTML = top7.map(w => {
       const badge = w.status === 'attacked'
-        ? '<span class="b-r">' + (w.attacked_at
-            ? new Date(w.attacked_at).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit'})
-            : 'атакован') + '</span>'
-        : '<span class="b-g">работает</span>';
-      return '<div class="wh-r"><span class="wh-n">' + w.name + '</span>' + badge + '</div>';
+        ? '<span class="ba">атакован '
+          + (w.attacked_at
+            ? new Date(w.attacked_at).toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'})
+            : '') + '</span>'
+        : '<span class="bg">работает</span>';
+      return '<div class="wr"><span class="wn">' + w.name + '</span>' + badge + '</div>';
     }).join('');
-  } catch(e) { console.error(e); }
+  } catch(e) { console.error('warehouses:', e); }
 }
 
 async function loadEvents() {
   try {
     const r = await fetch('/api/warehouse-news?limit=6');
     const d = await r.json();
-    const feed = document.getElementById('events-feed');
-    if (!d.news || !d.news.length) {
-      feed.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:20px 0;">Нет новостей</div>';
-      return;
-    }
-
-    feed.innerHTML = d.news.map(n => {
-      const date = new Date(n.run_at).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      const host = n.source_url ? new URL(n.source_url).hostname.replace('www.','') : '';
-      const dotClass = n.status === 'attacked' ? 'dot-r' : 'dot-y';
-      const title = n.summary || n.warehouse + ' — атака подтверждена';
-
+    if (!d.news || !d.news.length) return;
+    document.getElementById('events-feed').innerHTML = d.news.map(n => {
+      const dt = new Date(n.run_at);
+      const date = dt.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'})
+        + ' · ' + dt.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+      const cls = n.status === 'attacked' ? 'dr' : 'dy';
+      const title = n.summary || (n.warehouse + ' — атака подтверждена');
       return '<div class="ni">'
-        + '<div class="ni-dot ' + dotClass + '"></div>'
-        + '<div>'
-        + '<div class="ni-title">' + title + '</div>'
-        + '<div class="ni-meta"><span>' + date + '</span>'
-        + (host ? '<a href="' + n.source_url + '" target="_blank" class="ni-src">' + host + '</a>' : '')
-        + '</div></div></div>';
+        + '<div class="ndot ' + cls + '"></div>'
+        + '<div><div class="nt">' + title + '</div>'
+        + '<div class="nm">' + date + '</div>'
+        + '</div></div>';
     }).join('');
-  } catch(e) { console.error(e); }
+  } catch(e) { console.error('events:', e); }
 }
 
-function checkNiche() {
+async function checkNiche() {
   const q = document.getElementById('hero-search').value.trim();
   if (!q) return;
-  const btn = document.getElementById('hero-check-btn');
   const res = document.getElementById('hero-result');
-  btn.disabled = true;
-  btn.textContent = '...';
-  res.classList.remove('show');
-
-  fetch('/api/niche-check?q=' + encodeURIComponent(q))
-    .then(r => r.json())
-    .then(d => {
-      btn.disabled = false;
-      btn.textContent = 'Проверить бесплатно';
-      res.classList.add('show');
-
-      if (!d.found) {
-        res.innerHTML = '<div class="hr-name">😕 Ниша <strong>"' + q + '"</strong> не найдена в базе.</div>';
-        return;
-      }
-
-      const vclass = d.verdict === 'BUY' ? 'buy' : (d.verdict === 'TEST' ? 'test' : 'skip');
-      const vlabel = d.verdict === 'BUY' ? '✅ Рекомендуем' : (d.verdict === 'TEST' ? '⚠️ Тест' : '❌ Не входить');
-
-      function fmtRev(v) {
-        if (v >= 1e9) return (v/1e9).toFixed(1) + ' млрд ₽';
-        if (v >= 1e6) return (v/1e6).toFixed(0) + ' млн ₽';
-        return (v/1e3).toFixed(0) + ' тыс ₽';
-      }
-
-      res.innerHTML =
-        '<div class="hr-name">Результат для: <strong>' + (d.name || q) + '</strong></div>' +
-        '<div class="hr-row">' +
-          '<div class="hr-score ' + vclass + '">' + d.score + '</div>' +
-          '<div class="hr-verdict">' + vlabel + '</div>' +
-        '</div>' +
-        '<div class="hr-metrics">' +
-          '<span>Выручка/мес: <b>' + fmtRev(d.revenue_monthly) + '</b></span>' +
-          '<span>Продавцов: <b>' + d.sellers.toLocaleString('ru') + '</b></span>' +
-          '<span>Цена: <b>' + (d.avg_price ? d.avg_price.toLocaleString('ru') + ' ₽' : '—') + '</b></span>' +
-        '</div>' +
-        '<a class="hr-cta" href="/order?niche=' + encodeURIComponent(d.name || q) + '&level=standard">📄 Получить полный отчёт →</a>';
-    })
-    .catch(() => {
-      btn.disabled = false;
-      btn.textContent = 'Проверить бесплатно';
-      res.classList.add('show');
-      res.innerHTML = '<div class="hr-name">Ошибка соединения — попробуйте ещё раз</div>';
-    });
+  res.style.display = 'block';
+  res.innerHTML = '⏳ Проверяем нишу...';
+  try {
+    const r = await fetch('/api/niche-check?q=' + encodeURIComponent(q));
+    const d = await r.json();
+    if (!d.found) {
+      res.innerHTML = '❌ Ниша «' + q + '» не найдена. Попробуйте другое название.';
+      return;
+    }
+    const verdict = {
+      BUY: '✅ ВХОДИТЬ',
+      TEST: '⚡ ТЕСТИРОВАТЬ',
+      SKIP: '❌ НЕ ВХОДИТЬ'
+    }[d.verdict] || d.verdict;
+    res.innerHTML =
+      '<strong>' + d.name + '</strong> · '
+      + verdict
+      + ' · Score: ' + d.score + '/100'
+      + '<br><span style="font-size:12px;color:#94a3b8">'
+      + 'Выручка: ' + (d.revenue_monthly ? Math.round(d.revenue_monthly/1e6) + ' млн ₽/мес' : '—')
+      + ' · Конкуренция: ' + (d.competition || '—')
+      + ' · Маржа: ' + (d.profit_pct ? Math.round(d.profit_pct) + '%' : '—')
+      + '</span>';
+  } catch(e) {
+    res.innerHTML = '⚠️ Ошибка при проверке. Попробуйте позже.';
+  }
 }
 
 loadPageData();

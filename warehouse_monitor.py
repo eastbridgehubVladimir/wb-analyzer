@@ -106,36 +106,49 @@ FIRECRAWL_API_KEY  = os.getenv('FIRECRAWL_API_KEY')
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_ADMIN_ID  = os.getenv('TELEGRAM_ADMIN_ID')
 
-# Источники мониторинга и уровни доверия (обновлено 31.07.2026 после ложного
-# срабатывания по YouTube-шортсу и dw.com-агрегатору — Коледино и Екатеринбург
-# были ошибочно помечены 'attacked', оба склада на деле работали).
+# Источники мониторинга и уровни доверия (переработано 10.08.2026: российские
+# источники — Коммерсант, РБК — либо замалчивают атаки на склады WB, либо
+# публикуют с задержкой; украинские источники публикуют быстро и точно, но
+# раньше не были основными. Теперь именно украинские источники — приоритет,
+# российские — вспомогательное подтверждение, недостаточное само по себе).
 #
-# Уровень 1 — Минобороны Украины (максимальное доверие)
-# Уровень 2 — украинские новостные агентства
-# Уровень 3 — официальный Telegram-канал WB
-# Уровень 4 — российские источники (с задержкой, для подтверждения)
+# Уровень 1 — публикация сама по себе достаточна для 'confirmed':
+#   defence.ua (Минобороны Украины), mil.gov.ua (Генштаб ВСУ),
+#   nv.ua (NV), suspilne.media (Суспільне), t.me/DefenceU
+# Уровень 2 — 'confirmed' только если совпадают 2+ РАЗНЫХ источника уровня 2:
+#   pravda.com.ua, unian.net, radiosvoboda.org, hromadske.ua,
+#   novayagazeta.eu, vedomosti.ru (осторожно — тоже может замалчивать)
+# Уровень 3 — только как дополнительное подтверждение, само по себе даёт
+#   не более 'uncertain': rbc.ru, kommersant.ru, официальный Telegram-канал WB
+# Уровень 4 — не участвует в решениях, только логируется: всё остальное
+#   (неверифицированные Telegram-каналы, YouTube, соцсети)
 #
-# Правила применения уровней — см. _confidence(): уровень 1/2 сам по себе
-# подтверждает факт; уровень 3/4 нужен минимум от двух разных источников;
-# иначе находка помечается 'uncertain' и в БД не пишется — только логируется.
+# Правила — см. _confidence().
 SOURCE_TIERS = {
     'defence.ua':       1,
-    'suspilne.media':   2,
+    'mil.gov.ua':       1,
+    'nv.ua':             1,
+    'suspilne.media':   1,
     'pravda.com.ua':    2,
-    'radiosvoboda.org': 2,
     'unian.net':        2,
+    'radiosvoboda.org': 2,
     'hromadske.ua':     2,
-    'kommersant.ru':    4,
-    'rbc.ru':           4,
+    'novayagazeta.eu':  2,
+    'vedomosti.ru':     2,
+    'rbc.ru':           3,
+    'kommersant.ru':    3,
 }
 
 # Telegram (t.me) — отдельно от SOURCE_TIERS: обычный веб-поиск Firecrawl плохо
 # индексирует посты конкретных каналов, поэтому t.me/DefenceU (уровень 1) и
 # официальный канал WB (уровень 3) нельзя надёжно различить по URL через
 # веб-поиск. Best-effort в _classify_source_tier(): путь содержит "defenceu" →
-# уровень 1, иначе относим t.me-ссылку к уровню 3 (офиц. канал WB). Для
-# по-настоящему надёжного покрытия Telegram в будущем нужен Telegram Bot API
-# (чтение постов конкретных каналов напрямую), а не веб-поиск.
+# уровень 1; любой другой t.me-путь по умолчанию считаем неверифицированным
+# Telegram-каналом — уровень 4 (раньше по умолчанию считался офиц. каналом WB,
+# уровень 3, но это было недоказанное допущение, а не факт — новая схема
+# уровней явно требует не путать неверифицированные каналы с официальным).
+# Для по-настоящему надёжного покрытия Telegram в будущем нужен Telegram Bot
+# API (чтение постов конкретных каналов напрямую), а не веб-поиск.
 _TELEGRAM_DOMAIN = 't.me'
 
 _ALL_SOURCE_DOMAINS = list(SOURCE_TIERS.keys()) + [_TELEGRAM_DOMAIN]
@@ -151,15 +164,26 @@ _DOMAIN_FILTER = ' OR '.join(f'site:{d}' for d in _ALL_SOURCE_DOMAINS)
 # не пишутся.
 COMPETITOR_KEYWORDS = ['Ozon', 'Яндекс Маркет', 'СДЭК', 'Почта России']
 
-# Запросы для мониторинга складов WB. Расширено 03.08.2026: не все источники
-# явно пишут "БПЛА" — например заголовки вида "горит склад Wildberries" или
-# "склад уничтожен" тоже нужно ловить, иначе теряем реальные атаки.
-SEARCH_QUERIES = [
-    f"Wildberries склад атака пожар горит уничтожен БПЛА ({_DOMAIN_FILTER})",
-    f"Wildberries склад ({_DOMAIN_FILTER})",
-]
+# Запросы разделены по приоритету источников (10.08.2026): украинские источники
+# публикуют быстро и точно, российские — с задержкой или замалчивают. ЗАПРОС 1
+# (украинский) обрабатывается первым в run(); если он уже даёт 'confirmed',
+# ЗАПРОС 2 (российский) в этом прогоне не выполняется — экономия лимитов
+# Firecrawl/Claude, т.к. российские источники (уровень 3) всё равно не могут
+# сами по себе подтвердить находку.
+_DOMAIN_FILTER_UA = ' OR '.join(f'site:{d}' for d in [
+    'defence.ua', 'mil.gov.ua', 'nv.ua', 'suspilne.media',
+    'pravda.com.ua', 'unian.net', 'radiosvoboda.org',
+    'novayagazeta.eu', 'hromadske.ua',
+])
+_DOMAIN_FILTER_RU = ' OR '.join(f'site:{d}' for d in [
+    'rbc.ru', 'kommersant.ru', 'vedomosti.ru',
+])
 
-# Отдельный запрос для складов конкурентов.
+SEARCH_QUERY_UA = f"Wildberries склад атака удар пожар ({_DOMAIN_FILTER_UA})"
+SEARCH_QUERY_RU = f"Wildberries склад атака пожар горит ({_DOMAIN_FILTER_RU})"
+
+# Отдельный запрос для складов конкурентов — по всем источникам сразу
+# (не разделяется на UA/RU приоритет, т.к. это не основной сценарий подтверждения).
 COMPETITOR_SEARCH_QUERIES = [
     f"{' '.join(COMPETITOR_KEYWORDS)} склад атака пожар БПЛА ({_DOMAIN_FILTER})",
 ]
@@ -255,7 +279,7 @@ def _classify_source_tier(url: str) -> int:
     if host.startswith('www.'):
         host = host[4:]
     if host == _TELEGRAM_DOMAIN or host.endswith('.' + _TELEGRAM_DOMAIN):
-        return 1 if 'defenceu' in urlparse(url).path.lower() else 3
+        return 1 if 'defenceu' in urlparse(url).path.lower() else 4
     for domain, tier in SOURCE_TIERS.items():
         if host == domain or host.endswith('.' + domain):
             return tier
@@ -263,16 +287,21 @@ def _classify_source_tier(url: str) -> int:
 
 
 def _confidence(tiers: list, source_urls: list) -> str:
-    """confirmed / probable / uncertain — правила подтверждения по уровням источников.
-    confirmed: хотя бы один источник уровня 1 или 2.
-    probable:  2+ РАЗНЫХ источника уровня 3-4 сообщают одно и то же.
-    uncertain: всё остальное — в БД не пишем, только логируем для ручной проверки."""
-    if any(t in (1, 2) for t in tiers):
+    """confirmed / uncertain / ignored — правила подтверждения по уровням источников
+    (переработано 10.08.2026 — цель: уведомления только когда атака ПОДТВЕРЖДЕНА,
+    без "возможно"/"требует проверки").
+    confirmed: хотя бы один источник уровня 1, ИЛИ 2+ РАЗНЫХ источника уровня 2.
+    uncertain: один источник уровня 2 или уровня 3 — логируем, НЕ уведомляем.
+    ignored:   только источники уровня 4 — не участвует в решениях вообще."""
+    if any(t == 1 for t in tiers):
         return 'confirmed'
-    tier34_sources = {u for t, u in zip(tiers, source_urls) if t in (3, 4)}
-    if len(tier34_sources) >= 2:
-        return 'probable'
-    return 'uncertain'
+    tier2_sources = {u for t, u in zip(tiers, source_urls) if t == 2}
+    if len(tier2_sources) >= 2:
+        return 'confirmed'
+    tier23_sources = {u for t, u in zip(tiers, source_urls) if t in (2, 3)}
+    if len(tier23_sources) >= 1:
+        return 'uncertain'
+    return 'ignored'
 
 
 def _ensure_schema(conn):
@@ -484,6 +513,66 @@ def _notify_admin(text: str):
         print(f'[warehouse_monitor] Telegram notify error: {e}')
 
 
+# Человекочитаемые названия источников — для текста "Статус: ПОДТВЕРЖДЕНО (...)"
+# в уведомлении (см. ПРАВКА 4).
+_SOURCE_LABELS = {
+    'defence.ua':       'Минобороны Украины',
+    'mil.gov.ua':       'Генштаб ВСУ',
+    'nv.ua':             'NV',
+    'suspilne.media':   'Суспільне',
+    'pravda.com.ua':    'Украинская правда',
+    'unian.net':        'УНІАН',
+    'radiosvoboda.org': 'Радио Свобода',
+    'hromadske.ua':     'Громадське',
+    'novayagazeta.eu':  'Новая газета Европа',
+    'vedomosti.ru':     'Ведомости',
+    'rbc.ru':           'РБК',
+    'kommersant.ru':    'Коммерсант',
+}
+
+
+def _source_label(url: str) -> str:
+    """Человекочитаемое имя источника по URL — для текста уведомления."""
+    from urllib.parse import urlparse
+    host = urlparse(url).netloc.lower()
+    if host.startswith('www.'):
+        host = host[4:]
+    if host == _TELEGRAM_DOMAIN or host.endswith('.' + _TELEGRAM_DOMAIN):
+        return 'Минобороны Украины (Telegram)' if 'defenceu' in urlparse(url).path.lower() else 'Telegram'
+    for domain, label in _SOURCE_LABELS.items():
+        if host == domain or host.endswith('.' + domain):
+            return label
+    return host or url
+
+
+def _search_and_extract(query: str, known_names: list) -> list:
+    """Один поисковый запрос → список находок с проставленными source_url/_tier.
+    known_names мутируется на месте (append), чтобы новые склады, найденные в
+    одном запросе, участвовали в группировке находок из следующего запроса."""
+    found = []
+    print(f'[warehouse_monitor] Поиск: {query!r}')
+    results = _firecrawl_search(query)
+    print(f'[warehouse_monitor]   источников найдено: {len(results)}')
+    for r in results:
+        if not r['text']:
+            continue
+        finding = _extract_with_claude(r['text'], known_names, r['url'])
+        if not finding.get('found'):
+            continue
+        if str(finding.get('company', '')).strip().upper() == 'WB':
+            resolved = _resolve_warehouse_name(str(finding.get('warehouse', '')).strip(), known_names)
+            if resolved not in known_names:
+                print(f"[warehouse_monitor]   новый склад, не встречавшийся ранее: {resolved!r}")
+                known_names.append(resolved)  # чтобы находки в этом же прогоне тоже сгруппировались
+            finding['warehouse'] = resolved
+        finding['source_url'] = r['url']
+        finding['_tier'] = _classify_source_tier(r['url'])
+        found.append(finding)
+        print(f"[warehouse_monitor]   упоминание: {finding.get('company')}/{finding.get('warehouse')} "
+              f"→ {finding.get('status')} (уровень источника {finding['_tier']})")
+    return found
+
+
 def run():
     print(f'[warehouse_monitor] Старт: {datetime.now().isoformat()}')
     if not DATABASE_URL:
@@ -495,32 +584,34 @@ def run():
     known_names = _get_known_warehouse_names(conn)
     raw_findings = []  # каждая находка + '_tier' (уровень доверия источника)
 
-    for query in SEARCH_QUERIES + COMPETITOR_SEARCH_QUERIES:
-        print(f'[warehouse_monitor] Поиск: {query!r}')
-        results = _firecrawl_search(query)
-        print(f'[warehouse_monitor]   источников найдено: {len(results)}')
-        for r in results:
-            if not r['text']:
-                continue
-            finding = _extract_with_claude(r['text'], known_names, r['url'])
-            if not finding.get('found'):
-                continue
-            if str(finding.get('company', '')).strip().upper() == 'WB':
-                resolved = _resolve_warehouse_name(str(finding.get('warehouse', '')).strip(), known_names)
-                if resolved not in known_names:
-                    print(f"[warehouse_monitor]   новый склад, не встречавшийся ранее: {resolved!r}")
-                    known_names.append(resolved)  # чтобы находки в этом же прогоне тоже сгруппировались
-                finding['warehouse'] = resolved
-            finding['source_url'] = r['url']
-            finding['_tier'] = _classify_source_tier(r['url'])
-            raw_findings.append(finding)
-            print(f"[warehouse_monitor]   упоминание: {finding.get('company')}/{finding.get('warehouse')} "
-                  f"→ {finding.get('status')} (уровень источника {finding['_tier']})")
+    # ЗАПРОС 1 — украинские источники (приоритетный, публикуют быстро и точно).
+    raw_findings.extend(_search_and_extract(SEARCH_QUERY_UA, known_names))
+
+    wb_ua_only = [f for f in raw_findings if str(f.get('company', '')).strip().upper() == 'WB']
+    groups_ua = {}
+    for f in wb_ua_only:
+        groups_ua.setdefault((f['warehouse'], f['status']), []).append(f)
+    ua_already_confirmed = any(
+        _confidence([x['_tier'] for x in g], [x['source_url'] for x in g]) == 'confirmed'
+        for g in groups_ua.values()
+    )
+
+    # ЗАПРОС 2 — российские источники (вторичный, только доп. подтверждение —
+    # уровень 3 сам по себе никогда не даёт 'confirmed'). Пропускаем, если из
+    # украинских источников уже есть подтверждение — экономия лимитов.
+    if ua_already_confirmed:
+        print('[warehouse_monitor] Подтверждение уже есть из украинских источников — '
+              'пропускаем запрос по российским источникам (экономия лимитов)')
+    else:
+        raw_findings.extend(_search_and_extract(SEARCH_QUERY_RU, known_names))
+
+    for query in COMPETITOR_SEARCH_QUERIES:
+        raw_findings.extend(_search_and_extract(query, known_names))
 
     wb_findings = [f for f in raw_findings if str(f.get('company', '')).strip().upper() == 'WB']
     competitor_findings = [f for f in raw_findings if str(f.get('company', '')).strip().upper() != 'WB']
 
-    # Группируем WB-находки по (склад, статус) — правило "confirmed/probable/uncertain"
+    # Группируем WB-находки по (склад, статус) — правило "confirmed/uncertain/ignored"
     # требует знать ВСЕ источники, сообщившие об одном и том же, а не рассматривать
     # каждую находку изолированно.
     groups = {}
@@ -535,34 +626,34 @@ def run():
         conf = _confidence(tiers, urls)
         best = dict(group[0])
         best['confidence'] = conf
+        best['source_urls'] = urls
+        if conf == 'ignored':
+            print(f"[warehouse_monitor] {wh} → {status}: только источники уровня 4 — "
+                  f"игнорируем (не БД, не уведомление)")
+            continue
         if conf == 'uncertain':
             print(f"[warehouse_monitor] {wh} → {status}: неуверенность (источники: {urls}) "
-                  f"— БД не трогаем, только лог для ручной проверки")
+                  f"— БД не трогаем, только лог для ручной проверки, уведомление НЕ отправляется")
             uncertain.append(best)
             continue
-        if conf == 'probable':
-            best['summary'] = (best.get('summary') or '') + ' (вероятно — 2+ источника уровня 3-4, требует проверки)'
+        # conf == 'confirmed'
         if _update_warehouse_status(conn, best):
             updated.append(best)
 
     # Дедуп уведомлений: не слать одно и то же за последние 24 часа, кроме
-    # confirmed — подтверждённая атака (уровень источника 1/2) отправляется
-    # всегда, даже если склад уже упоминался. probable/uncertain фильтруются,
-    # иначе агент шлёт один и тот же факт из одной старой статьи каждые 4 часа.
+    # confirmed — подтверждённая атака отправляется всегда, даже если склад уже
+    # упоминался, иначе агент замолчит про реально новую смену статуса того же
+    # склада. uncertain НИКОГДА не уведомляется (см. ПРАВКА 2/4) — только лог.
     recently_notified = _get_recently_notified(conn)
     to_notify_updated = [
         f for f in updated
         if f.get('confidence') == 'confirmed' or f.get('warehouse') not in recently_notified
     ]
-    to_notify_uncertain = [
-        f for f in uncertain
-        if f.get('warehouse') not in recently_notified
-    ]
-    notified_names = [f.get('warehouse') for f in to_notify_updated] + \
-                      [f.get('warehouse') for f in to_notify_uncertain]
+    notified_names = [f.get('warehouse') for f in to_notify_updated]
 
     # Один сводный лог на запуск: found=True, если было хоть одно распознанное упоминание
-    # (включая конкурентов и uncertain-находки — они тоже идут в raw_response для ручной проверки).
+    # (включая конкурентов, confirmed, uncertain и ignored-находки — все они попадают в
+    # raw_response для ручной проверки, независимо от того, уведомляли мы или нет).
     all_for_log = wb_findings + competitor_findings
     cur = conn.cursor()
     cur.execute("""
@@ -586,22 +677,23 @@ def run():
         lines = []
         for f in to_notify_updated:
             verb = _STATUS_VERB.get(f.get('status'), f.get('status'))
+            urls = f.get('source_urls') or [f.get('source_url')]
+            labels = sorted({_source_label(u) for u in urls if u})
             lines.append(f"- {f.get('warehouse')} — {verb} {f.get('date', '—')}")
-            lines.append(f"  Источник: {f.get('source_url')}")
-        _notify_admin("🔴 Новая атака на склад WB\n\n" + "\n".join(lines))
+            if len(urls) > 1:
+                lines.append(f"  Источники: {', '.join(u for u in urls if u)}")
+            else:
+                lines.append(f"  Источник: {urls[0]}")
+            lines.append(f"  Статус: ПОДТВЕРЖДЕНО ({' / '.join(labels)})")
+        _notify_admin("🔴 Подтверждённая атака на склад WB\n\n" + "\n".join(lines))
         print(f'[warehouse_monitor] Обновлено складов: {len(updated)} (уведомлено: {len(to_notify_updated)})')
     elif updated:
         print(f'[warehouse_monitor] Обновлено складов: {len(updated)} '
               f'(уведомление подавлено — уже сообщали за последние 24ч)')
 
-    if to_notify_uncertain:
-        lines = [f"- {f.get('warehouse')} → {f.get('status')} (1 источник)" for f in to_notify_uncertain]
-        _notify_admin("⚠️ Возможная атака (требует проверки)\n\n" + "\n".join(lines))
-        print(f'[warehouse_monitor] Находок с низкой уверенностью: {len(uncertain)} '
-              f'(уведомлено: {len(to_notify_uncertain)})')
-    elif uncertain:
-        print(f'[warehouse_monitor] Находок с низкой уверенностью: {len(uncertain)} '
-              f'(уведомление подавлено — уже сообщали за последние 24ч)')
+    if uncertain:
+        print(f'[warehouse_monitor] Находок с низкой уверенностью (uncertain): {len(uncertain)} '
+              f'— залогированы для ручной проверки, уведомление НЕ отправлялось')
 
     if competitor_findings:
         lines = [f"• {f.get('company')}: {f.get('warehouse')} → {f.get('status')} ({f.get('source_url')})"
@@ -610,8 +702,8 @@ def run():
         _notify_admin("ℹ️ warehouse_monitor: упоминания складов конкурентов (информационно, в БД не пишем)\n\n"
                       + '\n'.join(lines))
 
-    if not (to_notify_updated or to_notify_uncertain or competitor_findings):
-        print('[warehouse_monitor] Тишина — новых событий нет (или все уже под дедупом за 24ч)')
+    if not (to_notify_updated or competitor_findings):
+        print('[warehouse_monitor] Тишина — нет подтверждённых новых атак')
 
     print(f'[warehouse_monitor] Готово: {datetime.now().isoformat()}')
 

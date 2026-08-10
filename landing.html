@@ -85,6 +85,8 @@
   .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 32px rgba(79,156,249,0.45); }
   .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--border); }
   .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-telegram { background: #229ED9; color: #fff; }
+  .btn-telegram:hover { background: #1c8bc0; }
 
   .hero-stats { display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; }
   .stat { text-align: center; }
@@ -265,6 +267,20 @@
   .plan-cta.ghost { background: var(--bg); border: 1.5px solid var(--border); color: var(--text); }
   .plan-cta.ghost:hover { border-color: var(--accent); color: var(--accent); }
 
+  /* ── WAR RISKS ── */
+  .war-risks { background: #1a1a2e; padding: 60px 0; }
+  .war-risks h2 { color: #fff; text-align: center; }
+  .war-risks .subtitle { color: #aaa; text-align: center;
+    max-width: 600px; margin: 0 auto 40px; }
+  .risk-cards { display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px; }
+  .risk-card { background: #16213e; border: 1px solid #e74c3c33;
+    border-radius: 12px; padding: 24px; }
+  .risk-card .icon { font-size: 32px; }
+  .risk-card h3 { color: #fff; margin: 12px 0 8px; }
+  .risk-card p { color: #888; font-size: 14px; line-height: 1.5; }
+
   /* ── WHAT'S INSIDE ── */
   .report-preview {
     background: var(--card); border: 1px solid var(--border); border-radius: 20px;
@@ -290,8 +306,9 @@
   .reviews { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
   .review-card {
     background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;
-    opacity: .55; /* placeholder */
   }
+  .reviews-coming { text-align: center; color: var(--muted); font-size: 15px; line-height: 1.8; }
+  .reviews-coming a { color: var(--accent); }
   .review-card .stars { color: #f59e0b; font-size: 13px; margin-bottom: 10px; }
   .review-card p { font-size: 13px; color: var(--muted); line-height: 1.6; font-style: italic; }
   .review-card .author { margin-top: 14px; font-size: 12px; color: var(--muted); font-style: normal; }
@@ -356,9 +373,10 @@
   <div class="hero-ctas">
     <a href="#quiz" class="btn btn-primary">🔍 Пройти квиз — найдём нишу</a>
     <a href="/login" class="btn btn-ghost">Войти в платформу →</a>
+    <a href="https://t.me/Wbanalyzer_user_bot" class="btn btn-telegram">📱 Открыть в Telegram</a>
   </div>
   <div class="hero-stats">
-    <div class="stat"><div class="stat-num">7 127</div><div class="stat-label">ниш в базе</div></div>
+    <div class="stat"><div class="stat-num">7 500+</div><div class="stat-label">ниш в базе</div></div>
     <div class="stat"><div class="stat-num">3 уровня</div><div class="stat-label">глубины анализа</div></div>
     <div class="stat"><div class="stat-num">AI</div><div class="stat-label">Claude Sonnet внутри</div></div>
     <div class="stat"><div class="stat-num">~5 мин</div><div class="stat-label">время генерации</div></div>
@@ -375,7 +393,7 @@
         onkeydown="if(event.key==='Enter') checkNiche()">
       <button class="widget-btn" id="w-btn" onclick="checkNiche()">Проверить</button>
     </div>
-    <div class="widget-hint">Score 0–100 · Выручка · Конкуренция · Мгновенно из базы 7 127 ниш</div>
+    <div class="widget-hint">Score 0–100 · Выручка · Конкуренция · Мгновенно из базы 7 500+ ниш</div>
 
     <div class="widget-result" id="w-result"></div>
   </div>
@@ -518,7 +536,7 @@
     <div class="step-card">
       <div class="step-num">1</div>
       <h3>Введите нишу</h3>
-      <p>Напишите любой запрос — «Кроссовки», «Органайзеры для дома», «Чехлы для iPhone 15». Система найдёт нишу в базе из 7 127 категорий.</p>
+      <p>Напишите любой запрос — «Кроссовки», «Органайзеры для дома», «Чехлы для iPhone 15». Система найдёт нишу в базе из 7 500+ категорий.</p>
       <div class="step-arrow">→</div>
     </div>
     <div class="step-card">
@@ -560,6 +578,46 @@
       <div style="font-size:32px;margin-bottom:12px;">💳</div>
       <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">Платите только когда нужно</h3>
       <p style="color:var(--muted);font-size:14px;line-height:1.6;">Никаких ежемесячных подписок. Начните бесплатно — проверьте 3 ниши. Нужен PDF — оплатите один отчёт.</p>
+    </div>
+  </div>
+</section>
+
+<!-- WAR RISKS -->
+<section class="war-risks" id="safety">
+  <div class="container">
+    <h2>Работаем в условиях военных рисков</h2>
+    <p class="subtitle">
+      С июля 2026 года атакованы 14+ складов Wildberries.
+      WBAnalyzer помогает принимать решения с учётом
+      реальной ситуации на рынке.
+    </p>
+    <div class="risk-cards">
+      <div class="risk-card">
+        <span class="icon">🗺️</span>
+        <h3>Карта складов</h3>
+        <p>Актуальный статус всех складов WB —
+           какие работают, какие закрыты после атак</p>
+      </div>
+      <div class="risk-card">
+        <span class="icon">⚠️</span>
+        <h3>Красная зона</h3>
+        <p>Ниши с повышенным риском автоматически
+           помечаются в отчётах — не вкладывай деньги
+           в опасные товары</p>
+      </div>
+      <div class="risk-card">
+        <span class="icon">📦</span>
+        <h3>FBS-стратегия</h3>
+        <p>Рекомендуем хранить товар у себя —
+           это защищает от потерь при атаках
+           на склады WB</p>
+      </div>
+      <div class="risk-card">
+        <span class="icon">🔔</span>
+        <h3>Уведомления</h3>
+        <p>Бот присылает уведомление когда атакован
+           склад WB — узнаёшь первым</p>
+      </div>
     </div>
   </div>
 </section>
@@ -764,22 +822,10 @@
     <h2>Что говорят клиенты</h2>
     <p class="section-sub" style="margin:0 auto;">Первые отзывы появятся после бета-запуска. Хотите быть первым?</p>
   </div>
-  <div class="reviews">
-    <div class="review-card">
-      <div class="stars">★★★★★</div>
-      <p>«Наконец-то нашёл нишу без конкурентной войны. Отчёт дал чёткую картину — Score 71, вердикт BUY, сразу понял что делать.»</p>
-      <div class="author">— Алексей, Москва · скоро</div>
-    </div>
-    <div class="review-card">
-      <div class="stars">★★★★★</div>
-      <p>«Два часа в MPStats и ноль ясности. Здесь 10 минут — и PDF с конкретным планом. Стоит каждой копейки.»</p>
-      <div class="author">— Ирина, Минск · скоро</div>
-    </div>
-    <div class="review-card">
-      <div class="stars">★★★★★</div>
-      <p>«Использую для клиентов — отправляю PDF сразу после встречи. Очень профессионально выглядит, клиенты довольны.»</p>
-      <div class="author">— Дмитрий, агентство · скоро</div>
-    </div>
+  <div class="reviews-coming">
+    <p>💬 Отзывы появятся после запуска бета-тестирования.</p>
+    <p>Если хотите стать первым тестером —
+       <a href="https://t.me/Wbanalyzer_user_bot">напишите нам в Telegram</a></p>
   </div>
 </section>
 
@@ -792,7 +838,7 @@
   <div class="faq">
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">Насколько актуальны данные?</div>
-      <div class="faq-a">База из 7 127 ниш обновляется регулярно через MPStats API. Данные по выручке, продавцам и ценам — актуальны на момент последнего обновления (обычно не старше 2–4 недель).</div>
+      <div class="faq-a">База из 7 500+ ниш обновляется регулярно через MPStats API. Данные по выручке, продавцам и ценам — актуальны на момент последнего обновления (обычно не старше 2–4 недель).</div>
     </div>
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">Можно ли вернуть деньги если отчёт не устроит?</div>
@@ -804,7 +850,7 @@
     </div>
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">Как оплатить из России / Беларуси?</div>
-      <div class="faq-a">Принимаем перевод на карту (РБ), USDT через Bybit (TRC-20) для РФ. Подробности при оформлении заказа.</div>
+      <div class="faq-a">Оплата картой Visa/Mastercard через защищённый платёжный шлюз. Оплата доступна после регистрации.</div>
     </div>
     <div class="faq-item">
       <div class="faq-q" onclick="toggleFaq(this)">Могу ли я попробовать перед оплатой?</div>
@@ -824,6 +870,9 @@
     <p>Введите любую нишу — получите Score, выручку и вердикт бесплатно прямо сейчас</p>
     <a href="/login" class="btn btn-primary" style="font-size:16px;padding:16px 36px;">
       🚀 Открыть платформу бесплатно
+    </a>
+    <a href="https://t.me/Wbanalyzer_user_bot" class="btn btn-telegram" style="font-size:16px;padding:16px 36px;margin-left:12px;">
+      📱 Открыть в Telegram
     </a>
   </div>
 </section>

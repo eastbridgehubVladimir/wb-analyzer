@@ -6283,15 +6283,16 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 conn = psycopg2.connect(DB)
                 cur = conn.cursor()
+                pattern = f'%{q}%'
                 cur.execute("""
                     SELECT revenue, avg_price, sellers_with_sales, orders,
                            profit_pct, buyout_pct, commission, niche_status,
                            COALESCE(display_name, name)
                     FROM niches
-                    WHERE LOWER(name) = LOWER(%s)
-                       OR LOWER(COALESCE(display_name, name)) = LOWER(%s)
-                    ORDER BY revenue DESC NULLS LAST LIMIT 1
-                """, (q, q))
+                    WHERE LOWER(name) ILIKE %s
+                       OR LOWER(COALESCE(display_name, name)) ILIKE %s
+                    ORDER BY sellers_with_sales DESC NULLS LAST LIMIT 1
+                """, (pattern, pattern))
                 row = cur.fetchone()
                 cur.close(); conn.close()
                 if not row or not row[0]:
@@ -6340,6 +6341,7 @@ class Handler(BaseHTTPRequestHandler):
                     'competition': comp_label,
                     'profit_pct': round(profit * 100, 1) if profit < 1 else round(profit, 1),
                     'status': status,
+                    'commission': float(row[6]) if row[6] else 20.0,
                 }
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')

@@ -104,12 +104,11 @@
   .hero-stats .st-num { font-size: 24px; font-weight: 700; line-height: 1; }
   .hero-stats .st-lbl { font-size: 11px; color: var(--text-4); margin-top: 2px; }
 
-  /* ── ОСНОВНАЯ СЕТКА ── */
-  .grid { display: grid; grid-template-columns: 1fr 380px; min-height: 400px; }
-  .left { border-right: 1px solid var(--border); }
+  /* ── ОСНОВНАЯ СЕТКА: 3 колонки — склады | аналитика | события ── */
+  .grid { display: grid; grid-template-columns: 300px 1fr 300px; min-height: 500px; }
 
-  #events { padding: 16px 22px; border-bottom: 1px solid var(--border); background: var(--surface); }
-  #warehouses { padding: 16px 22px; background: var(--surface); }
+  #warehouses { background: var(--surface); border-right: 1px solid var(--border); padding: 18px 20px; }
+  #events { background: var(--surface); padding: 18px 20px; }
   #events-feed { max-height: 280px; overflow: hidden; }
 
   .col-title { font-size: 11px; text-transform: uppercase; color: var(--text-3); letter-spacing: .07em; font-weight: 600; margin-bottom: 14px; }
@@ -130,10 +129,11 @@
   .bg { background: var(--em-light); color: var(--em); border: 1px solid var(--em-border);
     font-size: 11px; padding: 2px 10px; border-radius: 4px; }
 
-  /* ── ПРАВАЯ КОЛОНКА / АНАЛИТИКА ── */
-  .right { padding: 18px; background: var(--surface-2); display: flex; flex-direction: column; gap: 10px; }
+  /* ── ЦЕНТРАЛЬНАЯ КОЛОНКА / АНАЛИТИКА ── */
+  #analytics { padding: 18px 22px; background: var(--surface-2); border-right: 1px solid var(--border); }
+  .plans-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px; }
 
-  .plan { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .plan { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
   .plan.popular { border: 2px solid var(--em) !important; background: #f0fdf4; }
   .plan-head { display: flex; justify-content: space-between; align-items: flex-start; }
   .plan-name { font-size: 11px; text-transform: uppercase; color: var(--text-3); letter-spacing: .06em; }
@@ -141,8 +141,7 @@
   .plan-price { font-size: 20px; font-weight: 700; color: var(--text-1); margin-top: 4px; }
   .plan-badge { background: var(--em); color: #fff; font-size: 10px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
   .plan-div { height: 1px; background: var(--border-light); margin: 10px 0; }
-  .pf { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
-  .pf.one-col { grid-template-columns: 1fr; }
+  .pf { list-style: none; display: grid; grid-template-columns: 1fr; gap: 2px 8px; }
   .pf li { font-size: 11px; color: var(--text-2); padding: 2px 0; display: flex; align-items: flex-start; gap: 4px; line-height: 1.4; }
   .pf li::before { content: '✓'; color: var(--em); font-weight: 700; flex-shrink: 0; }
   .plan-btn {
@@ -166,13 +165,12 @@
 
   @media (max-width: 768px) {
     .grid { grid-template-columns: 1fr; }
-    .left { border-right: none; }
-    .right { border-top: 1px solid var(--border); }
+    #warehouses, #analytics { border-right: none; }
+    .plans-row { grid-template-columns: 1fr; }
     .faq { flex-direction: column; }
     .fi { border-right: none !important; border-bottom: 1px solid var(--border-light); }
     .fi:last-child { border-bottom: none; }
     .nav-links a.nl { display: none; }
-    .pf { grid-template-columns: 1fr !important; }
     .hero-stats { flex-wrap: wrap; gap: 16px; }
   }
 </style>
@@ -215,85 +213,85 @@
 </div>
 
 <div class="grid">
-  <div class="left">
-    <div id="events">
-      <div class="col-title">Последние события</div>
-      <div id="events-feed">
-        <div style="text-align:center;color:var(--text-3);font-size:12px;padding:16px 0;">Загрузка...</div>
-      </div>
+  <div id="warehouses">
+    <div class="col-title">Склады WB — мониторинг</div>
+    <div style="display:flex; gap:16px; margin-bottom:12px;
+      padding:10px 14px; background:var(--surface-2);
+      border:1px solid var(--border); border-radius:8px;
+      align-items:center;">
+      <span style="font-size:22px; font-weight:700; color:#ef4444" id="wh-attacked-count">—</span>
+      <span style="font-size:12px; color:var(--text-3)">атаковано</span>
+      <span style="color:var(--border); margin:0 8px">|</span>
+      <span style="font-size:22px; font-weight:700; color:var(--em)" id="wh-active-count">—</span>
+      <span style="font-size:12px; color:var(--text-3)">работают</span>
     </div>
+    <div id="wh-list">
+      <div style="text-align:center;color:var(--text-3);font-size:12px;padding:16px 0;">Загрузка...</div>
+    </div>
+  </div>
 
-    <div id="warehouses">
-      <div class="col-title">Склады Wildberries — живой мониторинг</div>
-      <div style="display:flex; gap:16px; margin-bottom:12px;
-        padding:10px 14px; background:var(--surface-2);
-        border:1px solid var(--border); border-radius:8px;
-        align-items:center;">
-        <span style="font-size:22px; font-weight:700; color:#ef4444" id="wh-attacked-count">—</span>
-        <span style="font-size:12px; color:var(--text-3)">атаковано</span>
-        <span style="color:var(--border); margin:0 8px">|</span>
-        <span style="font-size:22px; font-weight:700; color:var(--em)" id="wh-active-count">—</span>
-        <span style="font-size:12px; color:var(--text-3)">работают</span>
+  <div id="analytics">
+    <div class="col-title">Аналитика ниш — выберите глубину</div>
+
+    <div class="plans-row">
+      <div class="plan">
+        <div class="plan-head">
+          <div><div class="plan-name">Экспресс</div><div class="plan-price">Бесплатно</div></div>
+        </div>
+        <div class="plan-div"></div>
+        <ul class="pf">
+          <li>Выручка ниши и динамика</li>
+          <li>Уровень конкуренции</li>
+          <li>Средний чек и маржа WB</li>
+          <li>Score 0–100 + вердикт AI</li>
+          <li>3 анализа бесплатно</li>
+        </ul>
+        <button class="plan-btn" onclick="document.getElementById('hero-search').focus()">Попробовать бесплатно</button>
       </div>
-      <div id="wh-list">
-        <div style="text-align:center;color:var(--text-3);font-size:12px;padding:16px 0;">Загрузка...</div>
+
+      <div class="plan popular">
+        <div class="plan-head">
+          <div><div class="plan-name">★ Стандартный</div><div class="plan-price">2 500 ₽</div></div>
+          <span class="plan-badge">Популярный</span>
+        </div>
+        <div class="plan-div"></div>
+        <ul class="pf">
+          <li>Всё из Экспресса</li>
+          <li>PDF-отчёт ~15 страниц</li>
+          <li>AI-мастер-анализ рынка</li>
+          <li>Топ-20 товаров ниши</li>
+          <li>Юнит-экономика (3 сценария)</li>
+          <li>Рекламная стратегия WB</li>
+          <li>Сезонный план закупок</li>
+          <li>Стратегия входа по месяцам</li>
+        </ul>
+        <a href="/order?level=standard" class="plan-btn primary">Получить отчёт →</a>
+      </div>
+
+      <div class="plan">
+        <div class="plan-head">
+          <div><div class="plan-name">Максимальный</div><div class="plan-price">6 000 ₽</div></div>
+        </div>
+        <div class="plan-div"></div>
+        <ul class="pf">
+          <li>Всё из Стандартного</li>
+          <li>PDF-отчёт ~30 страниц</li>
+          <li>Анализ топ-10 конкурентов</li>
+          <li>Поиск поставщиков (Китай/РФ)</li>
+          <li>Документы и сертификаты WB</li>
+          <li>Карточка товара + SEO</li>
+          <li>90-дневный план запуска</li>
+          <li>KPI и точки контроля</li>
+        </ul>
+        <a href="/order?level=deep" class="plan-btn">Заказать максимальный</a>
       </div>
     </div>
   </div>
 
-  <div class="right" id="analytics">
-    <div class="col-title">Аналитика ниш — выберите глубину</div>
-
-    <div class="plan">
-      <div class="plan-head">
-        <div><div class="plan-name">Экспресс</div><div class="plan-price">Бесплатно</div></div>
-      </div>
-      <div class="plan-div"></div>
-      <ul class="pf one-col">
-        <li>Выручка ниши и динамика</li>
-        <li>Уровень конкуренции</li>
-        <li>Средний чек и маржа WB</li>
-        <li>Score 0–100 + вердикт AI</li>
-        <li>3 анализа бесплатно</li>
-      </ul>
-      <button class="plan-btn" onclick="document.getElementById('hero-search').focus()">Попробовать бесплатно</button>
-    </div>
-
-    <div class="plan popular">
-      <div class="plan-head">
-        <div><div class="plan-name">★ Стандартный</div><div class="plan-price">2 500 ₽</div></div>
-        <span class="plan-badge">Популярный</span>
-      </div>
-      <div class="plan-div"></div>
-      <ul class="pf">
-        <li>Всё из Экспресса</li>
-        <li>PDF-отчёт ~15 страниц</li>
-        <li>AI-мастер-анализ рынка</li>
-        <li>Топ-20 товаров ниши</li>
-        <li>Юнит-экономика (3 сценария)</li>
-        <li>Рекламная стратегия WB</li>
-        <li>Сезонный план закупок</li>
-        <li>Стратегия входа по месяцам</li>
-      </ul>
-      <a href="/order?level=standard" class="plan-btn primary">Получить отчёт →</a>
-    </div>
-
-    <div class="plan">
-      <div class="plan-head">
-        <div><div class="plan-name">Максимальный</div><div class="plan-price">6 000 ₽</div></div>
-      </div>
-      <div class="plan-div"></div>
-      <ul class="pf">
-        <li>Всё из Стандартного</li>
-        <li>PDF-отчёт ~30 страниц</li>
-        <li>Анализ топ-10 конкурентов</li>
-        <li>Поиск поставщиков (Китай/РФ)</li>
-        <li>Документы и сертификаты WB</li>
-        <li>Карточка товара + SEO</li>
-        <li>90-дневный план запуска</li>
-        <li>KPI и точки контроля</li>
-      </ul>
-      <a href="/order?level=deep" class="plan-btn">Заказать максимальный</a>
+  <div id="events">
+    <div class="col-title">Последние события</div>
+    <div id="events-feed">
+      <div style="text-align:center;color:var(--text-3);font-size:12px;padding:16px 0;">Загрузка...</div>
     </div>
   </div>
 </div>
@@ -349,7 +347,7 @@ async function loadPageData() {
 
 async function loadEvents() {
   try {
-    const r = await fetch('/api/warehouse-news?limit=4');
+    const r = await fetch('/api/warehouse-news?limit=5');
     const d = await r.json();
     if (!d.news || !d.news.length) return;
     document.getElementById('events-feed').innerHTML = d.news.map(n => {

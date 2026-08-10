@@ -60,7 +60,7 @@
   }
 
   /* ── HERO ── */
-  .hero { background: var(--hero); padding: 28px 28px 24px; }
+  .hero { background: var(--hero); padding: 22px 28px 20px; }
 
   .tag-pill {
     display: inline-flex; align-items: center; gap: 6px;
@@ -73,12 +73,12 @@
     box-shadow: 0 0 0 2px rgba(5,150,105,0.3); animation: pulse 2s infinite;
   }
 
-  h1 { font-size: 28px; font-weight: 700; color: #f1f5f9; line-height: 1.2; margin-bottom: 10px; }
+  h1 { font-size: 26px; font-weight: 700; color: #f1f5f9; line-height: 1.2; margin-bottom: 10px; }
   h1 em { color: var(--em); font-style: normal; }
 
-  .hero-sub { font-size: 13px; color: var(--text-2); margin-bottom: 20px; line-height: 1.5; max-width: 560px; }
+  .hero-sub { font-size: 13px; color: var(--text-2); margin-bottom: 16px; line-height: 1.5; max-width: 560px; }
 
-  #search-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+  #search-bar { display: flex; gap: 8px; margin-bottom: 16px; }
   #hero-search {
     flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
     border-radius: 8px; padding: 10px 16px; font-size: 13px; color: #e2e8f0;
@@ -108,12 +108,13 @@
   .grid { display: grid; grid-template-columns: 1fr 380px; min-height: 400px; }
   .left { border-right: 1px solid var(--border); }
 
-  #events { padding: 20px 22px; border-bottom: 1px solid var(--border); background: var(--surface); }
-  #warehouses { padding: 20px 22px; background: var(--surface); }
+  #events { padding: 16px 22px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  #warehouses { padding: 16px 22px; background: var(--surface); }
+  #events-feed { max-height: 280px; overflow: hidden; }
 
   .col-title { font-size: 11px; text-transform: uppercase; color: var(--text-3); letter-spacing: .07em; font-weight: 600; margin-bottom: 14px; }
 
-  .ni { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f8fafc; }
+  .ni { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid #f8fafc; }
   .ni:last-child { border-bottom: none; }
   .ndot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
   .dr { background: var(--danger); box-shadow: 0 0 0 2px rgba(239,68,68,0.15); }
@@ -121,15 +122,7 @@
   .nt { font-size: 13px; font-weight: 500; color: var(--text-1); }
   .nm { font-size: 11px; color: var(--text-3); margin-top: 3px; }
 
-  .wh-counters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-  .wh-counters .wc {
-    background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
-    padding: 10px; text-align: center;
-  }
-  .wh-counters .wc-num { font-size: 22px; font-weight: 700; }
-  .wh-counters .wc-lbl { font-size: 11px; color: var(--text-3); }
-
-  .wr { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border-light); }
+  .wr { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--border-light); }
   .wr:last-child { border-bottom: none; }
   .wn { font-size: 13px; color: var(--text-1); }
   .ba { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border);
@@ -232,9 +225,15 @@
 
     <div id="warehouses">
       <div class="col-title">Склады Wildberries — живой мониторинг</div>
-      <div class="wh-counters">
-        <div class="wc"><div class="wc-num" id="wh-attacked-count" style="color:var(--danger)">—</div><div class="wc-lbl">атаковано</div></div>
-        <div class="wc"><div class="wc-num" id="wh-active-count" style="color:var(--em)">—</div><div class="wc-lbl">работают</div></div>
+      <div style="display:flex; gap:16px; margin-bottom:12px;
+        padding:10px 14px; background:var(--surface-2);
+        border:1px solid var(--border); border-radius:8px;
+        align-items:center;">
+        <span style="font-size:22px; font-weight:700; color:#ef4444" id="wh-attacked-count">—</span>
+        <span style="font-size:12px; color:var(--text-3)">атаковано</span>
+        <span style="color:var(--border); margin:0 8px">|</span>
+        <span style="font-size:22px; font-weight:700; color:var(--em)" id="wh-active-count">—</span>
+        <span style="font-size:12px; color:var(--text-3)">работают</span>
       </div>
       <div id="wh-list">
         <div style="text-align:center;color:var(--text-3);font-size:12px;padding:16px 0;">Загрузка...</div>
@@ -335,8 +334,8 @@ async function loadPageData() {
     document.getElementById('wh-attacked-count').textContent = d.attacked;
     document.getElementById('wh-active-count').textContent = d.active;
     const warehouses = d.warehouses || [];
-    const top7 = warehouses.slice(0, 7);
-    document.getElementById('wh-list').innerHTML = top7.map(w => {
+    const top5 = warehouses.slice(0, 5);
+    document.getElementById('wh-list').innerHTML = top5.map(w => {
       const badge = w.status === 'attacked'
         ? '<span class="ba">атакован '
           + (w.attacked_at
@@ -350,7 +349,7 @@ async function loadPageData() {
 
 async function loadEvents() {
   try {
-    const r = await fetch('/api/warehouse-news?limit=6');
+    const r = await fetch('/api/warehouse-news?limit=4');
     const d = await r.json();
     if (!d.news || !d.news.length) return;
     document.getElementById('events-feed').innerHTML = d.news.map(n => {

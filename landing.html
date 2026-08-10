@@ -28,496 +28,241 @@
     background: var(--bg);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    line-height: 1.6;
+    line-height: 1.5;
     font-size: 15px;
   }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+  section, [id] { scroll-margin-top: 64px; }
 
   /* ── NAV ── */
   nav {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    background: rgba(15,17,23,0.92); backdrop-filter: blur(12px);
+    background: rgba(15,17,23,0.94); backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0 24px; height: 60px;
+    padding: 0 24px; height: 52px;
   }
-  .logo { font-size: 18px; font-weight: 700; color: var(--text); text-decoration: none; letter-spacing: -0.3px; }
+  .logo { font-size: 17px; font-weight: 700; color: var(--text); text-decoration: none; letter-spacing: -0.3px; }
   .logo span { color: var(--accent); }
-  .nav-links { display: flex; gap: 8px; }
-  .nav-links a { color: var(--muted); text-decoration: none; padding: 6px 14px; border-radius: 8px; font-size: 14px; transition: all .2s; }
+  .nav-links { display: flex; align-items: center; gap: 4px; }
+  .nav-links a { color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 8px; font-size: 13px; transition: all .2s; }
   .nav-links a:hover { color: var(--text); background: var(--card); }
-  .btn-nav { background: var(--accent); color: #fff !important; font-weight: 600 !important; }
-  .btn-nav:hover { background: #3b82f6 !important; }
+  .btn-telegram-nav { background: #229ED9; color: #fff !important; font-weight: 600 !important; margin-left: 8px; }
+  .btn-telegram-nav:hover { background: #1c8bc0 !important; }
+
+  /* ── SECTION COMMONS ── */
+  section { padding: 40px 0; border-top: 1px solid var(--border); }
+  .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 6px; }
+  h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; margin-bottom: 6px; }
+  .section-sub { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
 
   /* ── HERO ── */
   .hero {
     min-height: 100vh;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     text-align: center;
-    padding: 100px 24px 60px;
+    padding: 76px 24px 32px;
     background: radial-gradient(ellipse at 50% 0%, rgba(79,156,249,0.12) 0%, transparent 65%);
   }
   .badge {
     display: inline-flex; align-items: center; gap: 6px;
     background: rgba(79,156,249,0.12); border: 1px solid rgba(79,156,249,0.3);
-    color: var(--accent); border-radius: 100px; padding: 4px 14px; font-size: 13px;
-    margin-bottom: 24px;
+    color: var(--accent); border-radius: 100px; padding: 4px 14px; font-size: 12px;
+    margin-bottom: 18px;
   }
   .badge::before { content: ''; display: block; width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
 
   h1 {
-    font-size: clamp(2rem, 5vw, 3.4rem);
+    font-size: clamp(1.8rem, 4.5vw, 3rem);
     font-weight: 800; line-height: 1.15;
-    letter-spacing: -1px; margin-bottom: 20px;
+    letter-spacing: -1px; margin-bottom: 12px;
     background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   }
   h1 em { font-style: normal; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
   .hero-sub {
-    font-size: clamp(15px, 2.2vw, 18px); color: var(--muted); max-width: 580px;
-    margin: 0 auto 36px;
+    font-size: 15px; color: var(--muted); max-width: 560px;
+    margin: 0 auto 24px;
   }
 
-  .hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 48px; }
-  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 26px; border-radius: 12px; font-weight: 600; font-size: 15px; cursor: pointer; transition: all .2s; text-decoration: none; border: none; }
+  .hero-ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 28px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all .2s; text-decoration: none; border: none; }
   .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; box-shadow: 0 4px 24px rgba(79,156,249,0.35); }
   .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 32px rgba(79,156,249,0.45); }
-  .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--border); }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
   .btn-telegram { background: #229ED9; color: #fff; }
   .btn-telegram:hover { background: #1c8bc0; }
 
-  .hero-stats { display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; }
+  .hero-stats { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-bottom: 28px; }
   .stat { text-align: center; }
-  .stat-num { font-size: 28px; font-weight: 800; color: var(--text); }
-  .stat-label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stat-num { font-size: 22px; font-weight: 800; color: var(--text); }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-  /* ── INLINE WIDGET ── */
-  .widget-wrap {
-    max-width: 640px; margin: 0 auto; padding: 0 24px 72px;
-  }
+  /* ── WIDGET ── */
   .widget-box {
-    background: var(--card); border: 1.5px solid var(--border); border-radius: 20px;
-    padding: 28px 28px 24px; position: relative;
+    background: var(--card); border: 1.5px solid var(--border); border-radius: 18px;
+    padding: 20px 22px; max-width: 560px; width: 100%; margin: 0 auto;
   }
-  .widget-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent); margin-bottom: 14px; }
+  .widget-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--accent); margin-bottom: 12px; }
   .widget-row { display: flex; gap: 10px; }
   .widget-input {
     flex: 1; background: var(--bg2); border: 1.5px solid var(--border);
-    border-radius: 12px; padding: 13px 16px; color: var(--text); font-size: 15px;
+    border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 14px;
     font-family: inherit; outline: none; transition: border-color .2s;
   }
   .widget-input:focus { border-color: var(--accent); }
   .widget-input::placeholder { color: var(--muted); }
   .widget-btn {
     background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border: none; border-radius: 12px; padding: 13px 22px; color: #fff;
-    font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: opacity .2s;
+    border: none; border-radius: 10px; padding: 12px 20px; color: #fff;
+    font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: opacity .2s;
   }
   .widget-btn:hover { opacity: .88; }
   .widget-btn:disabled { opacity: .5; cursor: not-allowed; }
-  .widget-hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
 
-  /* Result panel */
-  .widget-result { display: none; margin-top: 20px; border-top: 1px solid var(--border); padding-top: 20px; }
+  .widget-result { display: none; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px; text-align: left; }
   .widget-result.show { display: block; }
-  .wr-name { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
-  .wr-name strong { color: var(--text); font-size: 15px; }
-  .wr-score-row { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .wr-name { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .wr-name strong { color: var(--text); font-size: 14px; }
+  .wr-score-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
   .wr-score {
-    width: 60px; height: 60px; border-radius: 14px; display: flex; align-items: center;
-    justify-content: center; font-size: 22px; font-weight: 800; flex-shrink: 0;
+    width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center;
+    justify-content: center; font-size: 19px; font-weight: 800; flex-shrink: 0;
   }
   .wr-score.buy { background: rgba(34,197,94,.15); color: var(--green); }
   .wr-score.test { background: rgba(245,158,11,.15); color: var(--yellow); }
   .wr-score.skip { background: rgba(239,68,68,.15); color: var(--red); }
-  .wr-verdict { font-size: 18px; font-weight: 800; }
-  .wr-verdict-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
-  .wr-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
-  .wr-metric { background: var(--bg2); border-radius: 10px; padding: 12px; }
-  .wr-metric .val { font-size: 16px; font-weight: 700; }
-  .wr-metric .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .wr-ctas { display: flex; gap: 10px; flex-wrap: wrap; }
+  .wr-verdict { font-size: 15px; font-weight: 800; }
+  .wr-verdict-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .wr-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .wr-metric { background: var(--bg2); border-radius: 10px; padding: 10px; }
+  .wr-metric .val { font-size: 14px; font-weight: 700; }
+  .wr-metric .lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .wr-ctas { display: flex; gap: 8px; flex-wrap: wrap; }
   .wr-btn-main {
-    flex: 1; text-align: center; padding: 12px 16px; border-radius: 10px; font-size: 13px;
+    flex: 1; text-align: center; padding: 10px 14px; border-radius: 10px; font-size: 12px;
     font-weight: 700; text-decoration: none; cursor: pointer;
     background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
   }
-  .wr-btn-ghost {
-    flex: 1; text-align: center; padding: 12px 16px; border-radius: 10px; font-size: 13px;
-    font-weight: 600; text-decoration: none;
-    background: var(--bg2); border: 1.5px solid var(--border); color: var(--text);
-  }
-  .wr-btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-  .wr-not-found { text-align: center; padding: 16px 0; color: var(--muted); font-size: 14px; }
+  .wr-not-found { text-align: center; padding: 8px 0; color: var(--muted); font-size: 13px; }
 
-  /* ── SECTION COMMONS ── */
-  section { padding: 80px 24px; max-width: 1100px; margin: 0 auto; }
-  .section-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 12px; }
-  h2 { font-size: clamp(1.6rem, 3.5vw, 2.2rem); font-weight: 800; letter-spacing: -0.5px; margin-bottom: 16px; }
-  .section-sub { color: var(--muted); font-size: 16px; max-width: 520px; margin-bottom: 48px; }
+  /* ── FEED SECTION (новости + склады, 2 колонки) ── */
+  .feed-grid { display: grid; grid-template-columns: 60% 40%; gap: 24px; align-items: start; }
+  @media (max-width: 768px) { .feed-grid { grid-template-columns: 1fr; } }
 
-  /* ── QUIZ ── */
-  .quiz-wrap {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 20px;
-    padding: 40px; max-width: 680px; margin: 0 auto;
+  .feed-col h2 { font-size: 18px; }
+  .risk-line {
+    font-size: 12px; color: #fca5a5; background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.25); border-radius: 8px;
+    padding: 8px 12px; margin-bottom: 14px;
   }
-  .quiz-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
-  .quiz-sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
-  .quiz-progress { height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 32px; overflow: hidden; }
-  .quiz-progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 2px; transition: width .4s ease; }
-  .quiz-step { display: none; }
-  .quiz-step.active { display: block; }
-  .quiz-q { font-size: 17px; font-weight: 600; margin-bottom: 20px; }
-  .quiz-options { display: flex; flex-direction: column; gap: 10px; }
-  .quiz-opt {
-    display: flex; align-items: center; gap: 14px;
-    background: var(--card); border: 1.5px solid var(--border);
-    border-radius: 12px; padding: 14px 18px; cursor: pointer; transition: all .2s;
-    font-size: 14px;
-  }
-  .quiz-opt:hover { border-color: var(--accent); background: rgba(79,156,249,0.07); }
-  .quiz-opt.selected { border-color: var(--accent); background: rgba(79,156,249,0.12); }
-  .quiz-opt-icon { font-size: 20px; width: 32px; text-align: center; flex-shrink: 0; }
-  .quiz-opt-label { font-weight: 500; }
-  .quiz-opt-desc { color: var(--muted); font-size: 12px; margin-top: 2px; }
-  .quiz-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; }
-  .quiz-back { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 8px 0; }
-  .quiz-back:hover { color: var(--text); }
-  .step-counter { color: var(--muted); font-size: 13px; }
 
-  /* Quiz result */
-  .quiz-result { display: none; text-align: center; }
-  .quiz-result.active { display: block; }
-  .result-icon { font-size: 48px; margin-bottom: 16px; }
-  .result-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-  .result-desc { color: var(--muted); font-size: 15px; margin-bottom: 28px; max-width: 440px; margin-left: auto; margin-right: auto; }
-  .result-plan {
-    background: var(--card); border: 1.5px solid var(--accent); border-radius: 14px;
-    padding: 20px 24px; text-align: left; margin-bottom: 24px;
+  .news-feed { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; }
+  .news-item {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; display: flex; gap: 10px; align-items: flex-start;
   }
-  .result-plan-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 6px; }
-  .result-plan-name { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
-  .result-plan-price { font-size: 14px; color: var(--muted); margin-bottom: 12px; }
-  .result-features { list-style: none; display: flex; flex-direction: column; gap: 6px; }
-  .result-features li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
-  .result-features li::before { content: '✓'; color: var(--green); font-weight: 700; }
+  .news-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .news-body { flex: 1; min-width: 0; }
+  .news-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; line-height: 1.4; }
+  .news-meta { font-size: 11px; color: var(--muted); display: flex; gap: 10px; }
+  .news-source { color: var(--accent); text-decoration: none; }
+  .news-source:hover { text-decoration: underline; }
 
-  /* ── HOW IT WORKS ── */
-  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
-  .step-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-    padding: 28px; position: relative;
-  }
-  .step-num {
-    width: 36px; height: 36px; border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 15px; color: #fff; margin-bottom: 16px;
-  }
-  .step-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-  .step-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
-  .step-arrow { position: absolute; right: -20px; top: 50%; transform: translateY(-50%); color: var(--border); font-size: 20px; display: none; }
-  @media (min-width: 768px) { .step-arrow { display: block; } }
+  .wh-mini-counters { display: flex; gap: 16px; margin-bottom: 14px; }
+  .wh-mini-stat { font-size: 14px; font-weight: 700; }
+  .wh-mini-stat.danger { color: var(--red); }
+  .wh-mini-stat.success { color: var(--green); }
+  .wh-mini-list { display: flex; flex-direction: column; gap: 4px; max-height: 300px; overflow-y: auto; margin-bottom: 12px; }
+  .wh-mini-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; padding: 6px 10px; background: var(--card); border-radius: 8px; }
+  .wh-mini-name { color: var(--text); }
+  .status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .status-attacked { background: rgba(239,68,68,0.15); color: var(--red); }
+  .status-active   { background: rgba(34,197,94,0.15); color: var(--green); }
+  .status-limited  { background: rgba(245,158,11,0.15); color: var(--yellow); }
+  .btn-mini { display: inline-block; font-size: 12px; color: var(--accent); text-decoration: none; border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; }
+  .btn-mini:hover { border-color: var(--accent); }
 
-  /* ── COMPETITORS ── */
-  .vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-  @media (max-width: 640px) { .vs-grid { grid-template-columns: 1fr; } }
-  .vs-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
-  .vs-card.ours { border-color: var(--accent); background: rgba(79,156,249,0.05); }
-  .vs-tag { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 100px; margin-bottom: 14px; }
-  .vs-tag.them { background: rgba(239,68,68,0.15); color: var(--red); }
-  .vs-tag.us { background: rgba(34,197,94,0.15); color: var(--green); }
-  .vs-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 14px; }
-  .vs-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-  .vs-list li { font-size: 13px; color: var(--muted); display: flex; align-items: flex-start; gap: 8px; line-height: 1.5; }
-  .vs-list li span { flex-shrink: 0; }
-
-  /* ── PRICING ── */
-  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+  /* ── АНАЛИТИКА / ТАРИФЫ ── */
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
   .plan-card {
-    background: var(--card); border: 1.5px solid var(--border); border-radius: 20px;
-    padding: 32px 28px; display: flex; flex-direction: column; position: relative;
+    background: var(--card); border: 1.5px solid var(--border); border-radius: 16px;
+    padding: 22px 20px; display: flex; flex-direction: column; position: relative;
     transition: border-color .2s;
   }
   .plan-card:hover { border-color: var(--accent); }
-  .plan-card.popular {
-    border-color: var(--accent);
-    background: linear-gradient(180deg, rgba(79,156,249,0.08) 0%, var(--card) 100%);
-  }
+  .plan-card.popular { border-color: var(--accent); background: linear-gradient(180deg, rgba(79,156,249,0.08) 0%, var(--card) 100%); }
   .popular-badge {
-    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
     background: linear-gradient(90deg, var(--accent), var(--accent2));
-    color: #fff; font-size: 11px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 1px; padding: 4px 16px; border-radius: 100px; white-space: nowrap;
+    color: #fff; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; padding: 3px 14px; border-radius: 100px; white-space: nowrap;
   }
-  .plan-name { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
-  .plan-price { font-size: 36px; font-weight: 800; margin-bottom: 4px; }
-  .plan-price span { font-size: 16px; font-weight: 500; color: var(--muted); }
-  .plan-desc { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
-  .plan-features { list-style: none; display: flex; flex-direction: column; gap: 9px; flex: 1; margin-bottom: 28px; }
-  .plan-features li { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; }
+  .plan-name { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; }
+  .plan-price { font-size: 28px; font-weight: 800; margin-bottom: 12px; }
+  .plan-price span { font-size: 14px; font-weight: 500; color: var(--muted); }
+  .plan-features { list-style: none; display: flex; flex-direction: column; gap: 7px; flex: 1; margin-bottom: 18px; }
+  .plan-features li { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; }
   .plan-features li .check { color: var(--green); font-weight: 700; flex-shrink: 0; }
-  .plan-features li .x { color: var(--border); flex-shrink: 0; }
-  .plan-features li.off { color: var(--muted); }
-  .plan-cta { display: block; text-align: center; padding: 13px; border-radius: 12px; font-weight: 600; font-size: 14px; text-decoration: none; transition: all .2s; cursor: pointer; border: none; }
+  .plan-cta { display: block; text-align: center; padding: 11px; border-radius: 10px; font-weight: 600; font-size: 13px; text-decoration: none; transition: all .2s; cursor: pointer; border: none; }
   .plan-cta.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
-  .plan-cta.primary:hover { opacity: .88; transform: translateY(-1px); }
+  .plan-cta.primary:hover { opacity: .88; }
   .plan-cta.ghost { background: var(--bg); border: 1.5px solid var(--border); color: var(--text); }
   .plan-cta.ghost:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* ── WAR RISKS ── */
-  .war-risks { background: #1a1a2e; padding: 60px 0; }
-  .war-risks h2 { color: #fff; text-align: center; }
-  .war-risks .subtitle { color: #aaa; text-align: center;
-    max-width: 600px; margin: 0 auto 40px; }
-  .risk-cards { display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 20px; }
-  .risk-card { background: #16213e; border: 1px solid #e74c3c33;
-    border-radius: 12px; padding: 24px; }
-  .risk-card .icon { font-size: 32px; }
-  .risk-card h3 { color: #fff; margin: 12px 0 8px; }
-  .risk-card p { color: #888; font-size: 14px; line-height: 1.5; }
+  /* ── КАК РАБОТАЕТ ── */
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .step-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; height: 160px; display: flex; flex-direction: column; }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 13px; color: #fff; margin-bottom: 10px;
+  }
+  .step-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .step-card p { font-size: 12px; color: var(--muted); line-height: 1.5; }
 
-  /* ── WAREHOUSES MAP ── */
-  .warehouses-section {
-    padding: 80px 0;
-    background: #0d1117;
-  }
-  .warehouses-section h2 {
-    text-align: center;
-    color: #e0e6ff;
-    font-size: 28px;
-    margin-bottom: 8px;
-  }
-  .section-subtitle {
-    text-align: center;
-    color: #666;
-    margin-bottom: 40px;
-    font-size: 14px;
-  }
-  .wh-counters {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 32px;
-  }
-  .wh-counter {
-    background: #161b22;
-    border: 1px solid #21262d;
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-  }
-  .wh-num {
-    display: block;
-    font-size: 36px;
-    font-weight: 600;
-    color: #e0e6ff;
-  }
-  .wh-label {
-    font-size: 13px;
-    color: #666;
-  }
-  .wh-danger .wh-num { color: #ff4444; }
-  .wh-success .wh-num { color: #44ff88; }
-  .wh-warning .wh-num { color: #ffaa44; }
-
-  .wh-filters {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-  }
+  /* ── ПОЛНАЯ ТАБЛИЦА СКЛАДОВ ── */
+  .wh-filters { display: flex; gap: 8px; margin-bottom: 14px; }
   .wh-filter {
-    padding: 6px 16px;
-    border-radius: 20px;
-    border: 1px solid #21262d;
-    background: transparent;
-    color: #666;
-    cursor: pointer;
-    font-size: 13px;
-    transition: all 0.2s;
+    padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; transition: all 0.2s;
   }
-  .wh-filter.active, .wh-filter:hover {
-    background: #1a237e;
-    border-color: #3949ab;
-    color: #90caf9;
-  }
-
-  .wh-table-wrap {
-    overflow-x: auto;
-    border-radius: 12px;
-    border: 1px solid #21262d;
-  }
-  .wh-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-  .wh-table th {
-    background: #161b22;
-    color: #666;
-    padding: 12px 16px;
-    text-align: left;
-    font-weight: 500;
-    border-bottom: 1px solid #21262d;
-  }
-  .wh-table td {
-    padding: 12px 16px;
-    border-bottom: 1px solid #21262d;
-    color: #c0c0c0;
-  }
+  .wh-filter.active, .wh-filter:hover { background: rgba(79,156,249,0.15); border-color: var(--accent); color: var(--accent); }
+  .wh-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+  .wh-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .wh-table th { background: var(--bg2); color: var(--muted); padding: 8px 12px; text-align: left; font-weight: 500; border-bottom: 1px solid var(--border); }
+  .wh-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
   .wh-table tr:last-child td { border-bottom: none; }
-  .wh-table tr.row-attacked { background: rgba(255,68,68,0.05); }
-  .wh-table tr.row-limited  { background: rgba(255,170,68,0.05); }
-  .wh-table tr.row-active   { background: rgba(68,255,136,0.03); }
-
-  .status-badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
-  }
-  .status-attacked {
-    background: rgba(255,68,68,0.15);
-    color: #ff6b6b;
-  }
-  .status-active {
-    background: rgba(68,255,136,0.15);
-    color: #44ff88;
-  }
-  .status-limited {
-    background: rgba(255,170,68,0.15);
-    color: #ffaa44;
-  }
-
-  .wh-update {
-    text-align: right;
-    font-size: 12px;
-    color: #444;
-    margin-top: 12px;
-  }
-
-  /* ── NEWS FEED ── */
-  .news-section {
-    padding: 80px 0;
-    background: #0a0d12;
-  }
-  .news-section h2 {
-    text-align: center;
-    color: #e0e6ff;
-    font-size: 28px;
-    margin-bottom: 8px;
-  }
-  .news-feed {
-    max-width: 800px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .news-item {
-    background: #161b22;
-    border: 1px solid #21262d;
-    border-radius: 12px;
-    padding: 16px 20px;
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-  }
-  .news-icon {
-    font-size: 20px;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-  .news-body { flex: 1; }
-  .news-title {
-    font-size: 15px;
-    font-weight: 500;
-    color: #e0e6ff;
-    margin-bottom: 4px;
-  }
-  .news-meta {
-    font-size: 12px;
-    color: #555;
-    display: flex;
-    gap: 12px;
-  }
-  .news-source {
-    color: #3949ab;
-    text-decoration: none;
-  }
-  .news-source:hover { color: #90caf9; }
-
-  /* ── WHAT'S INSIDE ── */
-  .report-preview {
-    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
-    overflow: hidden;
-  }
-  .report-tabs { display: flex; border-bottom: 1px solid var(--border); overflow-x: auto; }
-  .rtab {
-    padding: 14px 20px; font-size: 13px; font-weight: 500; color: var(--muted);
-    cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all .2s;
-  }
-  .rtab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .report-body { padding: 28px; }
-  .rpanel { display: none; }
-  .rpanel.active { display: block; }
-  .rpanel-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
-  .rpanel p { font-size: 14px; color: var(--muted); margin-bottom: 12px; line-height: 1.7; }
-  .metric-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-  .metric-box { background: var(--bg2); border-radius: 12px; padding: 14px; }
-  .metric-box .val { font-size: 22px; font-weight: 700; }
-  .metric-box .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-  /* ── REVIEWS placeholder ── */
-  .reviews { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
-  .review-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px;
-  }
-  .reviews-coming { text-align: center; color: var(--muted); font-size: 15px; line-height: 1.8; }
-  .reviews-coming a { color: var(--accent); }
-  .review-card .stars { color: #f59e0b; font-size: 13px; margin-bottom: 10px; }
-  .review-card p { font-size: 13px; color: var(--muted); line-height: 1.6; font-style: italic; }
-  .review-card .author { margin-top: 14px; font-size: 12px; color: var(--muted); font-style: normal; }
+  .wh-table tr.row-attacked { background: rgba(239,68,68,0.05); }
+  .wh-table tr.row-limited  { background: rgba(245,158,11,0.05); }
+  .wh-table tr.row-active   { background: rgba(34,197,94,0.03); }
+  .wh-update { text-align: right; font-size: 11px; color: var(--muted); margin-top: 10px; }
 
   /* ── FAQ ── */
-  .faq { display: flex; flex-direction: column; gap: 12px; max-width: 700px; margin: 0 auto; }
-  .faq-item { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .faq { display: flex; flex-direction: column; gap: 8px; max-width: 700px; margin: 0 auto; }
+  .faq-item { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
   .faq-q {
-    padding: 18px 20px; font-size: 14px; font-weight: 600; cursor: pointer;
+    padding: 14px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
     display: flex; justify-content: space-between; align-items: center; gap: 12px;
     user-select: none;
   }
-  .faq-q::after { content: '+'; font-size: 20px; color: var(--muted); flex-shrink: 0; transition: transform .2s; }
+  .faq-q::after { content: '+'; font-size: 18px; color: var(--muted); flex-shrink: 0; transition: transform .2s; }
   .faq-item.open .faq-q::after { content: '−'; }
-  .faq-a { display: none; padding: 0 20px 18px; font-size: 13px; color: var(--muted); line-height: 1.7; }
+  .faq-a { display: none; padding: 0 16px 14px; font-size: 12px; color: var(--muted); line-height: 1.6; }
   .faq-item.open .faq-a { display: block; }
-
-  /* ── CTA BLOCK ── */
-  .cta-block {
-    background: linear-gradient(135deg, rgba(79,156,249,0.12), rgba(124,58,237,0.12));
-    border: 1px solid rgba(79,156,249,0.25); border-radius: 24px;
-    padding: 60px 40px; text-align: center;
-  }
-  .cta-block h2 { font-size: clamp(1.4rem, 3vw, 2rem); margin-bottom: 12px; }
-  .cta-block p { color: var(--muted); font-size: 16px; margin-bottom: 32px; }
 
   /* ── FOOTER ── */
   footer {
-    border-top: 1px solid var(--border);
-    padding: 32px 24px; text-align: center;
-    color: var(--muted); font-size: 13px;
+    padding: 20px 24px; text-align: center;
+    color: var(--muted); font-size: 12px;
   }
   footer a { color: var(--muted); text-decoration: none; }
   footer a:hover { color: var(--accent); }
 
-  /* ── UTILITIES ── */
   .text-center { text-align: center; }
-  .full-w { max-width: 100%; }
 </style>
 </head>
 <body>
@@ -526,306 +271,155 @@
 <nav>
   <a class="logo" href="/">WB<span>Analyzer</span></a>
   <div class="nav-links">
-    <a href="#how">Как работает</a>
     <a href="#news">📰 События</a>
     <a href="#warehouses">🗺️ Склады</a>
-    <a href="#pricing">Цены</a>
+    <a href="#pricing">Аналитика</a>
     <a href="#faq">FAQ</a>
-    <a href="/login" class="btn-nav">Войти</a>
+    <a href="https://t.me/Wbanalyzer_user_bot" class="btn-telegram-nav">📱 Telegram</a>
   </div>
 </nav>
 
 <!-- HERO -->
 <div class="hero">
-  <div class="badge">AI-аналитика · 7 000+ ниш Wildberries</div>
+  <div class="badge">AI-аналитика · 7 500+ ниш Wildberries</div>
   <h1>Узнайте прибыльность<br>любой ниши <em>за 5 минут</em></h1>
-  <p class="hero-sub">
-    Выручка, конкуренция, маржа и AI-рекомендации по входу —
-    в красивом PDF-отчёте. Без таблиц Excel и ручного сбора данных.
-  </p>
+  <p class="hero-sub">Выручка, конкуренция, маржа и AI-рекомендации по входу — в PDF-отчёте за 5 минут.</p>
   <div class="hero-ctas">
-    <a href="#quiz" class="btn btn-primary">🔍 Пройти квиз — найдём нишу</a>
-    <a href="/login" class="btn btn-ghost">Войти в платформу →</a>
+    <button class="btn btn-primary" onclick="document.getElementById('w-input').focus()">🔍 Проверить нишу бесплатно</button>
     <a href="https://t.me/Wbanalyzer_user_bot" class="btn btn-telegram">📱 Открыть в Telegram</a>
   </div>
   <div class="hero-stats">
     <div class="stat"><div class="stat-num">7 500+</div><div class="stat-label">ниш в базе</div></div>
+    <div class="stat"><div class="stat-num">AI</div><div class="stat-label">Claude Sonnet</div></div>
     <div class="stat"><div class="stat-num">3 уровня</div><div class="stat-label">глубины анализа</div></div>
-    <div class="stat"><div class="stat-num">AI</div><div class="stat-label">Claude Sonnet внутри</div></div>
     <div class="stat"><div class="stat-num">~5 мин</div><div class="stat-label">время генерации</div></div>
   </div>
-</div>
-
-<!-- INLINE WIDGET -->
-<div class="widget-wrap">
   <div class="widget-box">
-    <div class="widget-label">⚡ Быстрая проверка ниши — бесплатно</div>
+    <div class="widget-label">⚡ Быстрая проверка ниши</div>
     <div class="widget-row">
       <input class="widget-input" id="w-input" type="text"
         placeholder="Введите нишу: Кроссовки, Органайзеры..."
         onkeydown="if(event.key==='Enter') checkNiche()">
       <button class="widget-btn" id="w-btn" onclick="checkNiche()">Проверить</button>
     </div>
-    <div class="widget-hint">Score 0–100 · Выручка · Конкуренция · Мгновенно из базы 7 500+ ниш</div>
-
     <div class="widget-result" id="w-result"></div>
   </div>
 </div>
 
-<!-- QUIZ -->
-<section id="quiz" style="padding-top:60px;">
-  <div class="text-center" style="margin-bottom:40px;">
-    <div class="section-label">Квиз</div>
-    <h2>Найдём подходящий формат анализа</h2>
-    <p class="section-sub" style="margin:0 auto;">4 вопроса — и мы порекомендуем тариф и ниши которые стоит проверить первыми</p>
-  </div>
-
-  <div class="quiz-wrap">
-    <div class="quiz-title" id="quiz-title">Давайте разберёмся что вам нужно</div>
-    <div class="quiz-sub" id="quiz-sub">Отвечайте честно — от этого зависит рекомендация</div>
-    <div class="quiz-progress"><div class="quiz-progress-bar" id="qbar" style="width:0%"></div></div>
-
-    <!-- Step 1 -->
-    <div class="quiz-step active" id="step-1">
-      <div class="quiz-q">Какой у вас статус на Wildberries?</div>
-      <div class="quiz-options">
-        <div class="quiz-opt" onclick="selectOpt(this, 1, 'new')">
-          <div class="quiz-opt-icon">🌱</div>
-          <div><div class="quiz-opt-label">Ещё не продаю</div><div class="quiz-opt-desc">Изучаю возможности, ищу первую нишу</div></div>
-        </div>
-        <div class="quiz-opt" onclick="selectOpt(this, 1, 'testing')">
-          <div class="quiz-opt-icon">🧪</div>
-          <div><div class="quiz-opt-label">Только начал</div><div class="quiz-opt-desc">Есть 1-2 SKU, ищу куда расширяться</div></div>
-        </div>
-        <div class="quiz-opt" onclick="selectOpt(this, 1, 'active')">
-          <div class="quiz-opt-icon">🚀</div>
-          <div><div class="quiz-opt-label">Активно продаю</div><div class="quiz-opt-desc">Нужен анализ конкурентов и новых ниш</div></div>
-        </div>
-        <div class="quiz-opt" onclick="selectOpt(this, 1, 'agency')">
-          <div class="quiz-opt-icon">🏢</div>
-          <div><div class="quiz-opt-label">Агентство / консультант</div><div class="quiz-opt-desc">Анализирую ниши для клиентов</div></div>
-        </div>
-      </div>
-      <div class="quiz-nav">
-        <span></span>
-        <span class="step-counter">1 из 4</span>
-      </div>
-    </div>
-
-    <!-- Step 2 -->
-    <div class="quiz-step" id="step-2">
-      <div class="quiz-q">Что вам нужно в первую очередь?</div>
-      <div class="quiz-options">
-        <div class="quiz-opt" onclick="selectOpt(this, 2, 'find')">
-          <div class="quiz-opt-icon">🔍</div>
-          <div><div class="quiz-opt-label">Найти прибыльную нишу</div><div class="quiz-opt-desc">Не знаю что продавать, нужны идеи</div></div>
-        </div>
-        <div class="quiz-opt" onclick="selectOpt(this, 2, 'check')">
-          <div class="quiz-opt-icon">✅</div>
-          <div><div class="quiz-opt-label">Проверить конкретную нишу</div><div class="quiz-opt-desc">Уже есть идея, хочу убедиться что она рабочая</div></div>
-        </div>
-        <div class="quiz-opt" onclick="selectOpt(this, 2, 'compete')">
-          <div class="quiz-opt-icon">⚔️</div>
-          <div><div class="quiz-opt-label">Изучить конкурентов</div><div class="quiz-opt-desc">Кто главные игроки, как они работают</div></div>
-        </div>
-      </div>
-      <div class="quiz-nav">
-        <button class="quiz-back" onclick="goBack(2)">← Назад</button>
-        <span class="step-counter">2 из 4</span>
-      </div>
-    </div>
-
-    <!-- Step 3 -->
-    <div class="quiz-step" id="step-3">
-      <div class="quiz-q">Откуда планируете поставки?</div>
-      <div class="quiz-options">
-        <div class="quiz-opt" onclick="selectOpt(this, 3, 'china')">
-          <div class="quiz-opt-icon">🇨🇳</div>
-          <div><div class="quiz-opt-label">Китай (1688, Alibaba)</div><div class="quiz-opt-desc">Нужен расчёт с учётом логистики из Китая</div></div>
-        </div>
-        <div class="quiz-opt" onclick="selectOpt(this, 3, 'ru')">
-          <div class="quiz-opt-icon">🇷🇺</div>
-          <div><div class="quiz-opt-label">Россия / Беларусь</div><div class="quiz-opt-desc">Местные поставщики или собственное производство</div></div>
-        </div>
-        <div class="quiz-opt" onclick="selectOpt(this, 3, 'other')">
-          <div class="quiz-opt-icon">🌍</div>
-          <div><div class="quiz-opt-label">Другие страны / не знаю</div><div class="quiz-opt-desc">Пока не определился с источником</div></div>
-        </div>
-      </div>
-      <div class="quiz-nav">
-        <button class="quiz-back" onclick="goBack(3)">← Назад</button>
-        <span class="step-counter">3 из 4</span>
-      </div>
-    </div>
-
-    <!-- Step 4 -->
-    <div class="quiz-step" id="step-4">
-      <div class="quiz-q">Какой бюджет на один анализ?</div>
-      <div class="quiz-options">
-        <div class="quiz-opt" onclick="selectOpt(this, 4, 'free')">
-          <div class="quiz-opt-icon">🆓</div>
-          <div><div class="quiz-opt-label">Бесплатно</div><div class="quiz-opt-desc">Хочу попробовать перед оплатой</div></div>
-        </div>
-        <div class="quiz-opt" onclick="selectOpt(this, 4, 'mid')">
-          <div class="quiz-opt-icon">💰</div>
-          <div><div class="quiz-opt-label">До 3 000 ₽</div><div class="quiz-opt-desc">Стандартный отчёт с основными метриками</div></div>
-        </div>
-        <div class="quiz-opt" onclick="selectOpt(this, 4, 'full')">
-          <div class="quiz-opt-icon">💎</div>
-          <div><div class="quiz-opt-label">До 7 000 ₽</div><div class="quiz-opt-desc">Полный отчёт с AI и планом на 30 дней</div></div>
-        </div>
-      </div>
-      <div class="quiz-nav">
-        <button class="quiz-back" onclick="goBack(4)">← Назад</button>
-        <span class="step-counter">4 из 4</span>
-      </div>
-    </div>
-
-    <!-- Result -->
-    <div class="quiz-result" id="quiz-result">
-      <div class="result-icon" id="result-icon">🎯</div>
-      <div class="result-title" id="result-title">Вам подойдёт Стандартный анализ</div>
-      <div class="result-desc" id="result-desc">Получите все ключевые метрики, ценовое распределение и AI-рекомендации по входу в нишу</div>
-      <div class="result-plan" id="result-plan">
-        <div class="result-plan-label">Рекомендуемый тариф</div>
-        <div class="result-plan-name" id="rp-name">Стандарт</div>
-        <div class="result-plan-price" id="rp-price">2 500 ₽ за отчёт</div>
-        <ul class="result-features" id="rp-features"></ul>
-      </div>
-      <a href="/login" class="btn btn-primary" id="quiz-cta" style="width:100%;justify-content:center;font-size:15px;">
-        Попробовать бесплатно →
-      </a>
-      <p style="margin-top:12px;font-size:12px;color:var(--muted);" id="quiz-cta-sub">Первый анализ бесплатно · Без подписки</p>
-    </div>
-  </div>
-</section>
-
-<!-- HOW IT WORKS -->
-<section id="how">
-  <div class="section-label">Как работает</div>
-  <h2>От идеи до решения — 3 шага</h2>
-  <p class="section-sub">Никаких Excel-таблиц и ручного сбора данных</p>
-  <div class="steps">
-    <div class="step-card">
-      <div class="step-num">1</div>
-      <h3>Введите нишу</h3>
-      <p>Напишите любой запрос — «Кроссовки», «Органайзеры для дома», «Чехлы для iPhone 15». Система найдёт нишу в базе из 7 500+ категорий.</p>
-      <div class="step-arrow">→</div>
-    </div>
-    <div class="step-card">
-      <div class="step-num">2</div>
-      <h3>Выберите глубину</h3>
-      <p>Экспресс — ключевые цифры бесплатно (до 3 раз). Стандартный — AI-анализ и PDF. Максимальный — полная стратегия с планом на 30 дней.</p>
-      <div class="step-arrow">→</div>
-    </div>
-    <div class="step-card">
-      <div class="step-num">3</div>
-      <h3>Получите PDF</h3>
-      <p>Через 3–5 минут скачаете готовый отчёт: выручка ниши, маржинальность, конкуренты, рекомендуемая цена и конкретный план действий.</p>
-    </div>
-  </div>
-</section>
-
-<!-- WHY US -->
+<!-- НОВОСТИ И СКЛАДЫ -->
 <section>
-  <div class="section-label">Наш подход</div>
-  <h2>Зачем WBAnalyzer, если есть другие инструменты?</h2>
-  <p class="section-sub">Большинство сервисов дают данные. Мы даём решение.</p>
-  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:32px;">
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;">
-      <div style="font-size:32px;margin-bottom:12px;">🤖</div>
-      <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">AI объясняет, а не просто показывает</h3>
-      <p style="color:var(--muted);font-size:14px;line-height:1.6;">Нейросеть анализирует всю статистику и пишет на понятном языке: стоит ли входить, почему, какие риски и что делать конкретно.</p>
+  <div class="container feed-grid">
+
+    <div class="feed-col" id="news">
+      <h2>📰 Последние события</h2>
+      <p class="section-sub">Атаки на склады · решения WB</p>
+      <div class="news-feed" id="news-feed">
+        <div style="text-align:center;color:var(--muted);padding:20px 0;">Загрузка новостей...</div>
+      </div>
     </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;">
-      <div style="font-size:32px;margin-bottom:12px;">⚡</div>
-      <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">Готовый PDF за 3–5 минут</h3>
-      <p style="color:var(--muted);font-size:14px;line-height:1.6;">Не часы в таблицах и не самостоятельный сбор данных. Получаете документ, который можно сразу показать партнёру или инвестору.</p>
+
+    <div class="feed-col" id="warehouses">
+      <h2>🗺️ Склады WB</h2>
+      <div class="risk-line">⚠️ С июля 2026 атаковано 14+ складов Wildberries</div>
+      <div class="wh-mini-counters">
+        <div class="wh-mini-stat danger">🔴 <span id="wh-attacked">—</span> атакованы</div>
+        <div class="wh-mini-stat success">🟢 <span id="wh-active">—</span> работают</div>
+      </div>
+      <div class="wh-mini-list" id="wh-mini-list">
+        <div style="text-align:center;color:var(--muted);padding:20px 0;">Загрузка...</div>
+      </div>
+      <a href="#warehouses-full" class="btn-mini">Смотреть всё →</a>
     </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;">
-      <div style="font-size:32px;margin-bottom:12px;">🎯</div>
-      <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">Конкретный план, а не просто цифры</h3>
-      <p style="color:var(--muted);font-size:14px;line-height:1.6;">Цифры без интерпретации — это не решение. Мы даём пошаговый план входа: поставщик, первая поставка, ценообразование, реклама.</p>
+
+  </div>
+</section>
+
+<!-- АНАЛИТИКА / ТАРИФЫ -->
+<section id="pricing">
+  <div class="container">
+    <div class="text-center" style="margin-bottom:24px;">
+      <div class="section-label">Аналитика</div>
+      <h2>Три уровня глубины анализа</h2>
+      <p class="section-sub" style="margin:0 auto;">Платите только за нужный отчёт — без подписки</p>
     </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;">
-      <div style="font-size:32px;margin-bottom:12px;">💳</div>
-      <h3 style="font-size:17px;font-weight:700;margin-bottom:8px;">Платите только когда нужно</h3>
-      <p style="color:var(--muted);font-size:14px;line-height:1.6;">Никаких ежемесячных подписок. Начните бесплатно — проверьте 3 ниши. Нужен PDF — оплатите один отчёт.</p>
+    <div class="plans">
+
+      <div class="plan-card">
+        <div class="plan-name">Экспресс</div>
+        <div class="plan-price">Бесплатно</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> Выручка ниши и динамика</li>
+          <li><span class="check">✓</span> Уровень конкуренции</li>
+          <li><span class="check">✓</span> Score 0–100 и вердикт</li>
+        </ul>
+        <a href="/login" class="plan-cta ghost">Попробовать бесплатно</a>
+      </div>
+
+      <div class="plan-card popular">
+        <div class="popular-badge">⭐ Популярный</div>
+        <div class="plan-name">Стандартный</div>
+        <div class="plan-price">2 500 <span>₽</span></div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> PDF-отчёт (~15 страниц)</li>
+          <li><span class="check">✓</span> AI-анализ и инсайты</li>
+          <li><span class="check">✓</span> Ценовое распределение</li>
+          <li><span class="check">✓</span> Топ-20 товаров ниши</li>
+          <li><span class="check">✓</span> Рекомендуемая цена входа</li>
+        </ul>
+        <a href="/order?level=standard" class="plan-cta primary">Получить отчёт</a>
+      </div>
+
+      <div class="plan-card">
+        <div class="plan-name">Максимальный</div>
+        <div class="plan-price">6 000 <span>₽</span></div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> Всё из Стандартного</li>
+          <li><span class="check">✓</span> PDF-отчёт (~25–30 страниц)</li>
+          <li><span class="check">✓</span> 30-дневный план действий</li>
+          <li><span class="check">✓</span> Документы и сертификаты</li>
+          <li><span class="check">✓</span> Полный анализ конкурентов</li>
+          <li><span class="check">✓</span> Unit-экономика</li>
+          <li><span class="check">✓</span> Приоритетная поддержка</li>
+        </ul>
+        <a href="/order?level=deep" class="plan-cta ghost">Заказать Максимальный</a>
+      </div>
+
     </div>
   </div>
 </section>
 
-<!-- WAR RISKS -->
-<section class="war-risks" id="safety">
+<!-- КАК РАБОТАЕТ -->
+<section id="how">
   <div class="container">
-    <h2>Работаем в условиях военных рисков</h2>
-    <p class="subtitle">
-      С июля 2026 года атакованы 14+ складов Wildberries.
-      WBAnalyzer помогает принимать решения с учётом
-      реальной ситуации на рынке.
-    </p>
-    <div class="risk-cards">
-      <div class="risk-card">
-        <span class="icon">🗺️</span>
-        <h3>Карта складов</h3>
-        <p>Актуальный статус всех складов WB —
-           какие работают, какие закрыты после атак</p>
+    <div class="section-label">Как работает</div>
+    <h2>3 шага до решения</h2>
+    <div class="steps">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <h3>Введи нишу</h3>
+        <p>Любой запрос — «Кроссовки», «Чехлы для телефонов». Найдём в базе 7 500+ категорий.</p>
       </div>
-      <div class="risk-card">
-        <span class="icon">⚠️</span>
-        <h3>Красная зона</h3>
-        <p>Ниши с повышенным риском автоматически
-           помечаются в отчётах — не вкладывай деньги
-           в опасные товары</p>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <h3>Выбери глубину</h3>
+        <p>Экспресс бесплатно, Стандартный с AI и PDF, Максимальный — полная стратегия.</p>
       </div>
-      <div class="risk-card">
-        <span class="icon">📦</span>
-        <h3>FBS-стратегия</h3>
-        <p>Рекомендуем хранить товар у себя —
-           это защищает от потерь при атаках
-           на склады WB</p>
-      </div>
-      <div class="risk-card">
-        <span class="icon">🔔</span>
-        <h3>Уведомления</h3>
-        <p>Бот присылает уведомление когда атакован
-           склад WB — узнаёшь первым</p>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <h3>Получи PDF</h3>
+        <p>Через 3–5 минут — выручка, конкуренты, цена входа и план действий.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- WAREHOUSES MAP -->
-<section class="warehouses-section" id="warehouses">
+<!-- ПОЛНАЯ ТАБЛИЦА СКЛАДОВ -->
+<section id="warehouses-full">
   <div class="container">
+    <div class="section-label">Мониторинг</div>
+    <h2>Все склады Wildberries</h2>
+    <p class="section-sub">Обновляется каждые 4 часа · данные из открытых источников</p>
 
-    <!-- Заголовок -->
-    <h2>Склады Wildberries — живой мониторинг</h2>
-    <p class="section-subtitle">
-      Обновляется каждые 4 часа · данные из открытых источников
-    </p>
-
-    <!-- Счётчики (заполняются через AJAX) -->
-    <div class="wh-counters">
-      <div class="wh-counter">
-        <span class="wh-num" id="wh-total">—</span>
-        <span class="wh-label">отслеживается</span>
-      </div>
-      <div class="wh-counter wh-danger">
-        <span class="wh-num" id="wh-attacked">—</span>
-        <span class="wh-label">атаковано</span>
-      </div>
-      <div class="wh-counter wh-success">
-        <span class="wh-num" id="wh-active">—</span>
-        <span class="wh-label">работают</span>
-      </div>
-      <div class="wh-counter wh-warning">
-        <span class="wh-num" id="wh-limited">—</span>
-        <span class="wh-label">ограничено</span>
-      </div>
-    </div>
-
-    <!-- Фильтры -->
     <div class="wh-filters">
       <button class="wh-filter active" data-filter="all">Все</button>
       <button class="wh-filter" data-filter="attacked">Атакованы</button>
@@ -833,7 +427,6 @@
       <button class="wh-filter" data-filter="limited">Ограничены</button>
     </div>
 
-    <!-- Таблица складов (заполняется через AJAX) -->
     <div class="wh-table-wrap">
       <table class="wh-table" id="wh-table">
         <thead>
@@ -846,8 +439,7 @@
           </tr>
         </thead>
         <tbody id="wh-tbody">
-          <tr><td colspan="5" style="text-align:center;
-            color:#666">Загрузка...</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);">Загрузка...</td></tr>
         </tbody>
       </table>
     </div>
@@ -856,392 +448,40 @@
   </div>
 </section>
 
-<!-- NEWS FEED -->
-<section class="news-section" id="news">
-  <div class="container">
-
-    <h2>Последние события</h2>
-    <p class="section-subtitle">
-      Атаки на склады · решения WB · изменения рынка
-    </p>
-
-    <div class="news-feed" id="news-feed">
-      <div style="text-align:center; color:#666">
-        Загрузка новостей...
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- WHAT'S INSIDE -->
-<section>
-  <div class="section-label">Содержание отчёта</div>
-  <h2>Что входит в каждый вариант</h2>
-  <p class="section-sub">Выберите глубину анализа — от быстрой проверки до полной стратегии входа</p>
-
-  <div style="overflow-x:auto;margin-top:32px;">
-    <table style="width:100%;border-collapse:collapse;font-size:14px;">
-      <thead>
-        <tr>
-          <th style="text-align:left;padding:14px 16px;border-bottom:2px solid var(--border);color:var(--muted);font-weight:600;min-width:220px;">Что входит</th>
-          <th style="text-align:center;padding:14px 16px;border-bottom:2px solid var(--border);min-width:130px;">
-            <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);">Экспресс</div>
-            <div style="font-size:16px;font-weight:700;color:#fff;margin-top:4px;">Бесплатно</div>
-          </th>
-          <th style="text-align:center;padding:14px 16px;border-bottom:2px solid var(--accent);min-width:150px;background:rgba(79,156,249,0.05);border-radius:8px 8px 0 0;">
-            <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent);">⭐ Стандартный</div>
-            <div style="font-size:16px;font-weight:700;color:#fff;margin-top:4px;">2 500 ₽</div>
-          </th>
-          <th style="text-align:center;padding:14px 16px;border-bottom:2px solid var(--border);min-width:150px;">
-            <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);">Максимальный</div>
-            <div style="font-size:16px;font-weight:700;color:#fff;margin-top:4px;">6 000 ₽</div>
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr style="border-bottom:1px solid #1e2433;">
-          <td style="padding:12px 16px;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;" colspan="4">Базовые показатели</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1a1f2e;">
-          <td style="padding:11px 16px;">Выручка ниши и динамика</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;background:rgba(79,156,249,0.04);">✓</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1a1f2e;">
-          <td style="padding:11px 16px;">Score 0–100 и вердикт ВХОДИТЬ / ТЕСТ / НЕТ</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;background:rgba(79,156,249,0.04);">✓</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1a1f2e;">
-          <td style="padding:11px 16px;">Конкуренция и маржинальность</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;background:rgba(79,156,249,0.04);">✓</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1e2433;">
-          <td style="padding:12px 16px;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;" colspan="4">PDF-отчёт и AI</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1a1f2e;">
-          <td style="padding:11px 16px;">PDF-отчёт (~15 страниц)</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;">—</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;background:rgba(79,156,249,0.04);">✓</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1a1f2e;">
-          <td style="padding:11px 16px;">AI-анализ и инсайты (Claude Sonnet)</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;">—</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;background:rgba(79,156,249,0.04);">✓</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1a1f2e;">
-          <td style="padding:11px 16px;">Ценовое распределение и сегменты</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;">—</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;background:rgba(79,156,249,0.04);">✓</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1a1f2e;">
-          <td style="padding:11px 16px;">Топ-20 товаров ниши по выручке</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;">—</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;background:rgba(79,156,249,0.04);">✓</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1a1f2e;">
-          <td style="padding:11px 16px;">Рекомендуемая цена входа</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;">—</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;background:rgba(79,156,249,0.04);">✓</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1e2433;">
-          <td style="padding:12px 16px;color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;" colspan="4">Только в Максимальном</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1a1f2e;">
-          <td style="padding:11px 16px;">PDF-отчёт (~25–30 страниц)</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;">—</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;background:rgba(79,156,249,0.04);">—</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1a1f2e;">
-          <td style="padding:11px 16px;">30-дневный план входа в нишу</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;">—</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;background:rgba(79,156,249,0.04);">—</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1a1f2e;">
-          <td style="padding:11px 16px;">Полный анализ конкурентов</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;">—</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;background:rgba(79,156,249,0.04);">—</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-        <tr style="border-bottom:1px solid #1a1f2e;">
-          <td style="padding:11px 16px;">Unit-экономика под вашу ситуацию</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;">—</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;background:rgba(79,156,249,0.04);">—</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-        <tr>
-          <td style="padding:11px 16px;">Документы и сертификаты</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;">—</td>
-          <td style="text-align:center;padding:11px 16px;color:#374151;font-size:18px;background:rgba(79,156,249,0.04);">—</td>
-          <td style="text-align:center;padding:11px 16px;color:var(--green);font-size:18px;">✓</td>
-        </tr>
-      </tbody>
-      <tfoot>
-        <tr>
-          <td style="padding:16px;"></td>
-          <td style="text-align:center;padding:16px;">
-            <a href="/login" style="display:inline-block;padding:10px 20px;background:transparent;border:1.5px solid var(--border);border-radius:10px;color:var(--text);text-decoration:none;font-size:13px;font-weight:600;">Попробовать</a>
-          </td>
-          <td style="text-align:center;padding:16px;background:rgba(79,156,249,0.04);">
-            <a href="/order?level=standard" style="display:inline-block;padding:10px 20px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;color:#fff;text-decoration:none;font-size:13px;font-weight:700;">Получить отчёт</a>
-          </td>
-          <td style="text-align:center;padding:16px;">
-            <a href="/order?level=deep" style="display:inline-block;padding:10px 20px;background:transparent;border:1.5px solid var(--border);border-radius:10px;color:var(--text);text-decoration:none;font-size:13px;font-weight:600;">Заказать</a>
-          </td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-</section>
-
-<!-- PRICING -->
-<section id="pricing">
-  <div class="text-center" style="margin-bottom:48px;">
-    <div class="section-label">Тарифы</div>
-    <h2>Простые цены без подписки</h2>
-    <p class="section-sub" style="margin:0 auto;">Платите только за нужный отчёт. Никаких ежемесячных списаний.</p>
-  </div>
-  <div class="plans">
-
-    <div class="plan-card">
-      <div class="plan-name">Экспресс</div>
-      <div class="plan-price">Бесплатно</div>
-      <div class="plan-desc">Быстрая проверка ниши: ключевые цифры без PDF. 3 бесплатных анализа — отсейте нерабочие идеи до оплаты.</div>
-      <ul class="plan-features">
-        <li><span class="check">✓</span> Выручка ниши и динамика</li>
-        <li><span class="check">✓</span> Уровень конкуренции</li>
-        <li><span class="check">✓</span> Медианная цена</li>
-        <li><span class="check">✓</span> Score 0–100 и вердикт</li>
-        <li class="off"><span class="x">—</span> PDF-отчёт</li>
-        <li class="off"><span class="x">—</span> AI-анализ</li>
-        <li class="off"><span class="x">—</span> Ценовое распределение</li>
-      </ul>
-      <a href="/login" class="plan-cta ghost">Попробовать бесплатно</a>
-    </div>
-
-    <div class="plan-card popular">
-      <div class="popular-badge">⭐ Популярный</div>
-      <div class="plan-name">Стандартный</div>
-      <div class="plan-price">2 500 <span>₽ / отчёт</span></div>
-      <div class="plan-desc">Полный анализ с AI-рекомендациями и PDF. Всё что нужно для принятия решения об инвестиции.</div>
-      <ul class="plan-features">
-        <li><span class="check">✓</span> Всё из Экспресс</li>
-        <li><span class="check">✓</span> PDF-отчёт (~15 страниц)</li>
-        <li><span class="check">✓</span> AI-анализ и инсайты</li>
-        <li><span class="check">✓</span> Ценовое распределение</li>
-        <li><span class="check">✓</span> Топ-20 товаров ниши</li>
-        <li><span class="check">✓</span> Рекомендуемая цена входа</li>
-        <li class="off"><span class="x">—</span> 30-дневный план</li>
-      </ul>
-      <a href="/order?level=standard" class="plan-cta primary">Получить отчёт</a>
-    </div>
-
-    <div class="plan-card">
-      <div class="plan-name">Максимальный</div>
-      <div class="plan-price">6 000 <span>₽ / отчёт</span></div>
-      <div class="plan-desc">Полная стратегия входа: план на 30 дней, конкуренты, документы, unit-экономика.</div>
-      <ul class="plan-features">
-        <li><span class="check">✓</span> Всё из Стандартного</li>
-        <li><span class="check">✓</span> PDF-отчёт (~25–30 страниц)</li>
-        <li><span class="check">✓</span> 30-дневный план действий</li>
-        <li><span class="check">✓</span> Анализ документов и сертификатов</li>
-        <li><span class="check">✓</span> Полный анализ конкурентов</li>
-        <li><span class="check">✓</span> Unit-экономика под вашу ситуацию</li>
-        <li><span class="check">✓</span> Приоритетная поддержка</li>
-      </ul>
-      <a href="/order?level=deep" class="plan-cta ghost">Заказать Максимальный</a>
-    </div>
-
-  </div>
-</section>
-
-<!-- REVIEWS -->
-<section>
-  <div class="text-center" style="margin-bottom:40px;">
-    <div class="section-label">Отзывы</div>
-    <h2>Что говорят клиенты</h2>
-    <p class="section-sub" style="margin:0 auto;">Первые отзывы появятся после бета-запуска. Хотите быть первым?</p>
-  </div>
-  <div class="reviews-coming">
-    <p>💬 Отзывы появятся после запуска бета-тестирования.</p>
-    <p>Если хотите стать первым тестером —
-       <a href="https://t.me/Wbanalyzer_user_bot">напишите нам в Telegram</a></p>
-  </div>
-</section>
-
 <!-- FAQ -->
 <section id="faq">
-  <div class="text-center" style="margin-bottom:40px;">
-    <div class="section-label">FAQ</div>
-    <h2>Частые вопросы</h2>
-  </div>
-  <div class="faq">
-    <div class="faq-item">
-      <div class="faq-q" onclick="toggleFaq(this)">Насколько актуальны данные?</div>
-      <div class="faq-a">База из 7 500+ ниш обновляется регулярно через MPStats API. Данные по выручке, продавцам и ценам — актуальны на момент последнего обновления (обычно не старше 2–4 недель).</div>
+  <div class="container">
+    <div class="text-center" style="margin-bottom:24px;">
+      <div class="section-label">FAQ</div>
+      <h2>Частые вопросы</h2>
     </div>
-    <div class="faq-item">
-      <div class="faq-q" onclick="toggleFaq(this)">Можно ли вернуть деньги если отчёт не устроит?</div>
-      <div class="faq-a">Да. Если отчёт содержит явные ошибки или ниша отсутствует в базе — возвращаем деньги без вопросов. Напишите нам в Telegram.</div>
+    <div class="faq">
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Насколько актуальны данные?</div>
+        <div class="faq-a">База из 7 500+ ниш обновляется регулярно через MPStats API. Данные по выручке, продавцам и ценам — актуальны на момент последнего обновления (обычно не старше 2–4 недель).</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Чем отличается от MPStats?</div>
+        <div class="faq-a">MPStats — это подписка ~2000 ₽/мес для постоянного мониторинга. Мы — разовый глубокий анализ перед принятием решения о входе. Многие используют нас для первичной проверки, а MPStats — потом, для мониторинга.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Как оплатить из России / Беларуси?</div>
+        <div class="faq-a">Оплата картой Visa/Mastercard через защищённый платёжный шлюз. Оплата доступна после регистрации.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">Могу ли я попробовать перед оплатой?</div>
+        <div class="faq-a">Да — тариф Экспресс полностью бесплатный. Вы получите ключевые метрики по любой нише без PDF, прежде чем платить за полный отчёт.</div>
+      </div>
     </div>
-    <div class="faq-item">
-      <div class="faq-q" onclick="toggleFaq(this)">Чем отличается от MPStats?</div>
-      <div class="faq-a">MPStats — это подписка ~2000 ₽/мес для постоянного мониторинга. Мы — разовый глубокий анализ перед принятием решения о входе. Разные задачи. Многие используют нас для первичной проверки, и только потом подключают MPStats для мониторинга.</div>
-    </div>
-    <div class="faq-item">
-      <div class="faq-q" onclick="toggleFaq(this)">Как оплатить из России / Беларуси?</div>
-      <div class="faq-a">Оплата картой Visa/Mastercard через защищённый платёжный шлюз. Оплата доступна после регистрации.</div>
-    </div>
-    <div class="faq-item">
-      <div class="faq-q" onclick="toggleFaq(this)">Могу ли я попробовать перед оплатой?</div>
-      <div class="faq-a">Да — тариф Basic полностью бесплатный. Вы получите ключевые метрики по любой нише без PDF. Это позволяет убедиться что данные есть, прежде чем платить за полный отчёт.</div>
-    </div>
-    <div class="faq-item">
-      <div class="faq-q" onclick="toggleFaq(this)">Что такое Score 0–100?</div>
-      <div class="faq-a">Интегральная оценка привлекательности ниши по 4 критериям: объём рынка, уровень конкуренции, скорость продаж, ценовой сегмент. BUY ≥ 70, TEST = 40–69, SKIP &lt; 40.</div>
-    </div>
-  </div>
-</section>
-
-<!-- CTA BLOCK -->
-<section>
-  <div class="cta-block">
-    <h2>Начните с бесплатного анализа</h2>
-    <p>Введите любую нишу — получите Score, выручку и вердикт бесплатно прямо сейчас</p>
-    <a href="/login" class="btn btn-primary" style="font-size:16px;padding:16px 36px;">
-      🚀 Открыть платформу бесплатно
-    </a>
-    <a href="https://t.me/Wbanalyzer_user_bot" class="btn btn-telegram" style="font-size:16px;padding:16px 36px;margin-left:12px;">
-      📱 Открыть в Telegram
-    </a>
   </div>
 </section>
 
 <!-- FOOTER -->
 <footer>
-  <p style="margin-bottom:8px;">
-    <a href="/">WBAnalyzer</a> ·
-    <a href="#pricing">Тарифы</a> ·
-    <a href="https://t.me/wbanalyzer" target="_blank">Telegram</a>
-  </p>
-  <p style="color:var(--muted);font-size:12px;">Аналитика ниш Wildberries · Данные через MPStats API</p>
+  <a href="/">WBAnalyzer</a> · <a href="#pricing">Тарифы</a> · <a href="https://t.me/Wbanalyzer_user_bot" target="_blank">Telegram</a> · © 2026
 </footer>
 
 <script>
-// ── QUIZ LOGIC ──
-var answers = {};
-var steps = [1, 2, 3, 4];
-
-function selectOpt(el, step, val) {
-  // Deselect all in this step
-  var opts = el.parentElement.querySelectorAll('.quiz-opt');
-  opts.forEach(function(o) { o.classList.remove('selected'); });
-  el.classList.add('selected');
-  answers['q' + step] = val;
-
-  // Auto-advance after short delay
-  setTimeout(function() { goNext(step); }, 320);
-}
-
-function goNext(step) {
-  if (step < 4) {
-    document.getElementById('step-' + step).classList.remove('active');
-    document.getElementById('step-' + (step + 1)).classList.add('active');
-    document.getElementById('qbar').style.width = (step / 4 * 100) + '%';
-  } else {
-    showResult();
-  }
-}
-
-function goBack(step) {
-  document.getElementById('step-' + step).classList.remove('active');
-  document.getElementById('step-' + (step - 1)).classList.add('active');
-  document.getElementById('qbar').style.width = ((step - 2) / 4 * 100) + '%';
-}
-
-function showResult() {
-  // Hide all steps
-  steps.forEach(function(s) { document.getElementById('step-' + s).classList.remove('active'); });
-  document.getElementById('qbar').style.width = '100%';
-  document.getElementById('quiz-title').textContent = 'Готово!';
-  document.getElementById('quiz-sub').textContent = 'Вот наша рекомендация специально для вас';
-
-  // Compute recommendation
-  var budget = answers.q4;
-  var role = answers.q1;
-  var plan, icon, title, desc, features, price;
-
-  if (budget === 'free' || role === 'new') {
-    plan = 'Экспресс'; icon = '🌱'; price = 'Бесплатно';
-    title = 'Начните с бесплатного Экспресс-анализа';
-    desc = 'Это идеальный старт — проверьте до 3 ниш бесплатно, убедитесь в качестве данных, и только потом решайте про платный отчёт.';
-    features = ['Выручка и динамика ниши', 'Уровень конкуренции', 'Score и вердикт', 'Медианная цена'];
-  } else if (budget === 'full' || role === 'agency') {
-    plan = 'Максимальный'; icon = '💎'; price = '6 000 ₽ / отчёт';
-    title = 'Вам нужен Максимальный — полная стратегия';
-    desc = 'Судя по вашим ответам, вам важна полная картина: стратегия, документы, конкуренты и план на 30 дней. Максимальный отчёт покрывает всё это.';
-    features = ['~25–30 страниц PDF', 'AI-стратегия входа', '30-дневный план действий', 'Анализ документов и сертификатов', 'Полный анализ конкурентов'];
-  } else {
-    plan = 'Стандартный'; icon = '🎯'; price = '2 500 ₽ / отчёт';
-    title = 'Вам подойдёт Стандартный анализ';
-    desc = 'Получите все ключевые метрики, ценовое распределение и AI-рекомендации по входу в нишу. Оптимальный баланс глубины и цены.';
-    features = ['~15 страниц PDF', 'AI-инсайты и гипотезы', 'Ценовое распределение', 'Топ-20 товаров ниши', 'Рекомендуемая цена входа'];
-  }
-
-  document.getElementById('result-icon').textContent = icon;
-  document.getElementById('result-title').textContent = title;
-  document.getElementById('result-desc').textContent = desc;
-  document.getElementById('rp-name').textContent = plan;
-  document.getElementById('rp-price').textContent = price;
-
-  var ul = document.getElementById('rp-features');
-  ul.innerHTML = '';
-  features.forEach(function(f) {
-    var li = document.createElement('li');
-    li.textContent = f;
-    ul.appendChild(li);
-  });
-
-  document.getElementById('quiz-result').classList.add('active');
-
-  // Обновляем CTA кнопку в зависимости от плана
-  var cta = document.getElementById('quiz-cta');
-  var ctaSub = document.getElementById('quiz-cta-sub');
-  if (plan === 'Экспресс') {
-    cta.href = '/login';
-    cta.textContent = 'Попробовать бесплатно →';
-    ctaSub.textContent = '3 бесплатных анализа · Без подписки';
-  } else if (plan === 'Стандартный') {
-    cta.href = '/order?level=standard';
-    cta.textContent = 'Заказать Стандартный отчёт →';
-    ctaSub.textContent = '2 500 ₽ · Оплата после оформления заявки';
-  } else {
-    cta.href = '/order?level=deep';
-    cta.textContent = 'Заказать Максимальный отчёт →';
-    ctaSub.textContent = '6 000 ₽ · Оплата после оформления заявки';
-  }
-}
-
-// ── TABS ──
-function showTab(id, el) {
-  document.querySelectorAll('.rpanel').forEach(function(p) { p.classList.remove('active'); });
-  document.querySelectorAll('.rtab').forEach(function(t) { t.classList.remove('active'); });
-  document.getElementById(id).classList.add('active');
-  el.classList.add('active');
-}
-
 // ── FAQ ──
 function toggleFaq(el) {
   el.parentElement.classList.toggle('open');
@@ -1265,15 +505,12 @@ function checkNiche() {
       res.classList.add('show');
 
       if (!d.found) {
-        res.innerHTML = '<div class="wr-not-found">😕 Ниша <strong>"' + q + '"</strong> не найдена в базе.<br><span style="font-size:12px;">Попробуйте другое название или напишите нам — добавим.</span></div>';
+        res.innerHTML = '<div class="wr-not-found">😕 Ниша <strong>"' + q + '"</strong> не найдена в базе.</div>';
         return;
       }
 
       var vclass = d.verdict === 'BUY' ? 'buy' : (d.verdict === 'TEST' ? 'test' : 'skip');
       var vlabel = d.verdict === 'BUY' ? '✅ Рекомендуем' : (d.verdict === 'TEST' ? '⚠️ Тест' : '❌ Не входить');
-      var vsub   = d.verdict === 'BUY' ? 'Ниша перспективна — стоит изучить глубже'
-                 : d.verdict === 'TEST' ? 'Неоднозначно — нужен детальный анализ'
-                 : 'Высокая конкуренция или маленький рынок';
 
       function fmtRev(v) {
         if (v >= 1e9) return (v/1e9).toFixed(1) + ' млрд ₽';
@@ -1285,16 +522,15 @@ function checkNiche() {
         '<div class="wr-name">Результат для: <strong>' + (d.name || q) + '</strong></div>' +
         '<div class="wr-score-row">' +
           '<div class="wr-score ' + vclass + '">' + d.score + '</div>' +
-          '<div><div class="wr-verdict">' + vlabel + '</div><div class="wr-verdict-sub">' + vsub + '</div></div>' +
+          '<div><div class="wr-verdict">' + vlabel + '</div></div>' +
         '</div>' +
         '<div class="wr-metrics">' +
           '<div class="wr-metric"><div class="val">' + fmtRev(d.revenue_monthly) + '</div><div class="lbl">Выручка / мес</div></div>' +
           '<div class="wr-metric"><div class="val">' + d.sellers.toLocaleString('ru') + '</div><div class="lbl">Продавцов</div></div>' +
-          '<div class="wr-metric"><div class="val">' + (d.avg_price ? d.avg_price.toLocaleString('ru') + ' ₽' : '—') + '</div><div class="lbl">Средняя цена</div></div>' +
+          '<div class="wr-metric"><div class="val">' + (d.avg_price ? d.avg_price.toLocaleString('ru') + ' ₽' : '—') + '</div><div class="lbl">Цена</div></div>' +
         '</div>' +
         '<div class="wr-ctas">' +
           '<a class="wr-btn-main" href="/order?niche=' + encodeURIComponent(d.name || q) + '&level=standard">📄 Получить полный отчёт</a>' +
-          '<a class="wr-btn-ghost" href="#quiz">Пройти квиз →</a>' +
         '</div>';
     })
     .catch(function() {
@@ -1305,113 +541,113 @@ function checkNiche() {
     });
 }
 
-// ── WAREHOUSES MAP ──
+// ── СКЛАДЫ (мини-панель + полная таблица) ──
 async function loadWarehouses() {
   try {
     const r = await fetch('/api/warehouses');
     const d = await r.json();
 
-    document.getElementById('wh-total').textContent = d.total;
     document.getElementById('wh-attacked').textContent = d.attacked;
     document.getElementById('wh-active').textContent = d.active;
-    document.getElementById('wh-limited').textContent = d.limited || 0;
 
     const updated = new Date(d.last_updated);
     document.getElementById('wh-updated').textContent =
       'Обновлено: ' + updated.toLocaleString('ru-RU');
 
     window._whData = d.warehouses;
+    renderMiniList();
     renderTable('all');
   } catch(e) {
     console.error('Warehouses load error:', e);
   }
 }
 
+function renderMiniList() {
+  const data = window._whData || [];
+  const list = document.getElementById('wh-mini-list');
+  if (!data.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);">Нет данных</div>';
+    return;
+  }
+  const statusLabel = { attacked: 'Атакован', active: 'Работает', limited: 'Ограничен' };
+  // API уже сортирует attacked → limited → active
+  list.innerHTML = data.map(w => {
+    const label = statusLabel[w.status] || w.status;
+    return '<div class="wh-mini-row">'
+      + '<span class="wh-mini-name">• ' + w.name + '</span>'
+      + '<span class="status-badge status-' + w.status + '">' + label + '</span>'
+      + '</div>';
+  }).join('');
+}
+
 function renderTable(filter) {
   const data = window._whData || [];
-  const filtered = filter === 'all'
-    ? data
-    : data.filter(w => w.status === filter);
+  const filtered = filter === 'all' ? data : data.filter(w => w.status === filter);
 
   const tbody = document.getElementById('wh-tbody');
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="5"'
-      + ' style="text-align:center;color:#444">'
-      + 'Нет данных</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Нет данных</td></tr>';
     return;
   }
 
+  const statusLabel = { attacked: 'Атакован', active: 'Работает', limited: 'Ограничен' };
   tbody.innerHTML = filtered.map(w => {
-    const statusLabel = {
-      attacked: 'Атакован',
-      active: 'Работает',
-      limited: 'Ограничен'
-    }[w.status] || w.status;
-
-    const attackedDate = w.attacked_at
-      ? new Date(w.attacked_at).toLocaleDateString('ru-RU')
-      : '—';
-
+    const label = statusLabel[w.status] || w.status;
+    const attackedDate = w.attacked_at ? new Date(w.attacked_at).toLocaleDateString('ru-RU') : '—';
     return '<tr class="row-' + w.status + '">'
       + '<td><strong>' + w.name + '</strong></td>'
       + '<td>' + (w.region || '—') + '</td>'
-      + '<td><span class="status-badge status-' + w.status + '">'
-      + statusLabel + '</span></td>'
+      + '<td><span class="status-badge status-' + w.status + '">' + label + '</span></td>'
       + '<td>' + attackedDate + '</td>'
-      + '<td style="color:#555;font-size:12px">'
-      + (w.status_note || '—') + '</td>'
+      + '<td style="color:var(--muted);font-size:12px">' + (w.status_note || '—') + '</td>'
       + '</tr>';
   }).join('');
 }
 
 document.querySelectorAll('.wh-filter').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.wh-filter')
-      .forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.wh-filter').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     renderTable(btn.dataset.filter);
   });
 });
 
-// ── NEWS FEED ──
+// ── НОВОСТИ ──
 async function loadNews() {
   try {
-    const r = await fetch('/api/warehouse-news?limit=15');
+    const r = await fetch('/api/warehouse-news?limit=5');
     const d = await r.json();
     const feed = document.getElementById('news-feed');
 
     if (!d.news || !d.news.length) {
-      feed.innerHTML = '<div style="text-align:center;'
-        + 'color:#444">Нет новостей</div>';
+      feed.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px 0;">Нет новостей</div>';
       return;
     }
 
-    const icons = { attacked: '🔴', limited: '🟡',
-                    active: '🟢' };
+    const icons = { attacked: '🔴', limited: '🟡', active: '🟢' };
 
     feed.innerHTML = d.news.map(n => {
-      const date = new Date(n.run_at)
-        .toLocaleString('ru-RU', {
-          day:'2-digit', month:'2-digit',
-          hour:'2-digit', minute:'2-digit'
-        });
+      const date = new Date(n.run_at).toLocaleString('ru-RU', {
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+      });
       const icon = icons[n.status] || '📋';
-      const sourceHost = n.source_url
-        ? new URL(n.source_url).hostname : '';
+      const sourceHost = n.source_url ? new URL(n.source_url).hostname : '';
+
+      let title;
+      if (n.summary) {
+        const s = n.summary.length > 100 ? n.summary.slice(0, 100) + '...' : n.summary;
+        title = n.warehouse + ': ' + s;
+      } else {
+        title = n.warehouse + ' — атака подтверждена';
+      }
 
       return '<div class="news-item">'
         + '<div class="news-icon">' + icon + '</div>'
         + '<div class="news-body">'
-        + '<div class="news-title">'
-        + n.warehouse + ' → ' + (n.summary || n.status)
-        + '</div>'
+        + '<div class="news-title">' + title + '</div>'
         + '<div class="news-meta">'
         + '<span>' + date + '</span>'
-        + (n.source_url
-          ? '<a href="' + n.source_url
-            + '" target="_blank" class="news-source">'
-            + sourceHost + '</a>'
-          : '')
+        + (n.source_url ? '<a href="' + n.source_url + '" target="_blank" class="news-source">' + sourceHost + '</a>' : '')
         + '</div>'
         + '</div></div>';
     }).join('');

@@ -6592,11 +6592,22 @@ class Handler(BaseHTTPRequestHandler):
                 rows = cur.fetchall()
                 cur.close(); conn.close()
 
+                def _clean_summary(s):
+                    # warehouse_monitor.py пишет в summary сводку ВСЕХ находок за
+                    # прогон через '; ' (например "WB/Тула→attacked; WB/Тверь→..."),
+                    # а не читаемое описание конкретного склада. Такой технический
+                    # дамп для фронтенда бесполезен — отдаём null, чтобы landing.html
+                    # показал свой fallback "{склад} — атака подтверждена" вместо
+                    # обрезанной технической строки.
+                    if s and ';' in s and '→' in s:
+                        return None
+                    return s
+
                 news = [{
                     'run_at': run_at.isoformat() if run_at else None,
                     'warehouse': warehouse,
                     'status': status,
-                    'summary': summary,
+                    'summary': _clean_summary(summary),
                     'source_url': source_url,
                 } for run_at, warehouse, status, summary, source_url in rows]
 

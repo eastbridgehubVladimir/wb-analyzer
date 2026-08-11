@@ -1010,85 +1010,62 @@
     <div class="modal-subtitle">
       Никаких подписок — только разовые отчёты
     </div>
-    <table style="width:100%;border-collapse:collapse;
-      font-size:13px;margin-bottom:20px">
-      <thead>
-        <tr>
-          <th style="text-align:left;padding:8px 12px;
-            color:#64748b;font-size:11px;text-transform:uppercase;
-            border-bottom:1px solid rgba(255,255,255,0.08)">
-            </th>
-          <th style="padding:8px 12px;color:#64748b;
-            font-size:11px;text-transform:uppercase;
-            border-bottom:1px solid rgba(255,255,255,0.08);
-            text-align:center">
-            Конкуренты
-          </th>
-          <th style="padding:8px 12px;color:#059669;
-            font-size:11px;text-transform:uppercase;
-            border-bottom:1px solid rgba(255,255,255,0.08);
-            text-align:center">
-            WBAnalyzer
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="padding:10px 12px;color:#94a3b8;
-            border-bottom:1px solid rgba(255,255,255,0.05)">
-            Модель оплаты</td>
-          <td style="padding:10px 12px;text-align:center;
-            color:#f87171;
-            border-bottom:1px solid rgba(255,255,255,0.05)">
-            Подписка от 2 990 ₽/мес</td>
-          <td style="padding:10px 12px;text-align:center;
-            color:#34d399;
-            border-bottom:1px solid rgba(255,255,255,0.05)">
-            Разово от 0 ₽</td>
-        </tr>
-        <tr>
-          <td style="padding:10px 12px;color:#94a3b8;
-            border-bottom:1px solid rgba(255,255,255,0.05)">
-            Первый отчёт</td>
-          <td style="padding:10px 12px;text-align:center;
-            color:#f87171;
-            border-bottom:1px solid rgba(255,255,255,0.05)">
-            После оплаты подписки</td>
-          <td style="padding:10px 12px;text-align:center;
-            color:#34d399;
-            border-bottom:1px solid rgba(255,255,255,0.05)">
-            Бесплатно сразу</td>
-        </tr>
-        <tr>
-          <td style="padding:10px 12px;color:#94a3b8;
-            border-bottom:1px solid rgba(255,255,255,0.05)">
-            Если не нужно в этом месяце</td>
-          <td style="padding:10px 12px;text-align:center;
-            color:#f87171;
-            border-bottom:1px solid rgba(255,255,255,0.05)">
-            Платите всё равно</td>
-          <td style="padding:10px 12px;text-align:center;
-            color:#34d399;
-            border-bottom:1px solid rgba(255,255,255,0.05)">
-            Не платите ничего</td>
-        </tr>
-        <tr>
-          <td style="padding:10px 12px;color:#94a3b8">
-            Военные риски в данных</td>
-          <td style="padding:10px 12px;text-align:center;
-            color:#f87171">Нет</td>
-          <td style="padding:10px 12px;text-align:center;
-            color:#34d399">Есть</td>
-        </tr>
-      </tbody>
-    </table>
-    <div style="background:rgba(5,150,105,0.08);
-      border:1px solid rgba(5,150,105,0.2);
-      border-radius:8px;padding:12px;font-size:13px;
-      color:#6ee7b7">
-      💡 Начните бесплатно — проверьте 3 ниши прямо сейчас.
-      Понравится — купите один отчёт. Не понравится —
-      ничего не теряете.
+    <div style="margin-bottom:20px">
+
+      <div style="background:rgba(239,68,68,0.06);
+        border:1px solid rgba(239,68,68,0.15);
+        border-radius:10px; padding:16px;
+        margin-bottom:12px">
+        <div style="font-size:13px; font-weight:600;
+          color:#f87171; margin-bottom:10px">
+          ❌ Как работают конкуренты (MPStats, Moneyplace)
+        </div>
+        <ul style="list-style:none; font-size:13px;
+          color:#94a3b8; line-height:1.9">
+          <li>• Подписка от 2 990 ₽/мес — платишь даже
+            если не пользуешься</li>
+          <li>• Первый отчёт только после оплаты подписки</li>
+          <li>• Нет данных о военных рисках и складах</li>
+          <li>• Нет бесплатного старта</li>
+        </ul>
+      </div>
+
+      <div style="background:rgba(5,150,105,0.06);
+        border:1px solid rgba(5,150,105,0.2);
+        border-radius:10px; padding:16px;
+        margin-bottom:16px">
+        <div style="font-size:13px; font-weight:600;
+          color:#34d399; margin-bottom:10px">
+          ✅ Как работаем мы
+        </div>
+        <ul style="list-style:none; font-size:13px;
+          color:#94a3b8; line-height:1.9">
+          <li>• 3 бесплатных проверки прямо сейчас
+            — без регистрации</li>
+          <li>• PDF-отчёт — разовый платёж 2 500 ₽
+            или 6 000 ₽</li>
+          <li>• Не нужно в этом месяце — просто
+            не платишь ничего</li>
+          <li>• Данные о военных рисках и статусе
+            складов WB</li>
+        </ul>
+      </div>
+
+      <div style="text-align:center; font-size:15px;
+        font-weight:600; color:#f1f5f9;
+        margin-bottom:16px">
+        Попробуйте бесплатно — ничем не рискуете
+      </div>
+
+      <button onclick="closeModal('modal-price');
+        window.scrollTo({top:0,behavior:'smooth'});
+        document.getElementById('hero-search').focus();"
+        style="width:100%; background:#059669; color:#fff;
+        border:none; padding:13px; border-radius:8px;
+        font-size:14px; font-weight:500; cursor:pointer">
+        Проверить нишу бесплатно →
+      </button>
+
     </div>
   </div>
 </div>

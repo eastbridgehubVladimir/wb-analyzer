@@ -297,6 +297,19 @@
         <div id="search-suggestions"></div>
       </div>
       <button class="btn-check" onclick="checkNiche()">Проверить бесплатно</button>
+      <a href="https://t.me/Wbanalyzer_user_bot"
+         target="_blank"
+         style="background:rgba(0,136,204,0.15);
+                border:1px solid rgba(0,136,204,0.3);
+                color:#38bdf8;
+                padding:10px 16px;
+                border-radius:8px;
+                font-size:13px;
+                text-decoration:none;
+                white-space:nowrap;
+                flex-shrink:0">
+        📱 Telegram
+      </a>
     </div>
     <div id="hero-result"></div>
 
@@ -664,7 +677,8 @@ async function checkNiche() {
   }
 }
 
-animateCounter('stat-total', 7533, 1500);
+const _statTotalEl = document.getElementById('stat-total');
+if (_statTotalEl) _statTotalEl.textContent = '7 500+';
 loadPageData();
 loadNews();
 </script>

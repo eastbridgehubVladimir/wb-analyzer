@@ -186,9 +186,11 @@
   .why-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
   .why-card {
     background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 16px;
-    transition: transform 0.2s, box-shadow 0.2s; cursor: default;
+    transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;
+    position: relative;
   }
-  .why-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  .why-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+  .why-card .more-hint { position: absolute; bottom: 12px; right: 12px; font-size: 11px; color: var(--text-3); }
   .why-card .icon { font-size: 24px; margin-bottom: 6px; }
   .why-card h3 { font-size: 15px; font-weight: 600; color: var(--text-1); margin-bottom: 4px; }
   .why-card p { font-size: 14px; color: var(--text-2); line-height: 1.5; }
@@ -422,6 +424,12 @@
     <div id="panel-wh-list">
       <div style="text-align:center;color:var(--text-3);font-size:11px;padding:8px 0;">Загрузка...</div>
     </div>
+    <a href="#" onclick="openModal('modal-warehouses'); return false;"
+      style="display:block; text-align:center;
+      margin-top:8px; font-size:11px; color:rgba(5,150,105,0.7);
+      text-decoration:none">
+      Смотреть все склады →
+    </a>
   </div>
 </div>
 
@@ -563,25 +571,29 @@
   <div class="wu-title">Зачем WBAnalyzer, если есть другие инструменты?</div>
   <div class="wu-sub">Большинство сервисов дают данные. Мы даём решение.</div>
   <div class="why-grid">
-    <div class="why-card">
+    <div class="why-card" onclick="openModal('modal-ai')">
       <div class="icon">🤖</div>
       <h3>AI объясняет, а не просто показывает</h3>
       <p>Нейросеть анализирует всю статистику и пишет на понятном языке: стоит ли входить, почему, какие риски и что делать конкретно.</p>
+      <span class="more-hint">Подробнее →</span>
     </div>
-    <div class="why-card">
+    <div class="why-card" onclick="openModal('modal-pdf')">
       <div class="icon">⚡</div>
       <h3>Готовый PDF за 3–5 минут</h3>
       <p>Не часы в таблицах и не самостоятельный сбор данных. Получаете документ который можно сразу показать партнёру или инвестору.</p>
+      <span class="more-hint">Подробнее →</span>
     </div>
-    <div class="why-card">
+    <div class="why-card" onclick="openModal('modal-plan')">
       <div class="icon">🎯</div>
       <h3>Конкретный план, а не просто цифры</h3>
       <p>Цифры без интерпретации — это не решение. Мы даём пошаговый план входа: поставщик, первая поставка, ценообразование, реклама.</p>
+      <span class="more-hint">Подробнее →</span>
     </div>
-    <div class="why-card">
+    <div class="why-card" onclick="openModal('modal-price')">
       <div class="icon">💳</div>
       <h3>Платите только когда нужно</h3>
       <p>Никаких ежемесячных подписок. Начните бесплатно — проверьте 3 ниши. Нужен PDF — оплатите один отчёт.</p>
+      <span class="more-hint">Подробнее →</span>
     </div>
   </div>
 </div>
@@ -827,6 +839,260 @@
   </div>
 </div>
 
+<div id="modal-ai" class="modal-overlay"
+     onclick="if(event.target===this)closeModal('modal-ai')">
+  <div class="modal-box">
+    <button class="modal-close"
+      onclick="closeModal('modal-ai')">×</button>
+    <div class="modal-title">🤖 Как работает AI-анализ</div>
+    <div class="modal-subtitle">
+      Claude Sonnet анализирует данные и пишет на понятном языке
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;
+        color:#f1f5f9;margin-bottom:8px">
+        Что делает AI в вашем отчёте:
+      </div>
+      <ul style="list-style:none;font-size:13px;
+        color:#94a3b8;line-height:1.8">
+        <li>✅ Анализирует выручку, конкуренцию и маржу</li>
+        <li>✅ Выносит вердикт: ВХОДИТЬ / ТЕСТИРОВАТЬ / НЕ ВХОДИТЬ</li>
+        <li>✅ Объясняет ПОЧЕМУ — на русском языке</li>
+        <li>✅ Указывает конкретные риски для этой ниши</li>
+        <li>✅ Рекомендует стратегию входа по месяцам</li>
+        <li>✅ Предупреждает о военных рисках и складах</li>
+      </ul>
+    </div>
+    <div style="background:rgba(5,150,105,0.08);
+      border:1px solid rgba(5,150,105,0.2);
+      border-radius:8px;padding:14px;font-size:13px;
+      color:#6ee7b7">
+      <strong>Пример вывода AI:</strong><br><br>
+      "Ниша 'Вытяжки кухонные' показывает стабильный спрос
+      с выручкой 48 млн ₽/мес. Конкуренция средняя —
+      312 продавцов. Рекомендуем ТЕСТИРОВАТЬ: войдите
+      с партией 20 шт на склад Казань (не атакован),
+      заложите бюджет 74 320 ₽ на первую поставку.
+      Маржа при текущих комиссиях WB: ~24%."
+    </div>
+  </div>
+</div>
+
+<div id="modal-pdf" class="modal-overlay"
+     onclick="if(event.target===this)closeModal('modal-pdf')">
+  <div class="modal-box">
+    <button class="modal-close"
+      onclick="closeModal('modal-pdf')">×</button>
+    <div class="modal-title">⚡ Что входит в PDF-отчёт</div>
+    <div class="modal-subtitle">
+      Готовый документ за 3-5 минут
+    </div>
+    <div style="font-size:13px;color:#94a3b8;
+      line-height:1.6;margin-bottom:16px">
+      PDF-отчёт — это полноценный аналитический документ
+      который можно распечатать, показать партнёру
+      или инвестору, использовать как бизнес-план.
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;
+      gap:12px;margin-bottom:16px">
+      <div style="background:rgba(255,255,255,0.04);
+        border:1px solid rgba(255,255,255,0.08);
+        border-radius:8px;padding:12px">
+        <div style="font-size:12px;font-weight:600;
+          color:#059669;margin-bottom:8px">
+          Стандартный (~15 стр)
+        </div>
+        <ul style="list-style:none;font-size:12px;
+          color:#94a3b8;line-height:1.8">
+          <li>📊 Обложка и содержание</li>
+          <li>📈 Ключевые метрики ниши</li>
+          <li>🤖 Мастер-анализ AI</li>
+          <li>💰 Юнит-экономика (3 сценария)</li>
+          <li>🏆 Топ-20 товаров</li>
+          <li>📣 Рекламная стратегия</li>
+          <li>📅 Сезонный план</li>
+          <li>🎯 Стратегия входа</li>
+          <li>📋 Словарь терминов</li>
+        </ul>
+      </div>
+      <div style="background:rgba(245,158,11,0.06);
+        border:1px solid rgba(245,158,11,0.2);
+        border-radius:8px;padding:12px">
+        <div style="font-size:12px;font-weight:600;
+          color:#f59e0b;margin-bottom:8px">
+          Максимальный (~30 стр)
+        </div>
+        <ul style="list-style:none;font-size:12px;
+          color:#94a3b8;line-height:1.8">
+          <li>+ Всё из Стандартного</li>
+          <li>🔍 Анализ 10 конкурентов</li>
+          <li>🏭 Поиск поставщиков</li>
+          <li>📄 Документы WB</li>
+          <li>🖼️ Карточка товара + SEO</li>
+          <li>📦 Стратегия FBO/FBS</li>
+          <li>🗓️ 90-дневный план</li>
+          <li>📌 KPI и контроль</li>
+          <li>⚠️ Риски и защита</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-plan" class="modal-overlay"
+     onclick="if(event.target===this)closeModal('modal-plan')">
+  <div class="modal-box">
+    <button class="modal-close"
+      onclick="closeModal('modal-plan')">×</button>
+    <div class="modal-title">🎯 Конкретный план действий</div>
+    <div class="modal-subtitle">
+      Не просто цифры — пошаговый план входа
+    </div>
+    <div style="font-size:13px;color:#94a3b8;
+      line-height:1.6;margin-bottom:20px">
+      В каждом отчёте уровня Стандартный и Максимальный
+      есть конкретный план действий — что делать
+      в первые 90 дней после принятия решения о входе.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="background:rgba(255,255,255,0.04);
+        border-left:3px solid #059669;
+        padding:12px 14px;border-radius:0 8px 8px 0">
+        <div style="font-size:12px;font-weight:600;
+          color:#34d399;margin-bottom:6px">
+          Дни 1–14: Подготовка
+        </div>
+        <div style="font-size:12px;color:#94a3b8;
+          line-height:1.6">
+          Найти поставщика по списку из отчёта ·
+          Заказать образцы · Проверить сертификацию ·
+          Зарегистрировать кабинет WB
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);
+        border-left:3px solid #3b82f6;
+        padding:12px 14px;border-radius:0 8px 8px 0">
+        <div style="font-size:12px;font-weight:600;
+          color:#93c5fd;margin-bottom:6px">
+          Дни 15–30: Первая поставка
+        </div>
+        <div style="font-size:12px;color:#94a3b8;
+          line-height:1.6">
+          Заказать тестовую партию (бюджет из отчёта) ·
+          Оформить карточку товара · Настроить SEO ·
+          Выбрать безопасный склад WB
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);
+        border-left:3px solid #a78bfa;
+        padding:12px 14px;border-radius:0 8px 8px 0">
+        <div style="font-size:12px;font-weight:600;
+          color:#c4b5fd;margin-bottom:6px">
+          Дни 31–90: Масштабирование
+        </div>
+        <div style="font-size:12px;color:#94a3b8;
+          line-height:1.6">
+          Запустить рекламу по стратегии из отчёта ·
+          Отслеживать KPI · Дозаказать товар ·
+          Выйти на целевые показатели
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-price" class="modal-overlay"
+     onclick="if(event.target===this)closeModal('modal-price')">
+  <div class="modal-box">
+    <button class="modal-close"
+      onclick="closeModal('modal-price')">×</button>
+    <div class="modal-title">💳 Платите только когда нужно</div>
+    <div class="modal-subtitle">
+      Никаких подписок — только разовые отчёты
+    </div>
+    <table style="width:100%;border-collapse:collapse;
+      font-size:13px;margin-bottom:20px">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:8px 12px;
+            color:#64748b;font-size:11px;text-transform:uppercase;
+            border-bottom:1px solid rgba(255,255,255,0.08)">
+            </th>
+          <th style="padding:8px 12px;color:#64748b;
+            font-size:11px;text-transform:uppercase;
+            border-bottom:1px solid rgba(255,255,255,0.08);
+            text-align:center">
+            Конкуренты
+          </th>
+          <th style="padding:8px 12px;color:#059669;
+            font-size:11px;text-transform:uppercase;
+            border-bottom:1px solid rgba(255,255,255,0.08);
+            text-align:center">
+            WBAnalyzer
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:10px 12px;color:#94a3b8;
+            border-bottom:1px solid rgba(255,255,255,0.05)">
+            Модель оплаты</td>
+          <td style="padding:10px 12px;text-align:center;
+            color:#f87171;
+            border-bottom:1px solid rgba(255,255,255,0.05)">
+            Подписка от 2 990 ₽/мес</td>
+          <td style="padding:10px 12px;text-align:center;
+            color:#34d399;
+            border-bottom:1px solid rgba(255,255,255,0.05)">
+            Разово от 0 ₽</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;color:#94a3b8;
+            border-bottom:1px solid rgba(255,255,255,0.05)">
+            Первый отчёт</td>
+          <td style="padding:10px 12px;text-align:center;
+            color:#f87171;
+            border-bottom:1px solid rgba(255,255,255,0.05)">
+            После оплаты подписки</td>
+          <td style="padding:10px 12px;text-align:center;
+            color:#34d399;
+            border-bottom:1px solid rgba(255,255,255,0.05)">
+            Бесплатно сразу</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;color:#94a3b8;
+            border-bottom:1px solid rgba(255,255,255,0.05)">
+            Если не нужно в этом месяце</td>
+          <td style="padding:10px 12px;text-align:center;
+            color:#f87171;
+            border-bottom:1px solid rgba(255,255,255,0.05)">
+            Платите всё равно</td>
+          <td style="padding:10px 12px;text-align:center;
+            color:#34d399;
+            border-bottom:1px solid rgba(255,255,255,0.05)">
+            Не платите ничего</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;color:#94a3b8">
+            Военные риски в данных</td>
+          <td style="padding:10px 12px;text-align:center;
+            color:#f87171">Нет</td>
+          <td style="padding:10px 12px;text-align:center;
+            color:#34d399">Есть</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="background:rgba(5,150,105,0.08);
+      border:1px solid rgba(5,150,105,0.2);
+      border-radius:8px;padding:12px;font-size:13px;
+      color:#6ee7b7">
+      💡 Начните бесплатно — проверьте 3 ниши прямо сейчас.
+      Понравится — купите один отчёт. Не понравится —
+      ничего не теряете.
+    </div>
+  </div>
+</div>
+
 <script>
 function animateCounter(elementId, targetValue, duration = 1200, suffix = '') {
   const el = document.getElementById(elementId);
@@ -912,7 +1178,13 @@ async function loadPageData() {
     animateCounter('panel-active', d.active);
     animateCounter('info-attacked', d.attacked);
     animateCounter('info-active', d.active);
-    const ws = (d.warehouses || []).slice(0, 5);
+    const attacked = (d.warehouses || [])
+      .filter(w => w.status === 'attacked')
+      .slice(0, 6);
+    const active = (d.warehouses || [])
+      .filter(w => w.status === 'active')
+      .slice(0, 2);
+    const ws = [...attacked, ...active];
     const list = document.getElementById('panel-wh-list');
     if (list) list.innerHTML = ws.map(w => {
       const right = w.status === 'attacked'

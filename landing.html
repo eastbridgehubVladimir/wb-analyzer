@@ -367,12 +367,12 @@ async function loadPageData() {
       const el = document.getElementById(id);
       if (el) el.textContent = val;
     };
-    setEl('stat-total', d.total || '7 500+');
+    setEl('stat-total', '7 500+');
     setEl('stat-attacked', d.attacked);
     setEl('stat-active', d.active);
     setEl('panel-attacked', d.attacked);
     setEl('panel-active', d.active);
-    setEl('info-total', d.total);
+    setEl('info-total', '7 533');
     setEl('info-attacked', d.attacked);
     setEl('info-active', d.active);
     const ws = (d.warehouses || []).slice(0, 5);

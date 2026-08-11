@@ -62,6 +62,7 @@
     background: var(--hero-bg); padding: 20px 24px;
     display: grid; grid-template-columns: 1fr 280px; gap: 20px; align-items: center;
   }
+  .hero-left { text-align: center; }
 
   .tag-pill {
     display: inline-flex; align-items: center; gap: 5px;
@@ -79,7 +80,7 @@
 
   .hero-sub { font-size: 12px; color: var(--text-2); line-height: 1.5; margin-bottom: 14px; }
 
-  #search-bar { display: flex; gap: 6px; margin-bottom: 12px; }
+  #search-bar { display: flex; gap: 6px; margin-bottom: 12px; justify-content: center; }
   #hero-search {
     flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10);
     border-radius: 6px; padding: 8px 12px; font-size: 12px; color: #e2e8f0;
@@ -96,7 +97,7 @@
     border-radius: 6px; padding: 10px 12px; margin-top: 6px; color: #e2e8f0; font-size: 12px;
   }
 
-  .hero-stats { display: flex; gap: 16px; margin-top: 12px; }
+  .hero-stats { display: flex; gap: 16px; margin-top: 12px; justify-content: center; }
   .hero-stats .st-num { font-size: 20px; font-weight: 700; line-height: 1; }
   .hero-stats .st-lbl { font-size: 10px; color: var(--text-4); margin-top: 2px; }
 
@@ -115,9 +116,10 @@
   .wh-panel-counters .c .l { font-size: 10px; color: var(--text-3); }
 
   /* ── ОСНОВНАЯ СЕТКА ── */
-  .main-grid { display: grid; grid-template-columns: 1fr 260px; align-items: start; }
+  .main-grid { display: grid; grid-template-columns: 1fr 33%; align-items: stretch; }
   .mg-left { border-right: 1px solid var(--border); }
-  .mg-right { padding: 16px; background: var(--surface-2); }
+  .mg-right { padding: 16px; background: var(--surface-2); display: flex; flex-direction: column; }
+  .mg-right .info-card:last-child { margin-top: auto; }
 
   #analytics { padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--surface); }
   #news { padding: 16px 20px; background: var(--surface); }
@@ -128,9 +130,9 @@
   }
 
   /* ── ТАРИФЫ ── */
-  .plans-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: stretch; }
+  .plans-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; align-items: stretch; }
   .plan {
-    border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+    border: 1px solid var(--border); border-radius: 8px; padding: 18px;
     display: flex; flex-direction: column; background: var(--surface-2);
   }
   .plan.popular { border: 2px solid var(--em) !important; background: #f0fdf4; }
@@ -149,6 +151,39 @@
     border: 1px solid var(--border); background: transparent; color: var(--text-3);
   }
   .plan-btn.primary { background: var(--em); border-color: var(--em); color: #fff; font-weight: 500; }
+
+  /* ── ЗАЧЕМ WBANALYZER ── */
+  .why-us { background: var(--surface); border-top: 1px solid var(--border); padding: 20px; }
+  .why-us .wu-title { font-size: 10px; text-transform: uppercase; color: var(--text-3); margin-bottom: 4px; }
+  .why-us .wu-sub { font-size: 12px; color: var(--text-2); margin-bottom: 14px; }
+  .why-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .why-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .why-card .icon { font-size: 20px; margin-bottom: 6px; }
+  .why-card h3 { font-size: 12px; font-weight: 600; color: var(--text-1); margin-bottom: 4px; }
+  .why-card p { font-size: 11px; color: var(--text-2); line-height: 1.5; }
+
+  /* ── ВОЕННЫЕ РИСКИ ── */
+  .risks { background: #0d1f3c; padding: 20px; }
+  .risks .rk-title { font-size: 10px; text-transform: uppercase; color: #34d399; margin-bottom: 4px; }
+  .risks .rk-sub { font-size: 12px; color: #64748b; margin-bottom: 14px; }
+  .risks-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+  .risk-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px; }
+  .risk-card .icon { font-size: 20px; margin-bottom: 6px; }
+  .risk-card h3 { font-size: 12px; font-weight: 600; color: #f1f5f9; margin-bottom: 4px; }
+  .risk-card p { font-size: 11px; color: #64748b; line-height: 1.5; }
+
+  /* ── ОТЗЫВЫ ── */
+  .reviews { background: var(--surface); border-top: 1px solid var(--border); padding: 20px; }
+  .reviews .rv-title { font-size: 10px; text-transform: uppercase; color: var(--text-3); margin-bottom: 4px; }
+  .reviews .rv-sub { font-size: 12px; color: var(--text-2); margin-bottom: 14px; }
+  .reviews-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .review-stub {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+    opacity: 0.5; min-height: 80px; display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 11px; color: var(--text-3); padding: 14px;
+  }
+  .reviews-cta { text-align: center; margin-top: 12px; font-size: 11px; color: var(--text-3); }
+  .reviews-cta a { color: var(--em); }
 
   /* ── НОВОСТИ ── */
   .news-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
@@ -186,9 +221,8 @@
   .fi .fa { font-size: 10px; color: var(--text-3); line-height: 1.4; }
 
   /* ── FOOTER ── */
-  footer { background: var(--dark); padding: 11px 24px; display: flex; justify-content: space-between; align-items: center; }
+  footer { background: var(--dark); padding: 11px 24px; display: flex; align-items: center; }
   footer .fl { font-size: 10px; color: #334155; }
-  footer .ftg { font-size: 10px; color: var(--em); text-decoration: none; }
 
   @media (max-width: 768px) {
     .hero { grid-template-columns: 1fr; }
@@ -196,6 +230,9 @@
     .main-grid { grid-template-columns: 1fr; }
     .mg-left { border-right: none; }
     .plans-grid { grid-template-columns: 1fr; }
+    .why-grid { grid-template-columns: 1fr; }
+    .risks-grid { grid-template-columns: 1fr 1fr; }
+    .reviews-grid { grid-template-columns: 1fr; }
     .news-grid { grid-template-columns: 1fr; }
     .faq { flex-direction: column; }
     .fi { border-right: none; border-bottom: 1px solid var(--border-light); }
@@ -217,7 +254,7 @@
 </nav>
 
 <div class="hero">
-  <div>
+  <div class="hero-left">
     <div class="tag-pill"><span class="dot"></span>Live мониторинг WB</div>
     <h1>Аналитика ниш Wildberries<br><em>с учётом военных рисков</em></h1>
     <p class="hero-sub">Прибыльность любой ниши за 5 минут. Данные о складах, рисках и конкурентах.</p>
@@ -260,10 +297,12 @@
           <div class="plan-price">Бесплатно</div>
           <div class="plan-div"></div>
           <ul class="pf">
-            <li>Выручка и конкуренция</li>
-            <li>Score 0–100 + вердикт</li>
-            <li>Средний чек и маржа</li>
-            <li>3 анализа бесплатно</li>
+            <li>Выручка ниши и динамика за 12 мес.</li>
+            <li>Уровень конкуренции (кол-во продавцов)</li>
+            <li>Средний чек и маржинальность</li>
+            <li>Score 0–100 + AI-вердикт</li>
+            <li>Топ-3 товара ниши</li>
+            <li>3 бесплатных анализа без регистрации</li>
           </ul>
           <button class="plan-btn" onclick="document.getElementById('hero-search').focus()">Попробовать</button>
         </div>
@@ -276,12 +315,16 @@
           <div class="plan-price">2 500 ₽</div>
           <div class="plan-div"></div>
           <ul class="pf">
+            <li>Всё из Экспресса</li>
             <li>PDF-отчёт ~15 страниц</li>
-            <li>AI-анализ рынка</li>
-            <li>Топ-20 товаров ниши</li>
-            <li>Юнит-экономика</li>
-            <li>Рекламная стратегия</li>
-            <li>Сезонный план</li>
+            <li>AI-мастер-анализ рынка (Claude Sonnet)</li>
+            <li>Топ-20 товаров ниши по выручке</li>
+            <li>Юнит-экономика (3 сценария)</li>
+            <li>Ценовое распределение и сегменты</li>
+            <li>Рекламная стратегия WB</li>
+            <li>Сезонный план закупок</li>
+            <li>Стратегия входа по месяцам (1-3 мес)</li>
+            <li>Рекомендуемая цена входа</li>
           </ul>
           <a href="/order?level=standard" class="plan-btn primary">Получить отчёт →</a>
         </div>
@@ -291,14 +334,73 @@
           <div class="plan-price">6 000 ₽</div>
           <div class="plan-div"></div>
           <ul class="pf">
+            <li>Всё из Стандартного</li>
             <li>PDF-отчёт ~30 страниц</li>
-            <li>Топ-10 конкурентов</li>
-            <li>Поиск поставщиков</li>
-            <li>Карточка товара + SEO</li>
-            <li>90-дневный план</li>
-            <li>KPI и контроль</li>
+            <li>Анализ топ-10 конкурентов</li>
+            <li>Поиск поставщиков (Китай, Россия, Турция)</li>
+            <li>Ссылки на реальных поставщиков</li>
+            <li>Документы и сертификаты WB</li>
+            <li>Карточка товара + SEO-оптимизация</li>
+            <li>90-дневный план запуска</li>
+            <li>KPI и точки контроля</li>
+            <li>Стратегия FBO/FBS</li>
+            <li>Приоритетная поддержка</li>
           </ul>
           <a href="/order?level=deep" class="plan-btn">Заказать</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="why-us">
+      <div class="wu-title">Зачем WBAnalyzer, если есть другие инструменты?</div>
+      <div class="wu-sub">Большинство сервисов дают данные. Мы даём решение.</div>
+      <div class="why-grid">
+        <div class="why-card">
+          <div class="icon">🤖</div>
+          <h3>AI объясняет, а не просто показывает</h3>
+          <p>Нейросеть анализирует всю статистику и пишет на понятном языке: стоит ли входить, почему, какие риски и что делать конкретно.</p>
+        </div>
+        <div class="why-card">
+          <div class="icon">⚡</div>
+          <h3>Готовый PDF за 3–5 минут</h3>
+          <p>Не часы в таблицах и не самостоятельный сбор данных. Получаете документ который можно сразу показать партнёру или инвестору.</p>
+        </div>
+        <div class="why-card">
+          <div class="icon">🎯</div>
+          <h3>Конкретный план, а не просто цифры</h3>
+          <p>Цифры без интерпретации — это не решение. Мы даём пошаговый план входа: поставщик, первая поставка, ценообразование, реклама.</p>
+        </div>
+        <div class="why-card">
+          <div class="icon">💳</div>
+          <h3>Платите только когда нужно</h3>
+          <p>Никаких ежемесячных подписок. Начните бесплатно — проверьте 3 ниши. Нужен PDF — оплатите один отчёт.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="risks">
+      <div class="rk-title">Работаем в условиях военных рисков</div>
+      <div class="rk-sub">С июля 2026 года атакованы 20+ складов Wildberries. WBAnalyzer помогает принимать решения с учётом реальной ситуации.</div>
+      <div class="risks-grid">
+        <div class="risk-card">
+          <div class="icon">🗺️</div>
+          <h3>Карта складов</h3>
+          <p>Актуальный статус всех складов WB — какие работают, какие закрыты после атак</p>
+        </div>
+        <div class="risk-card">
+          <div class="icon">⚠️</div>
+          <h3>Красная зона</h3>
+          <p>Ниши с повышенным риском автоматически помечаются в отчётах — не вкладывай деньги в опасные товары</p>
+        </div>
+        <div class="risk-card">
+          <div class="icon">📦</div>
+          <h3>FBS-стратегия</h3>
+          <p>Рекомендуем хранить товар у себя — это защищает от потерь при атаках на склады WB</p>
+        </div>
+        <div class="risk-card">
+          <div class="icon">🔔</div>
+          <h3>Уведомления</h3>
+          <p>Бот присылает уведомление когда атакован склад WB — узнаёшь первым</p>
         </div>
       </div>
     </div>
@@ -308,6 +410,17 @@
       <div id="events-feed" class="news-grid">
         <div style="text-align:center;color:var(--text-3);font-size:11px;padding:12px 0;">Загрузка...</div>
       </div>
+    </div>
+
+    <div class="reviews">
+      <div class="rv-title">Что говорят клиенты</div>
+      <div class="rv-sub">Первые отзывы после бета-запуска</div>
+      <div class="reviews-grid">
+        <div class="review-stub">Отзыв появится после бета-тестирования</div>
+        <div class="review-stub">Отзыв появится после бета-тестирования</div>
+        <div class="review-stub">Отзыв появится после бета-тестирования</div>
+      </div>
+      <div class="reviews-cta">Хотите стать первым тестером? → <a href="https://t.me/Wbanalyzer_user_bot">Написать в Telegram</a></div>
     </div>
   </div>
 
@@ -355,7 +468,6 @@
 
 <footer>
   <span class="fl">WBAnalyzer · Аналитика ниш Wildberries · © 2026</span>
-  <a href="https://t.me/wbanalyzer" target="_blank" class="ftg">Telegram</a>
 </footer>
 
 <script>

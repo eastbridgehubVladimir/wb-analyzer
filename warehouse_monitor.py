@@ -92,6 +92,7 @@ def _ensure_deps():
 _ensure_deps()
 
 import json
+import re
 from datetime import datetime
 
 import requests
@@ -343,7 +344,33 @@ def _get_known_warehouse_names(conn) -> list:
     return names
 
 
-def _resolve_warehouse_name(candidate: str, known_names: list) -> str:
+def is_valid_warehouse_name(name: str) -> bool:
+    """Отсеивает агрегированные/мусорные "названия складов" вроде "Россия
+    (14 складов)" — 10.08.2026 такая фраза из статьи про совокупные потери
+    WB по всей стране прошла как новый склад с этим текстом вместо города,
+    попала в БД и на публичный лендинг (см. диагностику того же дня)."""
+    if not name or len(name) < 3 or len(name) > 30:
+        return False
+    # Более 2 цифр подряд — почти наверняка не название города (номер,
+    # статистика и т.п.), а не часть прошедшего проверку регэкспа ниже.
+    if re.search(r'\d{3,}', name):
+        return False
+    # Отклонять агрегированные фразы
+    aggregators = [
+        'складов', 'объектов', 'регионов', 'территорий',
+        'всего', 'итого', 'россия', 'ukraine', 'russia',
+        'беларусь', 'казахстан'
+    ]
+    name_lower = name.lower()
+    if any(a in name_lower for a in aggregators):
+        return False
+    # Отклонять если есть число + слово (типа "14 складов" или "(14 складов)")
+    if re.search(r'\d+\s+\w+', name):
+        return False
+    return True
+
+
+def _resolve_warehouse_name(candidate: str, known_names: list):
     """Сопоставляет предложенное Claude название с уже известным складом по
     регистронезависимому вхождению в обе стороны ('Koledino' / 'Wildberries
     Екатеринбург' → 'Коледино' / 'Екатеринбург' — реальный баг, найденный
@@ -351,13 +378,23 @@ def _resolve_warehouse_name(candidate: str, known_names: list) -> str:
     имя как есть: раньше находки с именем не из списка просто отбрасывались,
     из-за чего 03.08.2026 агент не заметил атаку на склад во Владимирской
     области — его вообще не было в known_names, и система structurally не
-    могла его обнаружить."""
+    могла его обнаружить.
+
+    Но "новым складом" не должна становиться первая попавшаяся строка —
+    10.08.2026 так в БД попала "Россия (14 складов)" (см. диагностику).
+    Кандидат, не совпавший ни с одним известным именем, дополнительно
+    проходит is_valid_warehouse_name(); если не проходит — возвращается
+    None, и вызывающий код обязан отбросить находку целиком, а не считать
+    её ни известным, ни новым складом."""
     c = candidate.strip()
     cl = c.lower()
     for name in known_names:
         nl = name.lower()
         if cl == nl or nl in cl or cl in nl:
             return name
+    if not is_valid_warehouse_name(c):
+        print(f"[warehouse_monitor] Отклонён невалидный кандидат в новые склады: {c!r}")
+        return None
     return c
 
 
@@ -561,6 +598,11 @@ def _search_and_extract(query: str, known_names: list) -> list:
             continue
         if str(finding.get('company', '')).strip().upper() == 'WB':
             resolved = _resolve_warehouse_name(str(finding.get('warehouse', '')).strip(), known_names)
+            if resolved is None:
+                # Не совпал ни с одним известным складом и не прошёл
+                # is_valid_warehouse_name() — агрегированная/мусорная
+                # находка, отбрасываем её целиком (см. _resolve_warehouse_name).
+                continue
             if resolved not in known_names:
                 print(f"[warehouse_monitor]   новый склад, не встречавшийся ранее: {resolved!r}")
                 known_names.append(resolved)  # чтобы находки в этом же прогоне тоже сгруппировались

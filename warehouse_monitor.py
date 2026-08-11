@@ -93,6 +93,7 @@ _ensure_deps()
 
 import json
 import re
+import time
 from datetime import datetime
 
 import requests
@@ -136,6 +137,8 @@ SOURCE_TIERS = {
     'hromadske.ua':     2,
     'novayagazeta.eu':  2,
     'vedomosti.ru':     2,
+    'nexta.tv':         2,
+    'news.zerkalo.io':  2,
     'rbc.ru':           3,
     'kommersant.ru':    3,
     'kp.ru':            3,
@@ -178,6 +181,7 @@ _DOMAIN_FILTER_UA = ' OR '.join(f'site:{d}' for d in [
     'defence.ua', 'mil.gov.ua', 'nv.ua', 'suspilne.media',
     'pravda.com.ua', 'unian.net', 'radiosvoboda.org',
     'novayagazeta.eu', 'hromadske.ua',
+    'nexta.tv', 'news.zerkalo.io',
 ])
 _DOMAIN_FILTER_RU = ' OR '.join(f'site:{d}' for d in [
     'rbc.ru', 'kommersant.ru', 'vedomosti.ru',
@@ -193,14 +197,23 @@ COMPETITOR_SEARCH_QUERIES = [
     f"{' '.join(COMPETITOR_KEYWORDS)} склад атака пожар БПЛА ({_DOMAIN_FILTER})",
 ]
 
-# ── RSS-источники через RSSHub (добавлено 12.08.2026) ──────────────────────
-# rsshub.app — публичный демо-инстанс, может быть недоступен/rate-limited;
-# fetch_rss_source() тогда просто печатает "[RSS] Ошибка ..." и возвращает [],
-# остальной пайплайн (Firecrawl-поиск) это не затрагивает.
+# ── RSS-источники (обновлено 12.08.2026) ────────────────────────────────────
+# Было на rsshub.app (публичный демо-инстанс) — 12.08.2026 диагностика
+# показала, что rsshub.app отдаёт 403 с Cloudflare JS-челленджем на ВСЕ
+# запрошенные адреса (nexta_tv, zerkalo_io, suspilne), обычный requests.get()
+# её пройти не может. Заменено на tg.i-c-a.su — при диагностике отдал 200 и
+# валидный RSS с реальным контентом обоих каналов, но с заметным rate-limit
+# (два запроса подряд без паузы — один из них получил 429/завис). Отсюда
+# time.sleep() между вызовами ниже в run().
+#
+# Suspilne через RSS убран: его rsshub.app-адрес тоже был за Cloudflare,
+# альтернативы под suspilne на tg.i-c-a.su не проверяли, а suspilne.media
+# и так уже уровень 1 в SOURCE_TIERS и покрывается обычным Firecrawl-поиском
+# (SEARCH_QUERY_UA) — без RSS-дублирования ничего не теряем.
 #
 # Тир для каждого фида задан здесь напрямую, а не через _classify_source_tier()
 # — та классифицирует по домену источника (nv.ua, rbc.ru и т.п.), а не знает
-# про rsshub.app-зеркала чужих каналов.
+# про tg.i-c-a.su-зеркала чужих каналов.
 #
 # NEXTA и Зеркало — уровень 2 (как украинские агентства: pravda.com.ua,
 # unian.net), а НЕ уровень 1. Решение 12.08.2026: это уважаемые, но
@@ -208,13 +221,10 @@ COMPETITOR_SEARCH_QUERIES = [
 # редакции с фактчекингом уровня nv.ua/suspilne.media — а система уже дважды
 # обжигалась на избыточном доверии к недостаточно проверенным источникам
 # (ложный Коледино/Екатеринбург 31.07, фантомная запись "Россия (14 складов)"
-# 10.08 — см. историю выше и is_valid_warehouse_name). Суспільне через RSS —
-# уровень 1, т.к. suspilne.media и так уже уровень 1 в SOURCE_TIERS; это
-# просто более быстрый, но не более доверенный канал того же источника.
+# 10.08 — см. историю выше и is_valid_warehouse_name).
 RSS_SOURCES = [
-    ('https://rsshub.app/telegram/channel/nexta_tv', 2, 'NEXTA (Telegram)'),
-    ('https://rsshub.app/telegram/channel/zerkalo_io', 2, 'Зеркало (Telegram)'),
-    ('https://rsshub.app/suspilne', 1, 'Суспільне (RSS)'),
+    ('https://tg.i-c-a.su/rss/nexta_tv', 2, 'NEXTA (Telegram)'),
+    ('https://tg.i-c-a.su/rss/zerkalo_io', 2, 'Зеркало (Telegram)'),
 ]
 RSS_KEYWORDS = ['Wildberries', 'WB', 'склад', 'warehouse', 'логистик']
 
@@ -309,6 +319,11 @@ def _firecrawl_search(query: str, limit: int = 10) -> list:
         # без вложенных ключей news/web (в отличие от параметра sources у MCP-обёртки,
         # который REST API вообще не принимает — 400 Unrecognized key "sources").
         results = resp.json().get('data') or []
+        # YouTube явно исключаем: 31.07.2026 ложное срабатывание по YouTube-
+        # шортсу (Коледино/Екатеринбург) — см. историю в SOURCE_TIERS выше.
+        results = [r for r in results
+                   if 'youtube.com' not in r.get('url', '')
+                   and 'youtu.be' not in r.get('url', '')]
         out = []
         skipped_old = 0
         for r in results:
@@ -723,8 +738,12 @@ def run():
     known_names = _get_known_warehouse_names(conn)
     raw_findings = []  # каждая находка + '_tier' (уровень доверия источника)
 
-    # RSS-источники (RSSHub) — перед основным Firecrawl-поиском, см. RSS_SOURCES.
-    for feed_url, tier, label in RSS_SOURCES:
+    # RSS-источники (tg.i-c-a.su) — перед основным Firecrawl-поиском, см. RSS_SOURCES.
+    # Пауза между запросами: диагностика 12.08.2026 показала rate-limit на
+    # tg.i-c-a.su при двух запросах подряд без задержки.
+    for i, (feed_url, tier, label) in enumerate(RSS_SOURCES):
+        if i > 0:
+            time.sleep(3)
         raw_findings.extend(_process_rss_source(feed_url, tier, label, RSS_KEYWORDS, known_names))
 
     # ЗАПРОС 1 — украинские источники (приоритетный, публикуют быстро и точно).

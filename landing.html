@@ -200,10 +200,12 @@
   .risks-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
   .risk-card {
     background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 14px;
-    transition: transform 0.2s, box-shadow 0.2s; cursor: default;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; cursor: pointer;
+    position: relative;
   }
-  .risk-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  .risk-card:hover { transform: translateY(-3px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-color: rgba(5,150,105,0.4); }
   .risk-card .icon { font-size: 24px; margin-bottom: 6px; }
+  .risk-card .more-hint { position: absolute; bottom: 12px; right: 12px; font-size: 11px; color: rgba(255,255,255,0.3); }
   .risk-card h3 { font-size: 15px; font-weight: 600; color: #f1f5f9; margin-bottom: 4px; }
   .risk-card p { font-size: 14px; color: #64748b; line-height: 1.5; }
 
@@ -261,6 +263,101 @@
     .fi:last-child { border-bottom: none; }
     .nav-links a.nl { display: none; }
   }
+
+  /* ── MODALS ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.active {
+    display: flex;
+  }
+  .modal-box {
+    background: #0d1f3c;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 28px;
+    max-width: 560px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+  }
+  .modal-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: rgba(255,255,255,0.08);
+    border: none; color: #94a3b8;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    font-size: 16px; cursor: pointer;
+    display: flex; align-items: center;
+    justify-content: center;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.15); }
+  .modal-title {
+    font-size: 18px; font-weight: 700;
+    color: #f1f5f9; margin-bottom: 6px;
+  }
+  .modal-subtitle {
+    font-size: 13px; color: #64748b;
+    margin-bottom: 20px;
+  }
+  .modal-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px;
+  }
+  .modal-table th {
+    text-align: left; padding: 8px 12px;
+    font-size: 11px; color: #64748b;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .modal-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: #cbd5e1;
+  }
+  .badge-r {
+    background: rgba(239,68,68,0.15);
+    color: #f87171;
+    border: 1px solid rgba(239,68,68,0.2);
+    font-size: 11px; padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .badge-g {
+    background: rgba(5,150,105,0.15);
+    color: #34d399;
+    border: 1px solid rgba(5,150,105,0.2);
+    font-size: 11px; padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .modal-list {
+    list-style: none;
+  }
+  .modal-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 13px; color: #cbd5e1;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  #modal-redzone .modal-list li::before {
+    content: '⚠️';
+    flex-shrink: 0;
+  }
+  .modal-section {
+    margin-bottom: 16px;
+  }
+  .modal-section-title {
+    font-size: 13px; font-weight: 600;
+    color: #f1f5f9; margin-bottom: 8px;
+  }
 </style>
 </head>
 <body>
@@ -289,18 +386,17 @@
         <div id="search-suggestions"></div>
       </div>
       <button class="btn-check" onclick="checkNiche()">Проверить бесплатно</button>
+    </div>
+    <div style="text-align:center; margin-top:8px; font-size:12px; color:rgba(255,255,255,0.4)">
+      Введите нишу → получите Score 0–100, выручку и вердикт AI бесплатно · 3 проверки без регистрации
+    </div>
+    <div style="text-align:center; margin-top:10px">
       <a href="https://t.me/Wbanalyzer_user_bot"
          target="_blank"
-         style="background:rgba(0,136,204,0.15);
-                border:1px solid rgba(0,136,204,0.3);
-                color:#38bdf8;
-                padding:12px 18px;
-                border-radius:8px;
-                font-size:14px;
-                text-decoration:none;
-                white-space:nowrap;
-                flex-shrink:0">
-        📱 Telegram
+         style="font-size:12px; color:rgba(255,255,255,0.45);
+           text-decoration:none; display:inline-flex;
+           align-items:center; gap:5px">
+        📱 Удобнее с телефона? Откройте Telegram-бот →
       </a>
     </div>
     <div id="hero-result"></div>
@@ -494,25 +590,29 @@
   <div class="rk-title">Работаем в условиях военных рисков</div>
   <div class="rk-sub">С июля 2026 года атакованы 20+ складов Wildberries. WBAnalyzer помогает принимать решения с учётом реальной ситуации.</div>
   <div class="risks-grid">
-    <div class="risk-card">
+    <div class="risk-card" onclick="openModal('modal-warehouses')">
       <div class="icon">🗺️</div>
       <h3>Карта складов</h3>
       <p>Актуальный статус всех складов WB — какие работают, какие закрыты после атак</p>
+      <span class="more-hint">Подробнее →</span>
     </div>
-    <div class="risk-card">
+    <div class="risk-card" onclick="openModal('modal-redzone')">
       <div class="icon">⚠️</div>
       <h3>Красная зона</h3>
       <p>Ниши с повышенным риском автоматически помечаются в отчётах — не вкладывай деньги в опасные товары</p>
+      <span class="more-hint">Подробнее →</span>
     </div>
-    <div class="risk-card">
+    <div class="risk-card" onclick="openModal('modal-fbs')">
       <div class="icon">📦</div>
       <h3>FBS-стратегия</h3>
       <p>Рекомендуем хранить товар у себя — это защищает от потерь при атаках на склады WB</p>
+      <span class="more-hint">Подробнее →</span>
     </div>
-    <div class="risk-card">
+    <div class="risk-card" onclick="openModal('modal-notify')">
       <div class="icon">🔔</div>
       <h3>Уведомления</h3>
       <p>Бот присылает уведомление когда атакован склад WB — узнаёшь первым</p>
+      <span class="more-hint">Подробнее →</span>
     </div>
   </div>
 </div>
@@ -562,6 +662,170 @@
 <footer>
   <span class="fl">WBAnalyzer · Аналитика ниш Wildberries · © 2026</span>
 </footer>
+
+<div id="modal-warehouses" class="modal-overlay"
+     onclick="if(event.target===this)closeModal('modal-warehouses')">
+  <div class="modal-box">
+    <button class="modal-close"
+      onclick="closeModal('modal-warehouses')">×</button>
+    <div class="modal-title">🗺️ Склады Wildberries</div>
+    <div class="modal-subtitle">
+      Актуальный статус крупных РЦ — обновляется каждые 4 часа
+    </div>
+    <table class="modal-table">
+      <thead>
+        <tr>
+          <th>Склад</th>
+          <th>Регион</th>
+          <th>Статус</th>
+          <th>Дата</th>
+        </tr>
+      </thead>
+      <tbody id="modal-wh-body">
+        <tr><td colspan="4"
+          style="text-align:center;color:#475569;padding:20px">
+          Загрузка...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="modal-redzone" class="modal-overlay"
+     onclick="if(event.target===this)closeModal('modal-redzone')">
+  <div class="modal-box">
+    <button class="modal-close"
+      onclick="closeModal('modal-redzone')">×</button>
+    <div class="modal-title">⚠️ Красная зона</div>
+    <div class="modal-subtitle">
+      Ниши с повышенным риском — склады с такими товарами
+      чаще подвергаются атакам. WBAnalyzer помечает их
+      в каждом отчёте автоматически.
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">
+        Категории повышенного риска:
+      </div>
+      <ul class="modal-list">
+        <li>FPV-дроны и комплектующие, навигационные модули</li>
+        <li>Бронежилеты, тактические шлемы и снаряжение</li>
+        <li>Средства РЭБ, глушители сигнала</li>
+        <li>Тепловизоры, приборы ночного видения</li>
+        <li>Рации и военные средства связи</li>
+        <li>Тактические аптечки и медицинское снаряжение</li>
+        <li>Маскировочные сети и военный текстиль</li>
+      </ul>
+    </div>
+    <div style="background:rgba(239,68,68,0.08);
+      border:1px solid rgba(239,68,68,0.2);
+      border-radius:8px; padding:12px; font-size:13px;
+      color:#fca5a5; margin-top:12px">
+      💡 При анализе любой ниши из этого списка WBAnalyzer
+      автоматически добавляет красное предупреждение в отчёт.
+    </div>
+  </div>
+</div>
+
+<div id="modal-fbs" class="modal-overlay"
+     onclick="if(event.target===this)closeModal('modal-fbs')">
+  <div class="modal-box">
+    <button class="modal-close"
+      onclick="closeModal('modal-fbs')">×</button>
+    <div class="modal-title">📦 FBS-стратегия</div>
+    <div class="modal-subtitle">
+      Почему хранить товар у себя выгоднее в 2026 году
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">Что такое FBS?</div>
+      <div style="font-size:13px; color:#94a3b8;
+        line-height:1.6; margin-bottom:16px">
+        FBS (Fulfillment by Seller) — вы храните товар
+        у себя и отправляете заказы самостоятельно.
+        WB доставляет покупателю. В отличие от FBO
+        (склад WB), ваш товар не зависит от атак
+        на логистические центры маркетплейса.
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">
+        Преимущества FBS в текущих условиях:
+      </div>
+      <ul class="modal-list" style="list-style:none">
+        <li style="color:#34d399">
+          <span>✓</span>
+          Товар в безопасности — атаки на склады WB
+          не затронут ваш запас
+        </li>
+        <li style="color:#34d399">
+          <span>✓</span>
+          Меньше заморозки капитала — не нужно держать
+          большой сток на складе WB
+        </li>
+        <li style="color:#34d399">
+          <span>✓</span>
+          Контроль остатков — вы сами управляете
+          количеством доступного товара
+        </li>
+        <li style="color:#34d399">
+          <span>✓</span>
+          Гибкость — можно быстро сменить нишу
+          без потерь на хранение
+        </li>
+      </ul>
+    </div>
+    <div style="background:rgba(5,150,105,0.08);
+      border:1px solid rgba(5,150,105,0.2);
+      border-radius:8px; padding:12px; font-size:13px;
+      color:#6ee7b7; margin-top:4px">
+      💡 WBAnalyzer рекомендует FBS как основную стратегию
+      для всех ниш в текущих условиях. Это отражено
+      в каждом отчёте уровня Стандартный и Максимальный.
+    </div>
+  </div>
+</div>
+
+<div id="modal-notify" class="modal-overlay"
+     onclick="if(event.target===this)closeModal('modal-notify')">
+  <div class="modal-box">
+    <button class="modal-close"
+      onclick="closeModal('modal-notify')">×</button>
+    <div class="modal-title">🔔 Уведомления об атаках</div>
+    <div class="modal-subtitle">
+      Узнавайте первыми когда атакован склад Wildberries
+    </div>
+    <div style="font-size:13px; color:#94a3b8;
+      line-height:1.6; margin-bottom:20px">
+      Наш бот мониторит новости каждые 4 часа.
+      Как только подтверждается атака на склад WB —
+      вы получаете уведомление в Telegram.
+      Это позволяет вовремя переместить товар
+      или скорректировать стратегию поставок.
+    </div>
+    <div style="margin-bottom:16px">
+      <div class="modal-section-title">
+        Что приходит в уведомлении:
+      </div>
+      <ul class="modal-list" style="list-style:none">
+        <li><span>📍</span>Название и регион склада</li>
+        <li><span>📅</span>Дата и время атаки</li>
+        <li><span>🔗</span>Ссылка на подтверждённый источник</li>
+        <li><span>💡</span>Рекомендация что делать</li>
+      </ul>
+    </div>
+    <a href="https://t.me/Wbanalyzer_user_bot"
+       target="_blank"
+       style="display:block; text-align:center;
+         background:#059669; color:#fff;
+         padding:12px; border-radius:8px;
+         text-decoration:none; font-size:14px;
+         font-weight:500; margin-top:8px">
+      📱 Подписаться на уведомления в Telegram
+    </a>
+    <div style="text-align:center; margin-top:10px;
+      font-size:11px; color:#475569">
+      Уведомления бесплатные. Отписаться можно в любой момент.
+    </div>
+  </div>
+</div>
 
 <script>
 function animateCounter(elementId, targetValue, duration = 1200, suffix = '') {
@@ -724,6 +988,50 @@ const _statTotalEl = document.getElementById('stat-total');
 if (_statTotalEl) _statTotalEl.textContent = '7 500+';
 loadPageData();
 loadNews();
+
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('active');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.active')
+      .forEach(m => {
+        m.classList.remove('active');
+        document.body.style.overflow = '';
+      });
+  }
+});
+
+async function loadModalWarehouses() {
+  try {
+    const r = await fetch('/api/warehouses');
+    const d = await r.json();
+    const tbody = document.getElementById('modal-wh-body');
+    if (!tbody) return;
+    tbody.innerHTML = (d.warehouses || []).map(w => {
+      const status = w.status === 'attacked'
+        ? '<span class="badge-r">Атакован</span>'
+        : '<span class="badge-g">Работает</span>';
+      const date = w.attacked_at
+        ? new Date(w.attacked_at).toLocaleDateString('ru-RU',
+            {day:'2-digit',month:'2-digit',year:'2-digit'})
+        : '—';
+      return '<tr><td><strong>' + w.name + '</strong></td>'
+        + '<td style="color:#64748b">'
+        + (w.region || '—') + '</td>'
+        + '<td>' + status + '</td>'
+        + '<td style="color:#64748b">' + date + '</td></tr>';
+    }).join('');
+  } catch(e) { console.error(e); }
+}
+loadModalWarehouses();
 </script>
 </body>
 </html>

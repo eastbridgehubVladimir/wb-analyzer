@@ -1157,6 +1157,11 @@ async function loadPageData() {
     animateCounter('info-active', d.active);
     const attacked = (d.warehouses || [])
       .filter(w => w.status === 'attacked')
+      .sort((a, b) => {
+        const da = a.attacked_at ? new Date(a.attacked_at) : 0;
+        const db = b.attacked_at ? new Date(b.attacked_at) : 0;
+        return db - da;
+      })
       .slice(0, 6);
     const active = (d.warehouses || [])
       .filter(w => w.status === 'active')

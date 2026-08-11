@@ -138,6 +138,9 @@ SOURCE_TIERS = {
     'vedomosti.ru':     2,
     'rbc.ru':           3,
     'kommersant.ru':    3,
+    'kp.ru':            3,
+    'aif.ru':           3,
+    'tass.ru':          3,
 }
 
 # Telegram (t.me) — отдельно от SOURCE_TIERS: обычный веб-поиск Firecrawl плохо
@@ -178,6 +181,7 @@ _DOMAIN_FILTER_UA = ' OR '.join(f'site:{d}' for d in [
 ])
 _DOMAIN_FILTER_RU = ' OR '.join(f'site:{d}' for d in [
     'rbc.ru', 'kommersant.ru', 'vedomosti.ru',
+    'kp.ru', 'aif.ru', 'tass.ru',
 ])
 
 SEARCH_QUERY_UA = f"Wildberries склад атака удар пожар ({_DOMAIN_FILTER_UA})"
@@ -188,6 +192,69 @@ SEARCH_QUERY_RU = f"Wildberries склад атака пожар горит ({_D
 COMPETITOR_SEARCH_QUERIES = [
     f"{' '.join(COMPETITOR_KEYWORDS)} склад атака пожар БПЛА ({_DOMAIN_FILTER})",
 ]
+
+# ── RSS-источники через RSSHub (добавлено 12.08.2026) ──────────────────────
+# rsshub.app — публичный демо-инстанс, может быть недоступен/rate-limited;
+# fetch_rss_source() тогда просто печатает "[RSS] Ошибка ..." и возвращает [],
+# остальной пайплайн (Firecrawl-поиск) это не затрагивает.
+#
+# Тир для каждого фида задан здесь напрямую, а не через _classify_source_tier()
+# — та классифицирует по домену источника (nv.ua, rbc.ru и т.п.), а не знает
+# про rsshub.app-зеркала чужих каналов.
+#
+# NEXTA и Зеркало — уровень 2 (как украинские агентства: pravda.com.ua,
+# unian.net), а НЕ уровень 1. Решение 12.08.2026: это уважаемые, но
+# Telegram-первые каналы, не государственные/официальные источники и не
+# редакции с фактчекингом уровня nv.ua/suspilne.media — а система уже дважды
+# обжигалась на избыточном доверии к недостаточно проверенным источникам
+# (ложный Коледино/Екатеринбург 31.07, фантомная запись "Россия (14 складов)"
+# 10.08 — см. историю выше и is_valid_warehouse_name). Суспільне через RSS —
+# уровень 1, т.к. suspilne.media и так уже уровень 1 в SOURCE_TIERS; это
+# просто более быстрый, но не более доверенный канал того же источника.
+RSS_SOURCES = [
+    ('https://rsshub.app/telegram/channel/nexta_tv', 2, 'NEXTA (Telegram)'),
+    ('https://rsshub.app/telegram/channel/zerkalo_io', 2, 'Зеркало (Telegram)'),
+    ('https://rsshub.app/suspilne', 1, 'Суспільне (RSS)'),
+]
+RSS_KEYWORDS = ['Wildberries', 'WB', 'склад', 'warehouse', 'логистик']
+
+
+def fetch_rss_source(url: str, keywords: list) -> list:
+    """
+    Получает RSS и возвращает тексты записей которые содержат хотя бы одно
+    ключевое слово.
+    """
+    try:
+        r = requests.get(url, timeout=15,
+            headers={'User-Agent': 'Mozilla/5.0'})
+        if r.status_code != 200:
+            print(f'[RSS] Ошибка {url}: HTTP {r.status_code}')
+            return []
+        # Простой парсинг XML без библиотек
+        items = re.findall(
+            r'<item>(.*?)</item>', r.text, re.DOTALL)
+        results = []
+        for item in items:
+            # Извлечь title и description
+            title = re.search(
+                r'<title>(.*?)</title>', item)
+            desc = re.search(
+                r'<description>(.*?)</description>',
+                item)
+            text = ''
+            if title: text += title.group(1) + ' '
+            if desc: text += desc.group(1)
+            # Проверить ключевые слова
+            text_lower = text.lower()
+            if any(kw.lower() in text_lower
+                   for kw in keywords):
+                # Убрать HTML теги
+                clean = re.sub(r'<[^>]+>', '', text)
+                results.append(clean[:500])
+        return results
+    except Exception as e:
+        print(f'[RSS] Ошибка {url}: {e}')
+        return []
 
 VALID_STATUSES = {'active', 'limited', 'closed', 'attacked'}
 
@@ -615,6 +682,36 @@ def _search_and_extract(query: str, known_names: list) -> list:
     return found
 
 
+def _process_rss_source(feed_url: str, tier: int, label: str, keywords: list, known_names: list) -> list:
+    """RSS-аналог _search_and_extract(): те же тексты проходят через тот же
+    Claude-экстрактор и то же разрешение имени склада (is_valid_warehouse_name
+    внутри _resolve_warehouse_name), только tier источника задан заранее
+    (из RSS_SOURCES) вместо вычисления через _classify_source_tier(), которая
+    не умеет классифицировать rsshub.app-адреса."""
+    found = []
+    texts = fetch_rss_source(feed_url, keywords)
+    if texts:
+        print(f'[RSS] {feed_url}: {len(texts)} записей')
+    for text in texts:
+        finding = _extract_with_claude(text, known_names, feed_url)
+        if not finding.get('found'):
+            continue
+        if str(finding.get('company', '')).strip().upper() == 'WB':
+            resolved = _resolve_warehouse_name(str(finding.get('warehouse', '')).strip(), known_names)
+            if resolved is None:
+                continue
+            if resolved not in known_names:
+                print(f"[warehouse_monitor]   новый склад, не встречавшийся ранее: {resolved!r}")
+                known_names.append(resolved)
+            finding['warehouse'] = resolved
+        finding['source_url'] = feed_url
+        finding['_tier'] = tier
+        found.append(finding)
+        print(f"[warehouse_monitor]   упоминание ({label}): {finding.get('company')}/{finding.get('warehouse')} "
+              f"→ {finding.get('status')} (уровень источника {tier})")
+    return found
+
+
 def run():
     print(f'[warehouse_monitor] Старт: {datetime.now().isoformat()}')
     if not DATABASE_URL:
@@ -625,6 +722,10 @@ def run():
     _ensure_schema(conn)
     known_names = _get_known_warehouse_names(conn)
     raw_findings = []  # каждая находка + '_tier' (уровень доверия источника)
+
+    # RSS-источники (RSSHub) — перед основным Firecrawl-поиском, см. RSS_SOURCES.
+    for feed_url, tier, label in RSS_SOURCES:
+        raw_findings.extend(_process_rss_source(feed_url, tier, label, RSS_KEYWORDS, known_names))
 
     # ЗАПРОС 1 — украинские источники (приоритетный, публикуют быстро и точно).
     raw_findings.extend(_search_and_extract(SEARCH_QUERY_UA, known_names))

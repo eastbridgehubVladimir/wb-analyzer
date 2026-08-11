@@ -110,7 +110,7 @@
     border-radius: 6px; padding: 10px 12px; margin-top: 6px; color: #e2e8f0; font-size: 14px;
   }
 
-  .hero-stats { display: flex; gap: 24px; margin-top: 12px; justify-content: center; }
+  .hero-stats { display: flex; gap: 36px; margin-top: 12px; justify-content: center; }
   .hero-stats .st-num { font-size: 26px; font-weight: 700; line-height: 1; }
   .hero-stats .st-lbl { font-size: 12px; color: var(--text-4); margin-top: 2px; }
 
@@ -308,7 +308,6 @@
     <div class="hero-stats">
       <div><div class="st-num" id="stat-total" style="color:#f1f5f9">7 500+</div><div class="st-lbl">ниш в базе</div></div>
       <div><div class="st-num" id="stat-attacked" style="color:#f87171">—</div><div class="st-lbl">складов под ударом</div></div>
-      <div><div class="st-num" id="stat-active" style="color:#34d399">—</div><div class="st-lbl">работают</div></div>
       <div><div class="st-num" style="color:#a78bfa">AI</div><div class="st-lbl">Claude</div></div>
     </div>
   </div>
@@ -350,6 +349,14 @@
             <li>3 бесплатных анализа без регистрации</li>
           </ul>
           <button class="plan-btn" onclick="document.getElementById('hero-search').focus(); window.scrollTo({top:0, behavior:'smooth'})">Попробовать</button>
+          <div style="display:flex; align-items:center; gap:8px;
+            margin-top:16px; padding:10px 12px;
+            background:var(--em-light);
+            border:1px solid var(--em-border);
+            border-radius:6px;
+            font-size:12px; color:var(--em)">
+            🎯 Идеально для первого знакомства с нишей. Без регистрации, без оплаты.
+          </div>
         </div>
 
         <div class="plan popular">
@@ -434,6 +441,24 @@
       <div class="ic-title">🔔 Уведомления в Telegram</div>
       <div class="ic-text">Бот присылает уведомление когда атакован склад WB — узнаёте первыми.</div>
       <a href="https://t.me/Wbanalyzer_user_bot" target="_blank" class="ic-cta">Подписаться на уведомления</a>
+    </div>
+
+    <div style="background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:8px; padding:12px;
+      margin-top:10px">
+      <div style="font-size:11px; font-weight:600;
+        color:var(--text-1); margin-bottom:8px">
+        📈 Почему продавцы выбирают нас
+      </div>
+      <div style="font-size:12px; color:var(--text-2);
+        line-height:1.6">
+        ✓ Не нужна подписка — платите разово<br>
+        ✓ AI объясняет на русском языке<br>
+        ✓ Данные с учётом военных рисков<br>
+        ✓ PDF готов за 3–5 минут<br>
+        ✓ Бесплатная проверка без регистрации
+      </div>
     </div>
   </div>
 </div>
@@ -619,7 +644,6 @@ async function loadPageData() {
     };
     setEl('info-total', '7 533');
     animateCounter('stat-attacked', d.attacked);
-    animateCounter('stat-active', d.active);
     animateCounter('panel-attacked', d.attacked);
     animateCounter('panel-active', d.active);
     animateCounter('info-attacked', d.attacked);

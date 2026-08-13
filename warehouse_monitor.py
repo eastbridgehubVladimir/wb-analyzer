@@ -861,7 +861,7 @@ def run():
         lines = [f"• {f.get('company')}: {f.get('warehouse')} → {f.get('status')} ({f.get('source_url')})"
                   for f in competitor_findings]
         print('[warehouse_monitor] Упоминания складов конкурентов:\n' + '\n'.join(lines))
-        _notify_admin("ℹ️ warehouse_monitor: упоминания складов конкурентов (информационно, в БД не пишем)\n\n"
+        _notify_admin("ℹ️ Упоминания складов конкурентов (не WB, справочно)\n\n"
                       + '\n'.join(lines))
 
     if not (to_notify_updated or competitor_findings):

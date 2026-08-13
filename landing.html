@@ -122,6 +122,12 @@
   .wh-panel-head { display: flex; justify-content: space-between; margin-bottom: 8px; }
   .wh-panel-head .t { font-size: 12px; color: var(--text-4); text-transform: uppercase; letter-spacing: .06em; }
   .wh-panel-head .live { font-size: 12px; color: var(--em); display: flex; align-items: center; }
+  .hero-map {
+    height: 260px; width: 100%; border-radius: 8px;
+    margin-bottom: 10px; cursor: pointer; background: #111a2e;
+    transition: opacity .15s;
+  }
+  .hero-map:hover { opacity: 0.85; }
   .live-dot {
     width: 6px; height: 6px; background: #059669; border-radius: 50%;
     animation: pulse 2s infinite; display: inline-block; margin-right: 4px;
@@ -360,6 +366,11 @@
     font-size: 13px; font-weight: 600;
     color: #f1f5f9; margin-bottom: 8px;
   }
+
+  /* ── Leaflet tile brightness (общее для всех карт на странице) ── */
+  .leaflet-tile-pane {
+    filter: brightness(1.45) contrast(0.9);
+  }
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -414,6 +425,9 @@
 
   <div class="wh-panel">
     <div class="wh-panel-head"><span class="t">Склады WB</span><span class="live"><span class="live-dot"></span>live</span></div>
+    <div id="hero-map" class="hero-map"
+      onclick="openModal('modal-warehouses')"
+      title="Открыть карту складов"></div>
     <div style="text-align:center; margin-bottom:10px">
       <div style="font-size:28px; font-weight:700; color:#f87171" id="panel-attacked">—</div>
       <div style="font-size:11px; color:rgba(255,255,255,0.5); margin-top:2px">складов атаковано с июля 2026</div>
@@ -679,14 +693,15 @@
 
 <div id="modal-warehouses" class="modal-overlay"
      onclick="if(event.target===this)closeModal('modal-warehouses')">
-  <div class="modal-box" style="max-width:820px">
+  <div class="modal-box" style="width:min(1400px,90vw);max-width:min(1400px,90vw);
+    height:85vh;max-height:85vh;display:flex;flex-direction:column">
     <button class="modal-close"
       onclick="closeModal('modal-warehouses')">×</button>
     <div class="modal-title">🗺️ Карта складов Wildberries</div>
-    <div class="modal-subtitle" id="modal-wh-summary">
+    <div class="modal-subtitle" id="modal-wh-summary" style="flex-shrink:0">
       Загрузка данных...
     </div>
-    <div id="warehouse-map" style="height:500px;width:100%;
+    <div id="warehouse-map" style="flex:1;width:100%;min-height:0;
       border-radius:12px;position:relative;background:#111a2e"></div>
   </div>
 </div>
@@ -1309,10 +1324,10 @@ async function initWarehouseMap() {
       const color = markerColor(w);
       const marker = L.circleMarker([w.lat, w.lon], {
         radius: 8,
-        color: color,
+        color: '#0d1f3c',
         fillColor: color,
-        fillOpacity: 0.85,
-        weight: 1.5
+        fillOpacity: 0.9,
+        weight: 2
       }).addTo(_warehouseMap);
 
       const statusLabel = w.status === 'attacked'
@@ -1370,6 +1385,49 @@ async function initWarehouseMap() {
     if (summaryEl) summaryEl.textContent = 'Не удалось загрузить данные карты';
   }
 }
+
+async function initHeroMap() {
+  const el = document.getElementById('hero-map');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/warehouses');
+    const d = await r.json();
+    const warehouses = (d.warehouses || []).filter(w => w.lat != null && w.lon != null);
+
+    const heroMap = L.map('hero-map', {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      touchZoom: false,
+      keyboard: false
+    });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19
+    }).addTo(heroMap);
+
+    const bounds = [];
+    warehouses.forEach(w => {
+      L.circleMarker([w.lat, w.lon], {
+        radius: 5,
+        color: '#0d1f3c',
+        fillColor: markerColor(w),
+        fillOpacity: 0.9,
+        weight: 1.5,
+        interactive: false
+      }).addTo(heroMap);
+      bounds.push([w.lat, w.lon]);
+    });
+    if (bounds.length) heroMap.fitBounds(bounds, { padding: [10, 10] });
+
+    setTimeout(() => heroMap.invalidateSize(), 0);
+  } catch(e) {
+    console.error('hero map:', e);
+  }
+}
+initHeroMap();
 </script>
 </body>
 </html>

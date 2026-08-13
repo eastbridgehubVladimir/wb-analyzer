@@ -47,6 +47,88 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 DB = os.getenv("DATABASE_URL", "postgresql://user@localhost:5432/wb_saas")
 MPSTATS_TOKEN = os.getenv("MPSTATS_TOKEN", "")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_ADMIN_ID = os.getenv("TELEGRAM_ADMIN_ID")
+
+
+def _notify_admin_app(text):
+    """Уведомление в личный Telegram-чат админа. Аналог _notify_admin из
+    warehouse_monitor.py, отдельная реализация — модули не импортируют друг друга."""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_ADMIN_ID:
+        print('[app] TELEGRAM_BOT_TOKEN/TELEGRAM_ADMIN_ID не заданы — уведомление пропущено')
+        return
+    try:
+        resp = mpstats_req.post(
+            f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage',
+            json={'chat_id': TELEGRAM_ADMIN_ID, 'text': text, 'parse_mode': 'HTML'},
+            timeout=10,
+        )
+        data = {}
+        try:
+            data = resp.json()
+        except ValueError:
+            pass
+        if not resp.ok or data.get('ok') is False:
+            print(f'[app] Telegram notify FAILED: HTTP {resp.status_code}, ответ: {data or resp.text[:300]}')
+    except Exception as e:
+        print(f'[app] Telegram notify EXCEPTION: {e}')
+
+
+def _migrate_orders_jsonl():
+    """Одноразовая миграция: если на диске остался старый orders.jsonl
+    (заявки с формы /order, писавшиеся туда до перехода на Postgres) —
+    перенести все строки в order_leads и уведомить админа сводкой.
+    Файл переименовывается после переноса, поэтому при следующем
+    рестарте процесса миграция не повторится и админ не получит
+    повторное уведомление."""
+    orders_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'orders.jsonl')
+    if not os.path.exists(orders_path):
+        return
+    try:
+        with open(orders_path, encoding='utf-8') as f:
+            raw_lines = [line.strip() for line in f if line.strip()]
+        rows = []
+        for line in raw_lines:
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                print(f'[app] orders.jsonl: не удалось распарсить строку: {line[:200]}')
+        migrated = []
+        conn = psycopg2.connect(DB)
+        cur = conn.cursor()
+        for o in rows:
+            cur.execute("""
+                INSERT INTO order_leads (id, ts, niche, level, contact, comment, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO NOTHING
+            """, (
+                o.get('id'), o.get('ts'), o.get('niche', ''), o.get('level', 'standard'),
+                o.get('contact', ''), o.get('comment', ''), o.get('status', 'new'),
+            ))
+            if cur.rowcount:
+                migrated.append(o)
+        conn.commit()
+        cur.close(); conn.close()
+
+        os.rename(orders_path, orders_path + '.migrated')
+        print(f'[app] orders.jsonl: перенесено в order_leads {len(migrated)} из {len(rows)} записей, файл переименован')
+
+        if migrated:
+            lines = [
+                f"- {o.get('niche', '—')} · {o.get('level', '—')} · {o.get('contact', '—')} · {o.get('ts', '—')}"
+                for o in migrated
+            ]
+            _notify_admin_app(
+                f"⚠️ Миграция orders.jsonl → Postgres: найдено {len(migrated)} старых заявок с формы /order\n\n"
+                + "\n".join(lines)
+            )
+        else:
+            _notify_admin_app("ℹ️ Миграция orders.jsonl → Postgres: файл был, но заявок в нём не оказалось (0 строк)")
+    except Exception as e:
+        print(f'[app] Миграция orders.jsonl EXCEPTION: {e}')
+
+
+_migrate_orders_jsonl()
 
 # Кэш каталога (6 часов)
 import time
@@ -7789,20 +7871,30 @@ class Handler(BaseHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(json.dumps({'error': 'niche and contact required'}).encode())
                     return
-                order = {
-                    'id': _dt.datetime.utcnow().strftime('%Y%m%d%H%M%S%f'),
-                    'ts': _dt.datetime.utcnow().isoformat(),
-                    'niche': niche, 'level': level,
-                    'contact': contact, 'comment': comment,
-                    'status': 'new',
-                }
-                orders_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'orders.jsonl')
-                with open(orders_path, 'a', encoding='utf-8') as f:
-                    f.write(json.dumps(order, ensure_ascii=False) + '\n')
+                order_id = _dt.datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
+                order_ts = _dt.datetime.utcnow()
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO order_leads (id, ts, niche, level, contact, comment, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, 'new')
+                """, (order_id, order_ts, niche, level, contact, comment))
+                conn.commit()
+                cur.close(); conn.close()
+
+                _notify_admin_app(
+                    "🆕 Новая заявка с формы /order\n\n"
+                    f"Ниша: {niche}\n"
+                    f"Уровень: {level}\n"
+                    f"Контакт: {contact}\n"
+                    f"Комментарий: {comment or '—'}\n"
+                    f"Время: {order_ts.isoformat()}"
+                )
+
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()
-                self.wfile.write(json.dumps({'ok': True, 'order_id': order['id']}, ensure_ascii=False).encode())
+                self.wfile.write(json.dumps({'ok': True, 'order_id': order_id}, ensure_ascii=False).encode())
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')

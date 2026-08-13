@@ -361,6 +361,8 @@
     color: #f1f5f9; margin-bottom: 8px;
   }
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 </head>
 <body>
 
@@ -677,28 +679,15 @@
 
 <div id="modal-warehouses" class="modal-overlay"
      onclick="if(event.target===this)closeModal('modal-warehouses')">
-  <div class="modal-box">
+  <div class="modal-box" style="max-width:820px">
     <button class="modal-close"
       onclick="closeModal('modal-warehouses')">×</button>
-    <div class="modal-title">🗺️ Склады Wildberries</div>
-    <div class="modal-subtitle">
-      Актуальный статус крупных РЦ — обновляется каждые 4 часа
+    <div class="modal-title">🗺️ Карта складов Wildberries</div>
+    <div class="modal-subtitle" id="modal-wh-summary">
+      Загрузка данных...
     </div>
-    <table class="modal-table">
-      <thead>
-        <tr>
-          <th>Склад</th>
-          <th>Регион</th>
-          <th>Статус</th>
-          <th>Дата</th>
-        </tr>
-      </thead>
-      <tbody id="modal-wh-body">
-        <tr><td colspan="4"
-          style="text-align:center;color:#475569;padding:20px">
-          Загрузка...</td></tr>
-      </tbody>
-    </table>
+    <div id="warehouse-map" style="height:500px;width:100%;
+      border-radius:12px;position:relative;background:#111a2e"></div>
   </div>
 </div>
 
@@ -1254,6 +1243,7 @@ function openModal(id) {
   const el = document.getElementById(id);
   if (el) el.classList.add('active');
   document.body.style.overflow = 'hidden';
+  if (id === 'modal-warehouses') initWarehouseMap();
 }
 function closeModal(id) {
   const el = document.getElementById(id);
@@ -1270,35 +1260,116 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-async function loadModalWarehouses() {
+let _warehouseMap = null;
+let _warehouseMapInitialized = false;
+
+const DAMAGE_COLORS = {
+  destroyed: '#e63946',
+  partial: '#f4a261',
+  evacuated: '#c026d3',
+  unknown: '#9ca3af'
+};
+const DAMAGE_LABELS_RU = {
+  destroyed: 'Уничтожен',
+  partial: 'Частично повреждён',
+  evacuated: 'Эвакуирован',
+  unknown: 'Статус уточняется'
+};
+function markerColor(w) {
+  if (w.status !== 'attacked') return '#52c41a';
+  return DAMAGE_COLORS[w.damage_level] || DAMAGE_COLORS.unknown;
+}
+
+async function initWarehouseMap() {
+  if (_warehouseMapInitialized) {
+    setTimeout(() => { if (_warehouseMap) _warehouseMap.invalidateSize(); }, 0);
+    return;
+  }
+  _warehouseMapInitialized = true;
+
+  const summaryEl = document.getElementById('modal-wh-summary');
   try {
     const r = await fetch('/api/warehouses');
     const d = await r.json();
-    const tbody = document.getElementById('modal-wh-body');
-    if (!tbody) return;
-    const damageLabels = {
-      destroyed: '🔴 Уничтожен',
-      partial: '🟠 Повреждён',
-      evacuated: '🟡 Эвакуирован',
-      unknown: '⚫ Неизвестно'
-    };
-    tbody.innerHTML = (d.warehouses || []).map(w => {
-      const status = w.status === 'attacked'
-        ? (damageLabels[w.damage_level] || '🔴 Атакован')
-        : '<span class="badge-g">Работает</span>';
+    const warehouses = (d.warehouses || []).filter(w => w.lat != null && w.lon != null);
+
+    if (summaryEl) {
+      summaryEl.textContent = d.attacked + ' из ' + d.total + ' складов атакованы, '
+        + d.active + ' активны';
+    }
+
+    _warehouseMap = L.map('warehouse-map');
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      maxZoom: 19
+    }).addTo(_warehouseMap);
+
+    const bounds = [];
+    warehouses.forEach(w => {
+      const color = markerColor(w);
+      const marker = L.circleMarker([w.lat, w.lon], {
+        radius: 8,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.85,
+        weight: 1.5
+      }).addTo(_warehouseMap);
+
+      const statusLabel = w.status === 'attacked'
+        ? (DAMAGE_LABELS_RU[w.damage_level] || DAMAGE_LABELS_RU.unknown)
+        : 'Работает';
       const date = w.attacked_at
         ? new Date(w.attacked_at).toLocaleDateString('ru-RU',
-            {day:'2-digit',month:'2-digit',year:'2-digit'})
-        : '—';
-      return '<tr><td><strong>' + w.name + '</strong></td>'
-        + '<td style="color:#64748b">'
-        + (w.region || '—') + '</td>'
-        + '<td>' + status + '</td>'
-        + '<td style="color:#64748b">' + date + '</td></tr>';
-    }).join('');
-  } catch(e) { console.error(e); }
+            {day:'2-digit', month:'2-digit', year:'numeric'})
+        : null;
+      let popup = '<div style="min-width:180px">'
+        + '<strong>' + w.name + '</strong><br>'
+        + '<span style="color:#64748b">' + (w.region || '—') + '</span><br>'
+        + '<span style="color:' + color + '">' + statusLabel + '</span>';
+      if (date) popup += ' · ' + date;
+      if (w.status_note) popup += '<br><span style="font-size:12px">' + w.status_note + '</span>';
+      if (w.source_url) popup += '<br><a href="' + w.source_url + '" target="_blank" rel="noopener">источник</a>';
+      popup += '</div>';
+      marker.bindPopup(popup);
+
+      bounds.push([w.lat, w.lon]);
+    });
+
+    if (bounds.length) {
+      _warehouseMap.fitBounds(bounds, { padding: [30, 30] });
+    }
+
+    const legend = L.control({ position: 'bottomleft' });
+    legend.onAdd = function() {
+      const div = L.DomUtil.create('div');
+      div.style.background = 'rgba(13,31,60,0.9)';
+      div.style.padding = '8px 10px';
+      div.style.borderRadius = '8px';
+      div.style.fontSize = '11px';
+      div.style.color = '#e2e8f0';
+      div.style.lineHeight = '1.6';
+      const items = [
+        ['#e63946', 'Уничтожен'],
+        ['#f4a261', 'Частично повреждён'],
+        ['#c026d3', 'Эвакуирован'],
+        ['#9ca3af', 'Статус уточняется'],
+        ['#52c41a', 'Работает']
+      ];
+      div.innerHTML = items.map(([c, label]) =>
+        '<div><span style="display:inline-block;width:10px;height:10px;'
+        + 'border-radius:50%;background:' + c + ';margin-right:6px"></span>'
+        + label + '</div>'
+      ).join('');
+      return div;
+    };
+    legend.addTo(_warehouseMap);
+
+    setTimeout(() => { if (_warehouseMap) _warehouseMap.invalidateSize(); }, 0);
+  } catch(e) {
+    console.error('warehouse map:', e);
+    if (summaryEl) summaryEl.textContent = 'Не удалось загрузить данные карты';
+  }
 }
-loadModalWarehouses();
 </script>
 </body>
 </html>

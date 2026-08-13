@@ -1,7 +1,7 @@
 psycopg2-binary==2.9.12
 requests==2.31.0
 urllib3<2.0,>=1.26
-anthropic>=0.40.0
+anthropic==0.49.0
 python-dotenv==1.0.1
 reportlab==4.2.5
 matplotlib==3.9.4

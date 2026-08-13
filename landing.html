@@ -1167,10 +1167,17 @@ async function loadPageData() {
       .filter(w => w.status === 'active')
       .slice(0, 2);
     const ws = [...attacked, ...active];
+    const damageColors = {
+      destroyed: '#dc2626',
+      partial: '#f87171',
+      evacuated: '#fb923c',
+      unknown: '#94a3b8'
+    };
     const list = document.getElementById('panel-wh-list');
     if (list) list.innerHTML = ws.map(w => {
+      const color = damageColors[w.damage_level] || '#f87171';
       const right = w.status === 'attacked'
-        ? '<span style="color:#f87171;font-size:10px">'
+        ? '<span style="color:' + color + ';font-size:10px">'
           + (w.attacked_at ? new Date(w.attacked_at)
             .toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit'}) : '') + '</span>'
         : '<span style="color:#34d399;font-size:10px">работает</span>';
@@ -1269,9 +1276,15 @@ async function loadModalWarehouses() {
     const d = await r.json();
     const tbody = document.getElementById('modal-wh-body');
     if (!tbody) return;
+    const damageLabels = {
+      destroyed: '🔴 Уничтожен',
+      partial: '🟠 Повреждён',
+      evacuated: '🟡 Эвакуирован',
+      unknown: '⚫ Неизвестно'
+    };
     tbody.innerHTML = (d.warehouses || []).map(w => {
       const status = w.status === 'attacked'
-        ? '<span class="badge-r">Атакован</span>'
+        ? (damageLabels[w.damage_level] || '🔴 Атакован')
         : '<span class="badge-g">Работает</span>';
       const date = w.attacked_at
         ? new Date(w.attacked_at).toLocaleDateString('ru-RU',

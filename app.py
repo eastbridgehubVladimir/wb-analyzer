@@ -6524,7 +6524,7 @@ class Handler(BaseHTTPRequestHandler):
                 conn = psycopg2.connect(DB)
                 cur = conn.cursor()
                 cur.execute("""
-                    SELECT name, region, status, status_note, attacked_at, updated_at
+                    SELECT name, region, status, damage_level, status_note, attacked_at, updated_at
                     FROM warehouse_status
                     ORDER BY
                         CASE status
@@ -6540,7 +6540,7 @@ class Handler(BaseHTTPRequestHandler):
                 warehouses = []
                 last_updated = None
                 counts = {'active': 0, 'attacked': 0, 'limited': 0}
-                for name, region, status, status_note, attacked_at, updated_at in rows:
+                for name, region, status, damage_level, status_note, attacked_at, updated_at in rows:
                     if status in counts:
                         counts[status] += 1
                     if updated_at and (last_updated is None or updated_at > last_updated):
@@ -6549,6 +6549,7 @@ class Handler(BaseHTTPRequestHandler):
                         'name': name,
                         'region': region,
                         'status': status,
+                        'damage_level': damage_level or 'unknown',
                         'status_note': status_note,
                         'attacked_at': attacked_at.isoformat() if attacked_at else None,
                         'updated_at': updated_at.isoformat() if updated_at else None,

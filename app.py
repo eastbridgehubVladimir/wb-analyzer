@@ -6296,6 +6296,18 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(html_bytes)
             return
 
+        if self.path == '/brand.css':
+            try:
+                with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'brand.css'), 'rb') as f:
+                    css_bytes = f.read()
+            except Exception:
+                css_bytes = b''
+            self.send_response(200)
+            self.send_header('Content-type', 'text/css; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(css_bytes)
+            return
+
         if self.path.startswith('/api/niche-check'):
             from urllib.parse import parse_qs, urlparse
             q = parse_qs(urlparse(self.path).query).get('q', [''])[0].strip()

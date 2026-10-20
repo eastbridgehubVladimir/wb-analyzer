@@ -4,25 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Заказать анализ ниши — WBAnalyzer</title>
+<link rel="stylesheet" href="/brand.css">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #0f1117; --bg2: #161b27; --card: #1e2433; --border: #2d3748;
-    --text: #e2e8f0; --muted: #8892a4;
-    --accent: #4f9cf9; --accent2: #7c3aed;
-    --green: #22c55e; --yellow: #f59e0b; --red: #ef4444;
-  }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+  body { min-height: 100vh; display: flex; flex-direction: column; }
 
   nav {
-    border-bottom: 1px solid var(--border); padding: 0 24px; height: 58px;
+    border-bottom: 1px solid rgba(255,255,255,0.06); padding: 0 24px; height: 58px;
     display: flex; align-items: center; justify-content: space-between;
-    background: var(--bg);
+    background: var(--dark);
   }
-  .logo { font-size: 17px; font-weight: 700; color: var(--text); text-decoration: none; }
-  .logo span { color: var(--accent); }
-  .nav-back { color: var(--muted); text-decoration: none; font-size: 14px; display: flex; align-items: center; gap: 6px; }
-  .nav-back:hover { color: var(--accent); }
+  .logo { font-size: 17px; font-weight: 700; color: #fff; text-decoration: none; }
+  .logo span { color: var(--em); }
+  .nav-back { color: var(--text-3); text-decoration: none; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .nav-back:hover { color: #fff; }
 
   main {
     flex: 1; display: flex; align-items: flex-start; justify-content: center;
@@ -31,61 +25,61 @@
 
   /* ── FORM CARD ── */
   .form-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
     padding: 36px 32px; width: 100%; max-width: 520px;
   }
   .form-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
-  .form-sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; line-height: 1.6; }
+  .form-sub { color: var(--text-2); font-size: 14px; margin-bottom: 32px; line-height: 1.6; }
 
   .field { margin-bottom: 20px; }
-  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
-  label span { color: var(--muted); font-weight: 400; margin-left: 4px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text-1); }
+  label span { color: var(--text-2); font-weight: 400; margin-left: 4px; }
   input[type=text], textarea {
-    width: 100%; background: var(--bg2); border: 1.5px solid var(--border);
-    border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 14px;
+    width: 100%; background: var(--surface-2); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; color: var(--text-1); font-size: 14px;
     font-family: inherit; transition: border-color .2s; outline: none;
   }
-  input[type=text]:focus, textarea:focus { border-color: var(--accent); }
+  input[type=text]:focus, textarea:focus { border-color: var(--em); }
   textarea { resize: vertical; min-height: 80px; }
-  input::placeholder, textarea::placeholder { color: var(--muted); }
+  input::placeholder, textarea::placeholder { color: var(--text-2); }
 
   .level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .level-opt {
     border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 12px;
-    cursor: pointer; text-align: center; transition: all .2s; background: var(--bg2);
+    cursor: pointer; text-align: center; transition: all .2s; background: var(--surface-2);
   }
-  .level-opt:hover { border-color: var(--accent); }
-  .level-opt.selected { border-color: var(--accent); background: rgba(79,156,249,0.1); }
+  .level-opt:hover { border-color: var(--em); }
+  .level-opt.selected { border-color: var(--em); background: var(--em-light); }
   .level-opt input { display: none; }
   .level-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
-  .level-price { font-size: 13px; color: var(--accent); font-weight: 600; }
-  .level-desc { font-size: 11px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+  .level-price { font-size: 13px; color: var(--em); font-weight: 600; }
+  .level-desc { font-size: 11px; color: var(--text-2); margin-top: 4px; line-height: 1.4; }
 
   .btn-submit {
     width: 100%; padding: 15px; border-radius: 12px; border: none; cursor: pointer;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    background: var(--em);
     color: #fff; font-size: 15px; font-weight: 700; transition: all .2s; margin-top: 8px;
   }
   .btn-submit:hover { opacity: .9; transform: translateY(-1px); }
   .btn-submit:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
-  .form-note { text-align: center; margin-top: 14px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .form-note { text-align: center; margin-top: 14px; font-size: 12px; color: var(--text-2); line-height: 1.6; }
 
   /* ── SUCCESS STATE ── */
   .success { display: none; text-align: center; padding: 8px 0; }
   .success.show { display: block; }
   .success-icon { font-size: 52px; margin-bottom: 16px; }
   .success-title { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
-  .success-desc { color: var(--muted); font-size: 15px; margin-bottom: 28px; line-height: 1.7; }
+  .success-desc { color: var(--text-2); font-size: 15px; margin-bottom: 28px; line-height: 1.7; }
   .order-id-box {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
-    padding: 14px 18px; font-size: 13px; color: var(--muted); margin-bottom: 24px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 18px; font-size: 13px; color: var(--text-2); margin-bottom: 24px;
   }
-  .order-id-box strong { color: var(--text); font-family: monospace; }
+  .order-id-box strong { color: var(--text-1); font-family: monospace; }
 
   /* ── PAYMENT INSTRUCTIONS ── */
   .payment-card {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 20px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px;
     padding: 28px; width: 100%; max-width: 360px; align-self: flex-start; position: sticky; top: 80px;
   }
   .payment-title { font-size: 16px; font-weight: 700; margin-bottom: 18px; }
@@ -94,18 +88,18 @@
     margin-bottom: 12px;
   }
   .pay-method-name { font-size: 13px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
-  .pay-method p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .pay-method p { font-size: 12px; color: var(--text-2); line-height: 1.6; }
   .pay-method code {
-    display: block; background: var(--card); border-radius: 7px; padding: 8px 10px;
-    font-size: 12px; color: var(--accent); margin-top: 8px; word-break: break-all; font-family: monospace;
+    display: block; background: var(--surface); border-radius: 7px; padding: 8px 10px;
+    font-size: 12px; color: var(--em); margin-top: 8px; word-break: break-all; font-family: monospace;
   }
 
   .prices-summary { margin-top: 24px; }
-  .prices-summary h4 { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .prices-summary h4 { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: var(--text-2); text-transform: uppercase; letter-spacing: .5px; }
   .price-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
   .price-row:last-child { border-bottom: none; font-weight: 700; }
-  .price-row .price { color: var(--accent); font-weight: 600; }
-  .price-row.free .price { color: var(--green); }
+  .price-row .price { color: var(--em); font-weight: 600; }
+  .price-row.free .price { color: var(--em); }
 
   @media (max-width: 600px) {
     .payment-card { position: static; }
@@ -188,7 +182,7 @@
       <div class="order-id-box">
         Номер заявки: <strong id="order-id-display">—</strong>
       </div>
-      <a href="/landing" style="display:inline-block;padding:12px 28px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);text-decoration:none;font-size:14px;font-weight:600;">
+      <a href="/landing" style="display:inline-block;padding:12px 28px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text-1);text-decoration:none;font-size:14px;font-weight:600;">
         ← Вернуться на главную
       </a>
     </div>
@@ -229,9 +223,9 @@
       </div>
     </div>
 
-    <div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.7;">
+    <div style="margin-top:20px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--text-2);line-height:1.7;">
       📩 Вопросы? Напишите напрямую:<br>
-      <a href="https://t.me/wbanalyzer" target="_blank" style="color:var(--accent);text-decoration:none;">@wbanalyzer</a>
+      <a href="https://t.me/wbanalyzer" target="_blank" style="color:var(--em);text-decoration:none;">@wbanalyzer</a>
     </div>
   </div>
 

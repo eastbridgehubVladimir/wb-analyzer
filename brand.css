@@ -1,0 +1,33 @@
+/* Общая палитра и базовые стили WBAnalyzer — единственный источник правды.
+   Источник значений: landing.html. Подключается landing.html и order.html
+   через <link rel="stylesheet" href="/brand.css"> (отдаётся app.py, /brand.css). */
+
+:root {
+  --em: #059669;
+  --em-light: rgba(5,150,105,0.12);
+  --em-border: rgba(5,150,105,0.25);
+  --dark: #0a1628;
+  --hero-bg: #0d1f3c;
+  --bg: #f1f5f9;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
+  --text-1: #1e293b;
+  --text-2: #64748b;
+  --text-3: #94a3b8;
+  --text-4: #475569;
+  --danger: #ef4444;
+  --danger-bg: rgba(239,68,68,0.08);
+  --danger-border: rgba(239,68,68,0.18);
+  --warning: #f59e0b;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  line-height: 1.5;
+}

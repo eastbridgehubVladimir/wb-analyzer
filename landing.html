@@ -5,37 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WBAnalyzer — Аналитика ниш Wildberries с AI</title>
 <meta name="description" content="Анализ прибыльности любой ниши WB за 5 минут. Выручка, конкуренция, маржа, AI-рекомендации, риски складов. PDF-отчёт с готовым планом входа.">
+<link rel="stylesheet" href="/brand.css">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --em: #059669;
-    --em-light: rgba(5,150,105,0.12);
-    --em-border: rgba(5,150,105,0.25);
-    --dark: #0a1628;
-    --hero-bg: #0d1f3c;
-    --bg: #f1f5f9;
-    --surface: #ffffff;
-    --surface-2: #f8fafc;
-    --border: #e2e8f0;
-    --border-light: #f1f5f9;
-    --text-1: #1e293b;
-    --text-2: #64748b;
-    --text-3: #94a3b8;
-    --text-4: #475569;
-    --danger: #ef4444;
-    --danger-bg: rgba(239,68,68,0.08);
-    --danger-border: rgba(239,68,68,0.18);
-    --warning: #f59e0b;
-  }
-
-  body {
-    background: var(--bg);
-    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
-    color: var(--text-1);
-    line-height: 1.5;
-  }
-
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   [id] { scroll-margin-top: 56px; }
 
@@ -1217,6 +1188,14 @@ async function loadNews() {
   } catch(e) { console.error('news:', e); }
 }
 
+function updateOrderLinks(nicheName) {
+  const suffix = nicheName ? ('&niche=' + encodeURIComponent(nicheName)) : '';
+  const standardBtn = document.querySelector('a[href^="/order?level=standard"]');
+  const deepBtn = document.querySelector('a[href^="/order?level=deep"]');
+  if (standardBtn) standardBtn.href = '/order?level=standard' + suffix;
+  if (deepBtn) deepBtn.href = '/order?level=deep' + suffix;
+}
+
 async function checkNiche() {
   const input = document.getElementById('hero-search');
   const result = document.getElementById('hero-result');
@@ -1230,6 +1209,7 @@ async function checkNiche() {
     const d = await r.json();
     if (!d.found) {
       result.innerHTML = '❌ Ниша «' + q + '» не найдена. Попробуйте другое название.';
+      updateOrderLinks(null);
       return;
     }
     const icons = { BUY:'✅', TEST:'⚡', SKIP:'❌' };
@@ -1244,8 +1224,10 @@ async function checkNiche() {
       + 'Выручка: ' + (d.revenue_monthly ? Math.round(d.revenue_monthly / 1e6) + ' млн ₽/мес' : '—')
       + ' · Конкуренция: ' + (d.competition || '—')
       + '</span>';
+    updateOrderLinks(d.name);
   } catch(e) {
     result.innerHTML = '⚠️ Ошибка. Попробуйте позже.';
+    updateOrderLinks(null);
   }
 }
 

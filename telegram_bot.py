@@ -10,6 +10,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 
 import psycopg2
+import requests
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
@@ -123,6 +124,30 @@ def _log_lead(user_id: int, username, niche_name, action: str, ref_source: str =
     except Exception as e:
         log.warning(f"lead log failed: {e}")
 
+# ── Уведомления админу ──────────────────────────────────────────────────────
+
+def _notify_admin(text: str):
+    """Уведомление админу в Telegram. Никогда не поднимает исключение наружу —
+    падение уведомления не должно ронять создание заказа."""
+    if not TOKEN or not ADMIN_ID:
+        log.warning('[notify_admin] TOKEN/ADMIN_ID не заданы — уведомление пропущено')
+        return
+    try:
+        resp = requests.post(
+            f'https://api.telegram.org/bot{TOKEN}/sendMessage',
+            json={'chat_id': ADMIN_ID, 'text': text, 'parse_mode': 'HTML'},
+            timeout=10,
+        )
+        data = {}
+        try:
+            data = resp.json()
+        except ValueError:
+            pass
+        if not resp.ok or data.get('ok') is False:
+            log.warning(f'[notify_admin] Telegram notify FAILED: HTTP {resp.status_code}, ответ: {data or resp.text[:300]}')
+    except Exception as e:
+        log.warning(f'[notify_admin] Telegram notify error: {e}')
+
 # ── БД: заказы ────────────────────────────────────────────────────────────────
 
 def _create_order(user_id: int, username, niche_name: str,
@@ -140,6 +165,17 @@ def _create_order(user_id: int, username, niche_name: str,
     order_id = cur.fetchone()[0]
     conn.commit()
     cur.close(); conn.close()
+    try:
+        _notify_admin(
+            '🆕 Новый заказ в боте\n\n'
+            f'Заказ #{order_id}\n'
+            f'Пользователь: {username or "—"} (id {user_id})\n'
+            f'Ниша: {niche_name}\n'
+            f'Уровень: {level}\n'
+            f'Сумма: {amount}₽'
+        )
+    except Exception as e:
+        log.warning(f'[_create_order] уведомление в Telegram не отправлено: {e}')
     return order_id
 
 def _mark_pdf_sent(order_id: int):

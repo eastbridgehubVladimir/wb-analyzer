@@ -47,6 +47,31 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 DB = os.getenv("DATABASE_URL", "postgresql://user@localhost:5432/wb_saas")
 MPSTATS_TOKEN = os.getenv("MPSTATS_TOKEN", "")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_ADMIN_ID = os.getenv("TELEGRAM_ADMIN_ID", "")
+
+
+def _notify_admin_app(text: str):
+    """Уведомление админу в Telegram. Никогда не поднимает исключение наружу —
+    падение уведомления не должно ронять запрос, который его вызвал."""
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_ADMIN_ID:
+        print('[notify_admin] TELEGRAM_BOT_TOKEN/TELEGRAM_ADMIN_ID не заданы — уведомление пропущено')
+        return
+    try:
+        resp = requests.post(
+            f'https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage',
+            json={'chat_id': TELEGRAM_ADMIN_ID, 'text': text, 'parse_mode': 'HTML'},
+            timeout=10,
+        )
+        data = {}
+        try:
+            data = resp.json()
+        except ValueError:
+            pass
+        if not resp.ok or data.get('ok') is False:
+            print(f'[notify_admin] Telegram notify FAILED: HTTP {resp.status_code}, ответ: {data or resp.text[:300]}')
+    except Exception as e:
+        print(f'[notify_admin] Telegram notify error: {e}')
 
 # Кэш каталога (6 часов)
 import time
@@ -7796,9 +7821,40 @@ class Handler(BaseHTTPRequestHandler):
                     'contact': contact, 'comment': comment,
                     'status': 'new',
                 }
-                orders_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'orders.jsonl')
-                with open(orders_path, 'a', encoding='utf-8') as f:
-                    f.write(json.dumps(order, ensure_ascii=False) + '\n')
+
+                # Postgres — источник истины
+                conn = psycopg2.connect(DB)
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO order_leads (id, ts, niche, level, contact, comment, status)"
+                    " VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                    (order['id'], order['ts'], order['niche'], order['level'],
+                     order['contact'], order['comment'], order['status'])
+                )
+                conn.commit()
+                cur.close(); conn.close()
+
+                # Бэкап в файл — необязателен, падение не должно ронять заявку
+                try:
+                    orders_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'orders.jsonl')
+                    with open(orders_path, 'a', encoding='utf-8') as f:
+                        f.write(json.dumps(order, ensure_ascii=False) + '\n')
+                except Exception as e:
+                    print(f'[submit-order] бэкап в orders.jsonl не записан: {e}')
+
+                # Уведомление админу — падение не должно ронять заявку
+                try:
+                    _notify_admin_app(
+                        '🆕 Новая заявка с сайта (/order)\n\n'
+                        f'Ниша: {niche}\n'
+                        f'Уровень: {level}\n'
+                        f'Контакт: {contact}\n'
+                        f'Комментарий: {comment or "—"}\n'
+                        f'Время: {order["ts"]}'
+                    )
+                except Exception as e:
+                    print(f'[submit-order] уведомление в Telegram не отправлено: {e}')
+
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()
@@ -9652,6 +9708,18 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 )
                 conn.commit()
                 cur.close(); conn.close()
+
+                try:
+                    _notify_admin_app(
+                        '🆕 Новый заказ из miniapp\n\n'
+                        f'Заказ #{order_id}\n'
+                        f'Пользователь: {tg_username or "—"} (id {tg_user_id})\n'
+                        f'Ниша: {niche_name}\n'
+                        f'Уровень: {level}\n'
+                        f'Сумма: {amount}₽'
+                    )
+                except Exception as e:
+                    print(f'[miniapp/order] уведомление в Telegram не отправлено: {e}')
 
                 if level in ('standard', 'deep'):
                     support = os.getenv('TELEGRAM_SUPPORT_USERNAME', '')

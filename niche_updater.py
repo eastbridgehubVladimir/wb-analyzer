@@ -23,16 +23,71 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 logger = logging.getLogger(__name__)
 
 # ── Circuit breaker ───────────────────────────────────────────────────────────
+#
+# Локальный таймер (_mpstats_backoff_until) — быстрая проверка без похода в БД,
+# действует только внутри ЭТОГО процесса. Но app.py, telegram_bot.py и cron —
+# три разных процесса на Railway с разной памятью, поэтому локального таймера
+# недостаточно: если квота кончилась через один процесс, другие об этом не
+# узнают и продолжат долбить MPStats. Поэтому факт "квота исчерпана СЕГОДНЯ"
+# дополнительно пишется в Postgres (mpstats_quota_status) и проверяется там
+# всеми процессами — это и есть общий флаг.
 
 _mpstats_backoff_until: float = 0
 
+
+def _ensure_quota_table(conn) -> None:
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS mpstats_quota_status (
+            quota_date DATE PRIMARY KEY,
+            exhausted_at TIMESTAMP NOT NULL DEFAULT NOW()
+        )
+    """)
+    conn.commit()
+    cur.close()
+
+
+def _quota_exhausted_today_in_db() -> bool:
+    try:
+        conn = psycopg2.connect(_DB)
+        _ensure_quota_table(conn)
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM mpstats_quota_status WHERE quota_date = CURRENT_DATE")
+        exhausted = cur.fetchone() is not None
+        cur.close()
+        conn.close()
+        return exhausted
+    except Exception as e:
+        logger.error(f'[MPStats] проверка общего флага квоты не удалась: {e}')
+        return False  # сбой самой проверки не должен блокировать работу
+
+
+def _mark_quota_exhausted_in_db() -> None:
+    try:
+        conn = psycopg2.connect(_DB)
+        _ensure_quota_table(conn)
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO mpstats_quota_status (quota_date) VALUES (CURRENT_DATE) "
+            "ON CONFLICT (quota_date) DO NOTHING"
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logger.error(f'[MPStats] запись общего флага квоты не удалась: {e}')
+
+
 def is_mpstats_available() -> bool:
-    return time.time() > _mpstats_backoff_until
+    if time.time() <= _mpstats_backoff_until:
+        return False
+    return not _quota_exhausted_today_in_db()
 
 def set_mpstats_backoff(seconds: int = 3600) -> None:
     global _mpstats_backoff_until
     _mpstats_backoff_until = time.time() + seconds
-    logger.warning(f'[MPStats] Circuit breaker активирован на {seconds}с')
+    logger.warning(f'[MPStats] Circuit breaker активирован на {seconds}с (локально + общий флаг на сегодня в Postgres)')
+    _mark_quota_exhausted_in_db()
 
 
 STALE_DAYS = 14
@@ -84,50 +139,104 @@ def _log_refresh(niche_name: str, triggered_by: str, was_stale: bool, success: b
 
 # ── Ядро обновления ───────────────────────────────────────────────────────────
 
+# MPStats отдаёт не больше 500 записей за вызов (тот же документированный
+# лимит, что и в update_niches.py). На точечный поиск одной ниши это не
+# должно требовать всех 7533 строк — сначала пробуем серверный текстовый
+# фильтр по имени (ag-grid-стиль filterModel, как описано в документации
+# MPStats). Это НЕ проверено живым запросом на момент написания — MPStats
+# был недоступен для теста (квота+блокировка QRATOR в этот день), поэтому
+# результат фильтра проверяется, а не считается надёжным по умолчанию:
+# если совпадения нет — запасной вариант ниже, постраничный перебор.
+BATCH_SIZE = 500
+BATCH_PAUSE_SECONDS = 2.5
+# Защита от того, чтобы один поиск одной ниши не съел квоту на полный
+# перебор всего каталога, если серверный фильтр не сработал.
+MAX_FALLBACK_PAGES = 5
+
+
+def _match_row(data: list, niche_name: str):
+    niche_lower = niche_name.lower()
+    for row in data:
+        if row.get('name', '').lower() == niche_lower:
+            return row
+    for row in data:
+        name = row.get('name', '')
+        if niche_lower in name.lower() or name.lower() in niche_lower:
+            return row
+    return None
+
+
+def _request_subjects(start_row: int, end_row: int, filter_model: dict | None = None):
+    return requests.get(
+        'https://mpstats.io/api/wb/get/subjects/select',
+        headers=_HEADERS,
+        params={'fbs': 1},
+        json={'startRow': start_row, 'endRow': end_row, 'filterModel': filter_model or {}, 'sortModel': []},
+        timeout=60,
+    )
+
+
 def _fetch_and_update_niche(niche_name: str) -> bool:
     """
-    1 вызов к /subjects/select → находит нужную нишу → обновляет в БД.
-    Возвращает True при успехе.
+    Находит нужную нишу у MPStats и обновляет её в БД. Возвращает True при успехе.
+
+    1) Точечный запрос с текстовым фильтром по имени (1 вызов, <=500 записей).
+    2) Если фильтр не дал совпадения — постраничный перебор каталога
+       (<=500/запрос, пауза между страницами), но не больше MAX_FALLBACK_PAGES
+       страниц, чтобы один поиск не выжигал квоту на весь день.
+    На HTTP 429 на любом шаге — останавливаемся сразу и помечаем общую
+    квоту как исчерпанную на сегодня (см. set_mpstats_backoff).
     """
     if not _TOK:
         logger.warning("MPSTATS_TOKEN не задан, обновление пропущено")
         return False
 
+    match = None
+
     try:
-        r = requests.get(
-            'https://mpstats.io/api/wb/get/subjects/select',
-            headers=_HEADERS,
-            params={'fbs': 1},
-            json={'startRow': 0, 'endRow': 9999, 'filterModel': {}, 'sortModel': []},
-            timeout=60,
-        )
+        r = _request_subjects(0, BATCH_SIZE - 1, {
+            'name': {'filterType': 'text', 'type': 'contains', 'filter': niche_name}
+        })
         if r.status_code == 429:
-            logger.error("MPStats 429 Too Many Requests")
+            logger.error("MPStats 429 Too Many Requests (точечный фильтр по имени)")
             set_mpstats_backoff(3600)
             return False
-        if r.status_code != 200:
-            logger.error(f"MPStats HTTP {r.status_code}")
-            return False
+        if r.status_code == 200:
+            match = _match_row(r.json(), niche_name)
+        else:
+            logger.warning(f"MPStats HTTP {r.status_code} на фильтре по имени, пробуем перебор")
     except Exception as e:
-        logger.error(f"MPStats request error: {e}")
-        return False
+        logger.error(f"MPStats filtered request error: {e}")
 
-    data = r.json()
-    niche_lower = niche_name.lower()
-
-    # Ищем точное или частичное совпадение
-    match = None
-    for row in data:
-        name = row.get('name', '')
-        if name.lower() == niche_lower:
-            match = row
-            break
     if match is None:
-        for row in data:
-            name = row.get('name', '')
-            if niche_lower in name.lower() or name.lower() in niche_lower:
-                match = row
+        start_row = 0
+        for page_num in range(1, MAX_FALLBACK_PAGES + 1):
+            try:
+                r = _request_subjects(start_row, start_row + BATCH_SIZE - 1)
+            except Exception as e:
+                logger.error(f"MPStats request error (страница {page_num}): {e}")
+                return False
+
+            if r.status_code == 429:
+                logger.error(f"MPStats 429 Too Many Requests (перебор, страница {page_num}, startRow={start_row})")
+                set_mpstats_backoff(3600)
+                return False
+            if r.status_code != 200:
+                logger.error(f"MPStats HTTP {r.status_code} (перебор, страница {page_num})")
+                return False
+
+            page = r.json()
+            match = _match_row(page, niche_name)
+            if match is not None:
                 break
+            if len(page) < BATCH_SIZE:
+                break  # конец каталога, ниши там нет
+
+            start_row += BATCH_SIZE
+            if page_num < MAX_FALLBACK_PAGES:
+                time.sleep(BATCH_PAUSE_SECONDS)
+        else:
+            logger.warning(f"Ниша '{niche_name}' не найдена за {MAX_FALLBACK_PAGES} страниц перебора (лимит защиты от перерасхода)")
 
     if match is None:
         logger.warning(f"Ниша '{niche_name}' не найдена в ответе MPStats")

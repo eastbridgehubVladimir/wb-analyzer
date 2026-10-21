@@ -13,6 +13,7 @@
 """
 import os
 import sys
+import time
 import requests
 import psycopg2
 import psycopg2.extras
@@ -68,22 +69,61 @@ HEADERS = {'X-Mpstats-TOKEN': TOKEN, 'Content-Type': 'application/json'}
 TODAY = date.today()
 NOW = datetime.utcnow()
 
+# MPStats отдаёт не больше 500 записей за один вызов /subjects/select
+# (документированный лимит) — endRow:9999 в один запрос физически не может
+# вернуть больше ~500 строк. Идём постранично, с паузой между страницами,
+# чтобы не словить блокировку от анти-DDoS (QRATOR) при частых запросах.
+BATCH_SIZE = 500
+BATCH_PAUSE_SECONDS = 2.5
+
 
 def fetch_all_niches():
-    print('Запрашиваем MPStats /subjects/select (все ниши)...')
-    r = requests.get(
-        'https://mpstats.io/api/wb/get/subjects/select',
-        headers=HEADERS,
-        params={'fbs': 1},
-        json={'startRow': 0, 'endRow': 9999, 'filterModel': {}, 'sortModel': []},
-        timeout=60,
-    )
-    if r.status_code != 200:
-        print(f'ОШИБКА HTTP {r.status_code}: {r.text[:300]}')
-        sys.exit(1)
-    data = r.json()
-    print(f'Получено ниш: {len(data)}')
-    return data
+    """
+    Постранично тянет весь каталог /subjects/select по BATCH_SIZE записей.
+    При HTTP 429 (квота MPStats на сегодня исчерпана) останавливается и
+    возвращает то, что успела собрать до этого момента — частичный прогресс
+    не выбрасывается, main() запишет в БД столько ниш, сколько реально пришло.
+    """
+    print('Запрашиваем MPStats /subjects/select (постранично, по 500 записей)...')
+    all_rows = []
+    start_row = 0
+    batch_num = 0
+
+    while True:
+        batch_num += 1
+        end_row = start_row + BATCH_SIZE - 1
+        r = requests.get(
+            'https://mpstats.io/api/wb/get/subjects/select',
+            headers=HEADERS,
+            params={'fbs': 1},
+            json={'startRow': start_row, 'endRow': end_row, 'filterModel': {}, 'sortModel': []},
+            timeout=60,
+        )
+
+        if r.status_code == 429:
+            print(f'ОСТАНОВКА: MPStats вернул 429 (квота на сегодня исчерпана) на пачке {batch_num} '
+                  f'(startRow={start_row}). Успели получить {len(all_rows)} ниш — пишем в БД только их, '
+                  f'дальше в этом запуске не пытаемся.')
+            break
+
+        if r.status_code != 200:
+            print(f'ОШИБКА HTTP {r.status_code}: {r.text[:300]}')
+            sys.exit(1)
+
+        page = r.json()
+        all_rows.extend(page)
+        print(f'  пачка {batch_num}: startRow={start_row}, endRow={end_row} -> '
+              f'получено {len(page)} записей (всего собрано {len(all_rows)})')
+
+        if len(page) < BATCH_SIZE:
+            print('Конец списка — последняя пачка короче 500 записей.')
+            break
+
+        start_row += BATCH_SIZE
+        time.sleep(BATCH_PAUSE_SECONDS)
+
+    print(f'Итого получено ниш: {len(all_rows)} (выполнено пачек: {batch_num})')
+    return all_rows
 
 
 def main():
@@ -107,6 +147,11 @@ def main():
         ))
 
     print(f'Подготовлено строк: {len(rows)}')
+
+    if not rows:
+        print('Нет ни одной строки для записи (первая же пачка упала на 429 или вернула пусто) — выходим без изменений в БД.')
+        return
+
     print(f'Загружаем в БД одним батчем...')
 
     conn = psycopg2.connect(DB)

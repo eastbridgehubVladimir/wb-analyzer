@@ -7937,9 +7937,11 @@ class Handler(BaseHTTPRequestHandler):
                                        revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders,
                                        buyout_pct, turnover, profit_pct, avg_rating, rank, commission,
                                        avg_price, data_updated_at, revenue_with_buyout, mpstats_path
-                                FROM niches WHERE LOWER(name) ILIKE LOWER(%s) AND revenue IS NOT NULL
+                                FROM niches
+                                WHERE (LOWER(name) ILIKE LOWER(%s) OR LOWER(COALESCE(display_name,name)) ILIKE LOWER(%s))
+                                  AND revenue IS NOT NULL
                                 ORDER BY revenue DESC LIMIT 1
-                            """, (f'%{nname}%',))
+                            """, (f'%{nname}%', f'%{nname}%'))
                             row = c2cur.fetchone()
                             c2cur.close(); c2.close()
                             if not row:
@@ -9885,9 +9887,11 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                                    revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders,
                                    buyout_pct, turnover, profit_pct, avg_rating, rank, commission,
                                    avg_price, data_updated_at, revenue_with_buyout, mpstats_path
-                            FROM niches WHERE LOWER(name) ILIKE LOWER(%s) AND revenue IS NOT NULL
+                            FROM niches
+                            WHERE (LOWER(name) ILIKE LOWER(%s) OR LOWER(COALESCE(display_name,name)) ILIKE LOWER(%s))
+                              AND revenue IS NOT NULL
                             ORDER BY revenue DESC LIMIT 1
-                        """, (f'%{nname}%',))
+                        """, (f'%{nname}%', f'%{nname}%'))
                         row = c2cur.fetchone()
                         c2cur.close(); c2.close()
                         if not row:

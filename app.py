@@ -7629,6 +7629,9 @@ class Handler(BaseHTTPRequestHandler):
                     body = f.read()
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
+                # Telegram WebView агрессивно кэширует статику миниаппа — без этого
+                # правки фронтенда могут не доходить до пользователей днями.
+                self.send_header('Cache-Control', 'no-store, must-revalidate')
                 self.end_headers()
                 self.wfile.write(body)
             except Exception as e:
@@ -7641,6 +7644,7 @@ class Handler(BaseHTTPRequestHandler):
             with open(os.path.join(_base, 'style.css'), 'rb') as f:
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/css; charset=utf-8')
+                self.send_header('Cache-Control', 'no-store, must-revalidate')
                 self.end_headers()
                 self.wfile.write(f.read())
 
@@ -7649,6 +7653,7 @@ class Handler(BaseHTTPRequestHandler):
             with open(os.path.join(_base, 'app.js'), 'rb') as f:
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/javascript; charset=utf-8')
+                self.send_header('Cache-Control', 'no-store, must-revalidate')
                 self.end_headers()
                 self.wfile.write(f.read())
 

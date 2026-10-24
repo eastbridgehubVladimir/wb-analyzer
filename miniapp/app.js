@@ -217,18 +217,20 @@ async function orderPdf(level) {
     document.getElementById(id).disabled = true;
   });
 
-  if (level === 'basic') {
-    pdfStatus.className = 'pdf-status generating';
-    pdfStatus.innerHTML =
-      '<div class="generating-block">' +
-        '<div class="gen-ring"></div>' +
-        '<div class="gen-info">' +
-          '<span class="gen-label">Генерирую PDF…</span>' +
-          '<span class="gen-sub">обычно около минуты</span>' +
-        '</div>' +
-      '</div>';
-    pdfStatus.classList.remove('hidden');
-  }
+  const eta = level === 'basic' ? 'обычно около минуты'
+    : level === 'standard' ? 'обычно 1-2 минуты'
+    : 'обычно 2-4 минуты';
+
+  pdfStatus.className = 'pdf-status generating';
+  pdfStatus.innerHTML =
+    '<div class="generating-block">' +
+      '<div class="gen-ring"></div>' +
+      '<div class="gen-info">' +
+        '<span class="gen-label">Генерирую PDF…</span>' +
+        '<span class="gen-sub">' + eta + '</span>' +
+      '</div>' +
+    '</div>';
+  pdfStatus.classList.remove('hidden');
 
   try {
     const resp = await fetch('/api/miniapp/order', {
@@ -245,18 +247,13 @@ async function orderPdf(level) {
 
     const data = await resp.json();
 
-    if (level === 'basic') {
-      if (data.job_id) {
-        pollJob(data.job_id);
-      } else {
-        pdfStatus.className = 'pdf-status error';
-        pdfStatus.textContent = 'Ошибка запуска генерации. Попробуйте ещё раз.';
-        resetButtons();
-      }
+    // Оплата ещё не подключена — все уровни (basic/standard/deep) генерируются
+    // и выдаются бесплатно одинаковым путём: job_id → поллинг → кнопка скачать.
+    if (data.job_id) {
+      pollJob(data.job_id, level);
     } else {
-      pdfStatus.className = 'pdf-status pending';
-      pdfStatus.textContent = data.message || 'Оплата временно недоступна.';
-      pdfStatus.classList.remove('hidden');
+      pdfStatus.className = 'pdf-status error';
+      pdfStatus.textContent = data.message || 'Ошибка запуска генерации. Попробуйте ещё раз.';
       resetButtons();
     }
   } catch (e) {
@@ -304,9 +301,10 @@ function openDirectSupport() {
 
 // ── Поллинг генерации PDF ─────────────────────────────────────────────────────
 
-async function pollJob(jobId) {
+async function pollJob(jobId, level) {
   const pdfStatus = document.getElementById('pdf-status');
   const BASE_URL  = window.location.origin;
+  const levelLabel = level === 'standard' ? 'Standard' : level === 'deep' ? 'Deep' : 'Basic';
 
   for (let i = 0; i < 60; i++) {
     await new Promise(r => setTimeout(r, 3000));
@@ -319,14 +317,14 @@ async function pollJob(jobId) {
         pdfStatus.className = 'pdf-status ready';
         pdfStatus.innerHTML =
           '✅ PDF готов!<br>' +
-          '<button class="download-link" id="btn-download-pdf">⬇️ Скачать Basic PDF</button>';
+          '<button class="download-link" id="btn-download-pdf">⬇️ Скачать ' + levelLabel + ' PDF</button>';
 
         document.getElementById('btn-download-pdf').addEventListener('click', () => {
           // tg.downloadFile — лучший вариант (Telegram 10+), скачивает напрямую
           // tg.openLink — открывает в системном браузере где PDF можно сохранить
           // fallback — для десктопного браузера при тестировании вне Telegram
           if (tg.downloadFile) {
-            tg.downloadFile({ url: absoluteUrl, file_name: 'WBAnalyzer_Basic.pdf' });
+            tg.downloadFile({ url: absoluteUrl, file_name: 'WBAnalyzer_' + levelLabel + '.pdf' });
           } else if (tg.openLink) {
             tg.openLink(absoluteUrl);
           } else {

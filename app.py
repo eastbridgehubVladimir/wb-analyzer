@@ -7830,10 +7830,15 @@ class Handler(BaseHTTPRequestHandler):
                 import datetime as _dt
                 length = int(self.headers.get('Content-Length', 0))
                 body = json.loads(self.rfile.read(length))
-                niche   = str(body.get('niche', '')).strip()[:200]
-                level   = str(body.get('level', 'standard')).strip()
-                contact = str(body.get('contact', '')).strip()[:200]
-                comment = str(body.get('comment', '')).strip()[:500]
+                niche     = str(body.get('niche', '')).strip()[:200]
+                level     = str(body.get('level', 'standard')).strip()
+                contact   = str(body.get('contact', '')).strip()[:200]
+                comment   = str(body.get('comment', '')).strip()[:500]
+                admin_key = str(body.get('admin_key', ''))
+                import secrets as _secrets_cmp
+                _site_admin_key = os.getenv('SITE_ADMIN_KEY', '')
+                is_admin = bool(_site_admin_key) and _secrets_cmp.compare_digest(admin_key, _site_admin_key)
+                restricted = level in ('standard', 'deep') and not is_admin
                 if not niche or not contact:
                     self.send_response(400)
                     self.send_header('Content-type', 'application/json')
@@ -7870,6 +7875,12 @@ class Handler(BaseHTTPRequestHandler):
 
                 # Уведомление админу — падение не должно ронять заявку
                 try:
+                    if restricted:
+                        pdf_note = '(оплата не подключена — PDF НЕ выдан, лид записан)'
+                    elif is_admin and level != 'basic':
+                        pdf_note = '(выдано бесплатно — тест через admin_key)'
+                    else:
+                        pdf_note = '(оплата не подключена — PDF выдаётся бесплатно сразу)'
                     _notify_admin_app(
                         '🆕 Новая заявка с сайта (/order)\n\n'
                         f'Ниша: {niche}\n'
@@ -7877,13 +7888,25 @@ class Handler(BaseHTTPRequestHandler):
                         f'Контакт: {contact}\n'
                         f'Комментарий: {comment or "—"}\n'
                         f'Время: {order["ts"]}\n'
-                        f'(оплата не подключена — PDF выдаётся бесплатно сразу)'
+                        f'{pdf_note}'
                     )
                 except Exception as e:
                     print(f'[submit-order] уведомление в Telegram не отправлено: {e}')
 
-                # Оплата ещё не подключена — запускаем генерацию PDF в фоне сразу,
-                # тем же механизмом job/status/download, что и у miniapp.
+                if restricted:
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        'ok': True, 'order_id': order['id'], 'job_id': None,
+                        'message': 'Оплата пока не подключена — скоро будет доступно! '
+                                   'Мы свяжемся с вами в Telegram.'
+                    }, ensure_ascii=False).encode())
+                    return
+
+                # Basic (всем) или Standard/Deep (только с верным admin_key) —
+                # запускаем генерацию PDF в фоне тем же механизмом job/status/download,
+                # что и у miniapp.
                 job_id = None
                 try:
                     import threading as _threading3, uuid as _uuid3
@@ -9771,11 +9794,20 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 ref_source  = str(body.get('ref_source', 'miniapp_direct'))
                 if level not in ('basic', 'standard', 'deep'):
                     raise ValueError('invalid pdf_level')
-                # Оплата ещё не подключена — выдаём все уровни бесплатно.
-                # list_price сохраняем для будущей отчётности, amount=0 — реально списано 0.
+
+                # Админ (TELEGRAM_ADMIN_ID) может бесплатно генерировать любой
+                # уровень для тестов; остальным Standard/Deep пока недоступны.
+                is_admin = False
+                try:
+                    if TELEGRAM_ADMIN_ID and int(tg_user_id) == int(TELEGRAM_ADMIN_ID):
+                        is_admin = True
+                except (TypeError, ValueError):
+                    is_admin = False
+
                 list_price = {'basic': 0, 'standard': 2500, 'deep': 6000}[level]
-                amount = 0
-                status = 'free'
+                restricted = level in ('standard', 'deep') and not is_admin
+                amount = 0 if (level == 'basic' or is_admin) else list_price
+                status = 'free' if (level == 'basic' or is_admin) else 'pending'
 
                 conn = psycopg2.connect(DB)
                 cur = conn.cursor()
@@ -9798,18 +9830,35 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 cur.close(); conn.close()
 
                 try:
+                    if restricted:
+                        price_note = f'Прайс: {list_price}₽ (оплата не подключена — PDF НЕ выдан, лид записан)'
+                    elif is_admin and level != 'basic':
+                        price_note = f'Прайс: {list_price}₽ (выдано бесплатно — тест админом)'
+                    else:
+                        price_note = f'Прайс: {list_price}₽ (выдано бесплатно — оплата ещё не подключена)'
                     _notify_admin_app(
                         '🆕 Новый заказ из miniapp\n\n'
                         f'Заказ #{order_id}\n'
                         f'Пользователь: {tg_username or "—"} (id {tg_user_id})\n'
                         f'Ниша: {niche_name}\n'
                         f'Уровень: {level}\n'
-                        f'Прайс: {list_price}₽ (выдано бесплатно — оплата ещё не подключена)'
+                        f'{price_note}'
                     )
                 except Exception as e:
                     print(f'[miniapp/order] уведомление в Telegram не отправлено: {e}')
 
-                # Генерация в фоне для любого уровня — пока нет оплаты, отдаём бесплатно
+                if restricted:
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'application/json; charset=utf-8')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        'status': 'pending',
+                        'message': 'Оплата пока не подключена — скоро будет доступно! '
+                                   'А пока попробуйте бесплатный Basic-отчёт по этой нише.'
+                    }, ensure_ascii=False).encode())
+                    return
+
+                # Генерация в фоне — Basic всем, Standard/Deep только админу (см. is_admin выше)
                 job_id = str(_uuid2.uuid4())
                 _miniapp_pdf_jobs[job_id] = {'status': 'generating'}
 

@@ -195,6 +195,9 @@
         <div id="pdf-error" style="display:none;padding:14px;background:var(--danger-bg);border:1px solid var(--danger-border);border-radius:12px;font-size:13px;color:var(--danger);">
           Не удалось сгенерировать PDF автоматически — мы пришлём его вручную в Telegram.
         </div>
+        <div id="pdf-pending" style="display:none;padding:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--text-2);">
+          Оплата пока не подключена — скоро будет доступно! Мы свяжемся с вами в Telegram.
+        </div>
       </div>
 
       <a href="/landing" style="display:inline-block;padding:12px 28px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text-1);text-decoration:none;font-size:14px;font-weight:600;">
@@ -248,6 +251,7 @@
 
 <script>
 // Pre-fill niche from URL param
+var _adminKey = '';
 (function() {
   var params = new URLSearchParams(window.location.search);
   var n = params.get('niche');
@@ -260,6 +264,7 @@
     if (map[l] !== undefined) opts[map[l]].classList.add('selected');
     document.getElementById('level-val').value = l;
   }
+  _adminKey = params.get('admin_key') || '';
 })();
 
 function selectLevel(el, val) {
@@ -275,6 +280,7 @@ function submitOrder(e) {
   btn.textContent = 'Отправляем...';
 
   var data = {
+    admin_key: _adminKey,
     niche:   document.getElementById('niche-input').value.trim(),
     level:   document.getElementById('level-val').value,
     contact: document.getElementById('contact-input').value.trim(),
@@ -296,6 +302,11 @@ function submitOrder(e) {
       document.getElementById('success-block').classList.add('show');
       if (res.job_id) {
         pollPdfStatus(res.job_id);
+      } else if (res.message) {
+        document.getElementById('pdf-generating').style.display = 'none';
+        var pendingEl = document.getElementById('pdf-pending');
+        pendingEl.textContent = res.message;
+        pendingEl.style.display = 'block';
       } else {
         showPdfError();
       }

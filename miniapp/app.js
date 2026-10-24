@@ -251,6 +251,11 @@ async function orderPdf(level) {
     // и выдаются бесплатно одинаковым путём: job_id → поллинг → кнопка скачать.
     if (data.job_id) {
       pollJob(data.job_id, level);
+    } else if (data.status === 'pending') {
+      pdfStatus.className = 'pdf-status pending';
+      pdfStatus.textContent = data.message || 'Пока недоступно.';
+      pdfStatus.classList.remove('hidden');
+      resetButtons();
     } else {
       pdfStatus.className = 'pdf-status error';
       pdfStatus.textContent = data.message || 'Ошибка запуска генерации. Попробуйте ещё раз.';

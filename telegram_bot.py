@@ -528,10 +528,26 @@ async def cb_pdf(callback: CallbackQuery):
         await callback.answer("Ниша не найдена", show_alert=True)
         return
 
-    # Оплата ещё не подключена — выдаём все уровни (basic/standard/deep) бесплатно.
-    # amount=0 в заказе (реально списано 0); список-цена только в подписи сообщения.
     level_label = {"basic": "Basic", "standard": "Standard", "deep": "Deep"}[level]
+    is_admin = ADMIN_ID != 0 and user.id == ADMIN_ID
 
+    if level in ("standard", "deep") and not is_admin:
+        # Оплата ещё не подключена для обычных пользователей — только Basic бесплатно.
+        await loop.run_in_executor(
+            executor, _create_order,
+            user.id, user.username, n['name'], level, PRICES[level], ref
+        )
+        await loop.run_in_executor(executor, _log_lead, user.id, user.username, n['name'], f"{level}_clicked", ref)
+        await callback.answer()
+        await callback.message.answer(
+            f"💳 <b>{level_label} PDF</b> — {PRICES_STR[level]}\n\n"
+            "Оплата пока не подключена — скоро будет доступно!\n"
+            "А пока попробуйте бесплатный Basic-отчёт по этой нише.",
+            parse_mode="HTML",
+        )
+        return
+
+    # Basic (всем) или Standard/Deep (только админу) — генерируем бесплатно
     await callback.answer("Генерирую PDF...")
     order_id = await loop.run_in_executor(
         executor, _create_order,

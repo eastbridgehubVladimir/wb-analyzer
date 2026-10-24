@@ -9829,9 +9829,9 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 cur.execute(
                     "INSERT INTO orders "
                     "(telegram_user_id, telegram_username, niche_name, pdf_level, "
-                    "amount, payment_status, ref_source, source_channel)"
-                    " VALUES (%s,%s,%s,%s,%s,%s,%s,'miniapp') RETURNING id",
-                    (tg_user_id, tg_username, niche_name, level, amount, status, ref_source)
+                    "amount, payment_status, ref_source, source_channel, comment)"
+                    " VALUES (%s,%s,%s,%s,%s,%s,%s,'miniapp',%s) RETURNING id",
+                    (tg_user_id, tg_username, niche_name, level, amount, status, ref_source, comment or None)
                 )
                 order_id = cur.fetchone()[0]
                 cur.execute(

@@ -9806,6 +9806,7 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 niche_name  = str(body.get('niche_name', ''))
                 level       = str(body.get('pdf_level', 'basic')).lower()
                 ref_source  = str(body.get('ref_source', 'miniapp_direct'))
+                comment     = str(body.get('comment', '')).strip()[:500]
                 if level not in ('basic', 'standard', 'deep'):
                     raise ValueError('invalid pdf_level')
 
@@ -9850,6 +9851,7 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                         price_note = f'Прайс: {list_price}₽ (выдано бесплатно — тест админом)'
                     else:
                         price_note = f'Прайс: {list_price}₽ (выдано бесплатно — оплата ещё не подключена)'
+                    comment_note = f'\nКомментарий: {comment}' if comment else ''
                     _notify_admin_app(
                         '🆕 Новый заказ из miniapp\n\n'
                         f'Заказ #{order_id}\n'
@@ -9857,6 +9859,7 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                         f'Ниша: {niche_name}\n'
                         f'Уровень: {level}\n'
                         f'{price_note}'
+                        f'{comment_note}'
                     )
                 except Exception as e:
                     print(f'[miniapp/order] уведомление в Telegram не отправлено: {e}')
@@ -9876,7 +9879,7 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 job_id = str(_uuid2.uuid4())
                 _miniapp_pdf_jobs[job_id] = {'status': 'generating'}
 
-                def _generate_pdf_bg(jid, nname, oid, lvl):
+                def _generate_pdf_bg(jid, nname, oid, lvl, cmt):
                     try:
                         import pdf_auto
                         c2 = psycopg2.connect(DB)
@@ -9911,7 +9914,7 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                             'revenue_with_buyout': float(row[19] or 0), 'mpstats_path': row[20],
                             'revenue_annual': (float(row[19] or 0) or float(row[6] or 0)) * 12,
                         }
-                        pdf_bytes = pdf_auto.generate(lvl, niche)
+                        pdf_bytes = pdf_auto.generate(lvl, niche, comment=cmt)
                         tmp_dir = '/tmp/miniapp_pdfs'
                         _os.makedirs(tmp_dir, exist_ok=True)
                         path = f'{tmp_dir}/{jid}.pdf'
@@ -9934,7 +9937,7 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                         import traceback; traceback.print_exc()
                         _miniapp_pdf_jobs[jid] = {'status': 'error', 'error': str(e)}
 
-                _threading.Thread(target=_generate_pdf_bg, args=(job_id, niche_name, order_id, level), daemon=True).start()
+                _threading.Thread(target=_generate_pdf_bg, args=(job_id, niche_name, order_id, level, comment), daemon=True).start()
 
                 self.send_response(202)
                 self.send_header('Content-Type', 'application/json')

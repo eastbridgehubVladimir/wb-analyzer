@@ -321,6 +321,37 @@ body {
   order: -1;
 }
 
+/* ── Комментарий к заказу (необязательно, свёрнут по умолчанию) ── */
+.comment-toggle {
+  font-size: 13px;
+  color: var(--tg-hint-color);
+  padding: 10px 2px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.comment-box {
+  margin-bottom: 10px;
+}
+
+.comment-box textarea {
+  width: 100%;
+  min-height: 64px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--tg-text-color);
+  resize: vertical;
+  outline: none;
+}
+
+.comment-box textarea::placeholder {
+  color: var(--tg-hint-color);
+}
+
 /* ── PDF кнопки ─────────────────────────────────────────── */
 .pdf-buttons {
   display: flex;

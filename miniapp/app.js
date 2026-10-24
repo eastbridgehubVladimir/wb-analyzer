@@ -193,6 +193,9 @@ function showPreview(n) {
   pdfStatus.className = 'pdf-status hidden';
   pdfStatus.innerHTML = '';
 
+  document.getElementById('comment-input').value = '';
+  document.getElementById('comment-box').classList.add('hidden');
+
   ['btn-basic', 'btn-standard', 'btn-deep'].forEach(id => {
     document.getElementById(id).disabled = false;
   });
@@ -202,6 +205,14 @@ function showPreview(n) {
 
 document.getElementById('btn-back').addEventListener('click', () => {
   showScreen('screen-search');
+});
+
+document.getElementById('comment-toggle').addEventListener('click', () => {
+  const box = document.getElementById('comment-box');
+  box.classList.toggle('hidden');
+  if (!box.classList.contains('hidden')) {
+    document.getElementById('comment-input').focus();
+  }
 });
 
 // ── PDF-кнопки ────────────────────────────────────────────────────────────────
@@ -242,6 +253,7 @@ async function orderPdf(level) {
         niche_name: currentNiche.name,
         pdf_level: level,
         ref_source: startParam,
+        comment: document.getElementById('comment-input').value.trim().slice(0, 500),
       }),
     });
 

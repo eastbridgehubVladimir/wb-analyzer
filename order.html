@@ -176,12 +176,27 @@
       <div class="success-icon">🎉</div>
       <div class="success-title">Заявка принята!</div>
       <div class="success-desc">
-        Напишем вам в Telegram в ближайшее время с подтверждением и инструкцией по оплате.
-        Готовый PDF отправим после получения оплаты.
+        Мы уже готовим ваш PDF-отчёт — оплата пока не подключена, поэтому отчёт выдаётся бесплатно, прямо сейчас.
+        Также напишем вам в Telegram для подтверждения.
       </div>
       <div class="order-id-box">
         Номер заявки: <strong id="order-id-display">—</strong>
       </div>
+
+      <div id="pdf-status-box" style="margin-bottom:24px;">
+        <div id="pdf-generating" style="display:flex;align-items:center;gap:10px;justify-content:center;padding:14px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;font-size:14px;color:var(--text-2);">
+          ⏳ Генерируем PDF, обычно 1–4 минуты…
+        </div>
+        <div id="pdf-ready" style="display:none;">
+          <a id="pdf-download-link" href="#" style="display:inline-block;width:100%;box-sizing:border-box;padding:15px;background:var(--em);color:#fff;text-align:center;border-radius:12px;text-decoration:none;font-size:15px;font-weight:700;">
+            📄 Скачать PDF
+          </a>
+        </div>
+        <div id="pdf-error" style="display:none;padding:14px;background:var(--danger-bg);border:1px solid var(--danger-border);border-radius:12px;font-size:13px;color:var(--danger);">
+          Не удалось сгенерировать PDF автоматически — мы пришлём его вручную в Telegram.
+        </div>
+      </div>
+
       <a href="/landing" style="display:inline-block;padding:12px 28px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text-1);text-decoration:none;font-size:14px;font-weight:600;">
         ← Вернуться на главную
       </a>
@@ -279,6 +294,11 @@ function submitOrder(e) {
       document.querySelector('.form-title').textContent = 'Готово!';
       document.getElementById('order-id-display').textContent = res.order_id;
       document.getElementById('success-block').classList.add('show');
+      if (res.job_id) {
+        pollPdfStatus(res.job_id);
+      } else {
+        showPdfError();
+      }
     } else {
       btn.disabled = false;
       btn.textContent = 'Отправить заявку →';
@@ -290,6 +310,33 @@ function submitOrder(e) {
     btn.textContent = 'Отправить заявку →';
     alert('Ошибка сети — попробуйте ещё раз');
   });
+}
+
+function showPdfError() {
+  document.getElementById('pdf-generating').style.display = 'none';
+  document.getElementById('pdf-error').style.display = 'block';
+}
+
+function pollPdfStatus(jobId, attempt) {
+  attempt = attempt || 0;
+  if (attempt > 90) { showPdfError(); return; } // ~4.5 минуты максимум
+  fetch('/api/miniapp/status/' + jobId)
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.status === 'ready' && res.download_url) {
+        document.getElementById('pdf-generating').style.display = 'none';
+        var link = document.getElementById('pdf-download-link');
+        link.href = res.download_url;
+        document.getElementById('pdf-ready').style.display = 'block';
+      } else if (res.status === 'error' || res.status === 'not_found') {
+        showPdfError();
+      } else {
+        setTimeout(function() { pollPdfStatus(jobId, attempt + 1); }, 3000);
+      }
+    })
+    .catch(function() {
+      setTimeout(function() { pollPdfStatus(jobId, attempt + 1); }, 3000);
+    });
 }
 </script>
 </body>

@@ -7801,9 +7801,18 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 with open(pdf_path, 'rb') as f:
                     pdf_bytes = f.read()
+                lvl_label = job.get('level', 'basic').capitalize()
+                niche_label = str(job.get('niche', '')).replace('/', '-').replace('"', '') or 'Niche'
+                dl_name = f'WBAnalyzer_{niche_label}_{lvl_label}.pdf'
+                # Content-Disposition — только ASCII в filename=, кириллица (и любой non-ASCII)
+                # ломает заголовок у строгих клиентов (RFC 6266); полное имя — в filename*=.
+                import urllib.parse as _urlp
+                ascii_name = f'WBAnalyzer_{lvl_label}.pdf'
+                utf8_name = _urlp.quote(dl_name)
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/pdf')
-                self.send_header('Content-Disposition', f'attachment; filename="WBAnalyzer_Basic.pdf"')
+                self.send_header('Content-Disposition',
+                    f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{utf8_name}")
                 self.send_header('Content-Length', str(len(pdf_bytes)))
                 self.end_headers()
                 self.wfile.write(pdf_bytes)
@@ -7862,15 +7871,74 @@ class Handler(BaseHTTPRequestHandler):
                         f'Уровень: {level}\n'
                         f'Контакт: {contact}\n'
                         f'Комментарий: {comment or "—"}\n'
-                        f'Время: {order["ts"]}'
+                        f'Время: {order["ts"]}\n'
+                        f'(оплата не подключена — PDF выдаётся бесплатно сразу)'
                     )
                 except Exception as e:
                     print(f'[submit-order] уведомление в Telegram не отправлено: {e}')
 
+                # Оплата ещё не подключена — запускаем генерацию PDF в фоне сразу,
+                # тем же механизмом job/status/download, что и у miniapp.
+                job_id = None
+                try:
+                    import threading as _threading3, uuid as _uuid3
+                    gen_level = level if level in ('basic', 'standard', 'deep') else 'standard'
+                    job_id = str(_uuid3.uuid4())
+                    _miniapp_pdf_jobs[job_id] = {'status': 'generating'}
+
+                    def _generate_pdf_bg_site(jid, nname, lvl):
+                        try:
+                            import pdf_auto
+                            c2 = psycopg2.connect(DB)
+                            c2cur = c2.cursor()
+                            c2cur.execute("""
+                                SELECT name, COALESCE(display_name,name),
+                                       products, products_with_sales, sellers, sellers_with_sales,
+                                       revenue, potential_revenue, lost_revenue, lost_revenue_pct, orders,
+                                       buyout_pct, turnover, profit_pct, avg_rating, rank, commission,
+                                       avg_price, data_updated_at, revenue_with_buyout, mpstats_path
+                                FROM niches WHERE LOWER(name) ILIKE LOWER(%s) AND revenue IS NOT NULL
+                                ORDER BY revenue DESC LIMIT 1
+                            """, (f'%{nname}%',))
+                            row = c2cur.fetchone()
+                            c2cur.close(); c2.close()
+                            if not row:
+                                _miniapp_pdf_jobs[jid] = {'status': 'error', 'error': 'niche_not_found'}
+                                return
+                            niche_dict = {
+                                'name': row[0], 'display_name': row[1], 'full': row[0],
+                                'products': int(row[2] or 0), 'products_with_sales': int(row[3] or 0),
+                                'sellers': int(row[4] or 0), 'sellers_with_sales': int(row[5] or 0),
+                                'revenue': float(row[6] or 0), 'potential_revenue': float(row[7] or 0) if row[7] else None,
+                                'lost_revenue': float(row[8] or 0) if row[8] else None,
+                                'lost_revenue_pct': float(row[9] or 0), 'orders': int(row[10] or 0),
+                                'buyout_pct': float(row[11] or 0), 'turnover': float(row[12] or 0),
+                                'profit_pct': float(row[13] or 0), 'avg_rating': float(row[14] or 0),
+                                'rank': row[15], 'commission': float(row[16] or 0), 'avg_price': float(row[17] or 0),
+                                'data_updated_at': row[18].strftime('%d.%m.%Y') if row[18] else None,
+                                'revenue_with_buyout': float(row[19] or 0), 'mpstats_path': row[20],
+                                'revenue_annual': (float(row[19] or 0) or float(row[6] or 0)) * 12,
+                            }
+                            pdf_bytes = pdf_auto.generate(lvl, niche_dict)
+                            tmp_dir = '/tmp/miniapp_pdfs'
+                            os.makedirs(tmp_dir, exist_ok=True)
+                            path = f'{tmp_dir}/{jid}.pdf'
+                            with open(path, 'wb') as f:
+                                f.write(pdf_bytes)
+                            _miniapp_pdf_jobs[jid] = {'status': 'ready', 'path': path, 'level': lvl, 'niche': nname}
+                        except Exception as e:
+                            import traceback; traceback.print_exc()
+                            _miniapp_pdf_jobs[jid] = {'status': 'error', 'error': str(e)}
+
+                    _threading3.Thread(target=_generate_pdf_bg_site, args=(job_id, niche, gen_level), daemon=True).start()
+                except Exception as e:
+                    print(f'[submit-order] не удалось запустить фоновую генерацию PDF: {e}')
+                    job_id = None
+
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json; charset=utf-8')
                 self.end_headers()
-                self.wfile.write(json.dumps({'ok': True, 'order_id': order['id']}, ensure_ascii=False).encode())
+                self.wfile.write(json.dumps({'ok': True, 'order_id': order['id'], 'job_id': job_id}, ensure_ascii=False).encode())
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')
@@ -9698,8 +9766,11 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                 ref_source  = str(body.get('ref_source', 'miniapp_direct'))
                 if level not in ('basic', 'standard', 'deep'):
                     raise ValueError('invalid pdf_level')
-                amount = {'basic': 0, 'standard': 2500, 'deep': 6000}[level]
-                status = 'free' if amount == 0 else 'pending'
+                # Оплата ещё не подключена — выдаём все уровни бесплатно.
+                # list_price сохраняем для будущей отчётности, amount=0 — реально списано 0.
+                list_price = {'basic': 0, 'standard': 2500, 'deep': 6000}[level]
+                amount = 0
+                status = 'free'
 
                 conn = psycopg2.connect(DB)
                 cur = conn.cursor()
@@ -9728,25 +9799,16 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                         f'Пользователь: {tg_username or "—"} (id {tg_user_id})\n'
                         f'Ниша: {niche_name}\n'
                         f'Уровень: {level}\n'
-                        f'Сумма: {amount}₽'
+                        f'Прайс: {list_price}₽ (выдано бесплатно — оплата ещё не подключена)'
                     )
                 except Exception as e:
                     print(f'[miniapp/order] уведомление в Telegram не отправлено: {e}')
 
-                if level in ('standard', 'deep'):
-                    support = os.getenv('TELEGRAM_SUPPORT_USERNAME', '')
-                    msg = f'Оплата временно недоступна. Напишите @{support} чтобы получить отчёт вручную.' if support else 'Оплата временно недоступна — свяжитесь с поддержкой.'
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json; charset=utf-8')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({'status': 'pending', 'message': msg}, ensure_ascii=False).encode())
-                    return
-
-                # Basic: запускаем генерацию в фоне
+                # Генерация в фоне для любого уровня — пока нет оплаты, отдаём бесплатно
                 job_id = str(_uuid2.uuid4())
                 _miniapp_pdf_jobs[job_id] = {'status': 'generating'}
 
-                def _generate_pdf_bg(jid, nname, oid):
+                def _generate_pdf_bg(jid, nname, oid, lvl):
                     try:
                         import pdf_auto
                         c2 = psycopg2.connect(DB)
@@ -9779,7 +9841,7 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                             'revenue_with_buyout': float(row[19] or 0), 'mpstats_path': row[20],
                             'revenue_annual': (float(row[19] or 0) or float(row[6] or 0)) * 12,
                         }
-                        pdf_bytes = pdf_auto.generate('basic', niche)
+                        pdf_bytes = pdf_auto.generate(lvl, niche)
                         tmp_dir = '/tmp/miniapp_pdfs'
                         _os.makedirs(tmp_dir, exist_ok=True)
                         path = f'{tmp_dir}/{jid}.pdf'
@@ -9792,17 +9854,17 @@ ROI прогноз: {deep_raw.get('roi_forecast', 'нет данных')}
                         c3cur.execute(
                             "INSERT INTO telegram_leads "
                             "(telegram_user_id, telegram_username, niche_searched, action, ref_source, source_channel)"
-                            " VALUES (%s,%s,%s,'basic_downloaded',%s,'miniapp')",
-                            (tg_user_id, tg_username, nname, ref_source)
+                            " VALUES (%s,%s,%s,%s,%s,'miniapp')",
+                            (tg_user_id, tg_username, nname, f'{lvl}_downloaded', ref_source)
                         )
                         c3.commit()
                         c3cur.close(); c3.close()
-                        _miniapp_pdf_jobs[jid] = {'status': 'ready', 'path': path}
+                        _miniapp_pdf_jobs[jid] = {'status': 'ready', 'path': path, 'level': lvl, 'niche': nname}
                     except Exception as e:
                         import traceback; traceback.print_exc()
                         _miniapp_pdf_jobs[jid] = {'status': 'error', 'error': str(e)}
 
-                _threading.Thread(target=_generate_pdf_bg, args=(job_id, niche_name, order_id), daemon=True).start()
+                _threading.Thread(target=_generate_pdf_bg, args=(job_id, niche_name, order_id, level), daemon=True).start()
 
                 self.send_response(202)
                 self.send_header('Content-Type', 'application/json')

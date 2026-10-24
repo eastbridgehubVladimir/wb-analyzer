@@ -528,52 +528,37 @@ async def cb_pdf(callback: CallbackQuery):
         await callback.answer("Ниша не найдена", show_alert=True)
         return
 
-    if level in ("standard", "deep"):
-        # Создаём запись заказа (pending) и показываем заглушку
-        await loop.run_in_executor(
-            executor, _create_order,
-            user.id, user.username, n['name'], level, PRICES[level], ref
-        )
-        await loop.run_in_executor(executor, _log_lead, user.id, user.username, n['name'], f"{level}_clicked", ref)
-        await callback.answer()
-        await callback.message.answer(
-            f"💳 <b>{level.capitalize()} PDF</b> — {PRICES_STR[level]}\n\n"
-            "Оплата временно недоступна — мы дорабатываем платёжную систему.\n\n"
-            "Напишите нам — передадим отчёт вручную в течение нескольких часов.",
-            parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(text="📩 Написать в поддержку", url="https://t.me/vladzzimir")
-            ]])
-        )
-        return
+    # Оплата ещё не подключена — выдаём все уровни (basic/standard/deep) бесплатно.
+    # amount=0 в заказе (реально списано 0); список-цена только в подписи сообщения.
+    level_label = {"basic": "Basic", "standard": "Standard", "deep": "Deep"}[level]
 
-    # Basic PDF: создаём заказ (free) → генерируем → отправляем → отмечаем pdf_sent
     await callback.answer("Генерирую PDF...")
     order_id = await loop.run_in_executor(
         executor, _create_order,
-        user.id, user.username, n['name'], 'basic', 0, ref
+        user.id, user.username, n['name'], level, 0, ref
     )
-    await loop.run_in_executor(executor, _log_lead, user.id, user.username, n['name'], 'basic_generating', ref)
+    await loop.run_in_executor(executor, _log_lead, user.id, user.username, n['name'], f"{level}_generating", ref)
 
-    progress = await callback.message.answer("⏳ Генерирую Basic PDF, подождите ~1 минуту...")
+    eta = "~1 минуту" if level == "basic" else ("~2 минуты" if level == "standard" else "~3-4 минуты")
+    progress = await callback.message.answer(f"⏳ Генерирую {level_label} PDF, подождите {eta}...")
     try:
-        pdf_bytes = await loop.run_in_executor(executor, _generate_pdf, "basic", n)
-        fname = f"WBAnalyzer_{n['name'].replace('/', '-')}_Basic.pdf"
+        pdf_bytes = await loop.run_in_executor(executor, _generate_pdf, level, n)
+        fname = f"WBAnalyzer_{n['name'].replace('/', '-')}_{level_label}.pdf"
 
         await loop.run_in_executor(executor, _mark_pdf_sent, order_id)
-        await loop.run_in_executor(executor, _log_lead, user.id, user.username, n['name'], 'basic_downloaded', ref)
+        await loop.run_in_executor(executor, _log_lead, user.id, user.username, n['name'], f"{level}_downloaded", ref)
 
+        caption = f"📄 <b>{level_label} PDF:</b> {n['display_name']}"
+        if level == "basic":
+            caption += "\n\nХотите глубокий анализ? Закажите Standard или Deep отчёт."
         await callback.message.answer_document(
             BufferedInputFile(pdf_bytes, filename=fname),
-            caption=(
-                f"📄 <b>Basic PDF:</b> {n['display_name']}\n\n"
-                "Хотите глубокий анализ? Закажите Standard или Deep отчёт."
-            ),
+            caption=caption,
             parse_mode="HTML"
         )
         await progress.delete()
     except Exception as e:
-        log.error(f"PDF error for {n['name']}: {e}")
+        log.error(f"PDF error for {n['name']} ({level}): {e}")
         await progress.edit_text("❌ Ошибка при генерации PDF. Попробуйте позже.")
 
 # ── Меню поддержки ────────────────────────────────────────────────────────────

@@ -7926,7 +7926,7 @@ class Handler(BaseHTTPRequestHandler):
                     job_id = str(_uuid3.uuid4())
                     _miniapp_pdf_jobs[job_id] = {'status': 'generating'}
 
-                    def _generate_pdf_bg_site(jid, nname, lvl):
+                    def _generate_pdf_bg_site(jid, nname, lvl, cmt):
                         try:
                             import pdf_auto
                             c2 = psycopg2.connect(DB)
@@ -7959,7 +7959,7 @@ class Handler(BaseHTTPRequestHandler):
                                 'revenue_with_buyout': float(row[19] or 0), 'mpstats_path': row[20],
                                 'revenue_annual': (float(row[19] or 0) or float(row[6] or 0)) * 12,
                             }
-                            pdf_bytes = pdf_auto.generate(lvl, niche_dict)
+                            pdf_bytes = pdf_auto.generate(lvl, niche_dict, comment=cmt)
                             tmp_dir = '/tmp/miniapp_pdfs'
                             os.makedirs(tmp_dir, exist_ok=True)
                             path = f'{tmp_dir}/{jid}.pdf'
@@ -7970,7 +7970,7 @@ class Handler(BaseHTTPRequestHandler):
                             import traceback; traceback.print_exc()
                             _miniapp_pdf_jobs[jid] = {'status': 'error', 'error': str(e)}
 
-                    _threading3.Thread(target=_generate_pdf_bg_site, args=(job_id, niche, gen_level), daemon=True).start()
+                    _threading3.Thread(target=_generate_pdf_bg_site, args=(job_id, niche, gen_level, comment), daemon=True).start()
                 except Exception as e:
                     print(f'[submit-order] не удалось запустить фоновую генерацию PDF: {e}')
                     job_id = None

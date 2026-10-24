@@ -152,6 +152,7 @@
     display: block; width: 100%; padding: 6px; border-radius: 5px; font-size: 13px;
     margin-top: 8px; cursor: pointer; text-align: center; text-decoration: none;
     border: 1px solid var(--border); background: transparent; color: var(--text-3);
+    font-family: inherit;
   }
   .plan-btn.primary { background: var(--em); border-color: var(--em); color: #fff; font-weight: 500; }
   .plan-btn.premium { border: 2px solid #f59e0b; color: #b45309; font-weight: 500; }
@@ -216,6 +217,46 @@
     background: var(--em-light); border: 1px solid var(--em-border); color: var(--em);
     padding: 6px; border-radius: 5px; font-size: 13px; text-decoration: none;
   }
+
+  /* ── ПАНЕЛЬ ЗАКАЗА (инлайн, не отдельная страница) ──
+     Внутри .mg-right она занимает позицию "сбоку" на десктопе
+     (main-grid: 1fr 33%) и "снизу" на мобильном (main-grid: 1fr) —
+     раскладка переключается уже существующим media-query ниже,
+     без отдельного определения устройства. */
+  #order-panel { border: 2px solid var(--em); }
+  #order-panel .op-close {
+    float: right; background: none; border: none; font-size: 20px; line-height: 1;
+    cursor: pointer; color: var(--text-3); padding: 0;
+  }
+  #order-panel .op-summary { font-size: 13px; color: var(--text-2); margin: 2px 0 14px; line-height: 1.6; }
+  #order-panel .op-admin-banner {
+    display: none; align-items: center; gap: 8px;
+    background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.35);
+    border-radius: 7px; padding: 8px 10px; margin-bottom: 12px;
+    font-size: 12px; font-weight: 600; color: #22c55e;
+  }
+  #order-panel .op-field { margin-bottom: 14px; }
+  #order-panel .op-field label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--text-1); }
+  #order-panel .op-field label span { color: var(--text-3); font-weight: 400; margin-left: 4px; }
+  #order-panel .op-field input, #order-panel .op-field textarea {
+    width: 100%; box-sizing: border-box; background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; color: var(--text-1); font-size: 13px; font-family: inherit;
+    outline: none; transition: border-color .2s;
+  }
+  #order-panel .op-field input:focus, #order-panel .op-field textarea:focus { border-color: var(--em); }
+  #order-panel .op-field textarea { min-height: 64px; resize: vertical; }
+  #order-panel .op-status {
+    padding: 12px; border-radius: 8px; font-size: 13px; margin-top: 4px; line-height: 1.5;
+  }
+  #order-panel .op-status.generating,
+  #order-panel .op-status.pending { background: var(--surface); border: 1px solid var(--border); color: var(--text-2); }
+  #order-panel .op-status.error { background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger); }
+  #order-panel .op-ready-link {
+    display: block; width: 100%; box-sizing: border-box; padding: 11px; text-align: center;
+    background: var(--em); color: #fff; border-radius: 8px; text-decoration: none;
+    font-size: 13px; font-weight: 700;
+  }
+  #order-panel .op-order-id { font-size: 12px; color: var(--text-3); margin-bottom: 10px; }
 
   /* ── FAQ ── */
   .faq { display: flex; background: var(--surface); border-top: 1px solid var(--border); }
@@ -474,7 +515,7 @@
             <li>Стратегия входа по месяцам (1–3 мес)</li>
             <li>Рекомендуемая цена входа на рынок</li>
           </ul>
-          <a href="/order?level=standard" class="plan-btn primary">Получить отчёт →</a>
+          <button type="button" class="plan-btn primary" onclick="openOrderPanel('standard')">Получить отчёт →</button>
         </div>
 
         <div class="plan premium">
@@ -505,13 +546,45 @@
             <li>Анализ сезонности и трендов</li>
             <li>Оценка потенциала масштабирования</li>
           </ul>
-          <a href="/order?level=deep" class="plan-btn premium">Получить максимум →</a>
+          <button type="button" class="plan-btn premium" onclick="openOrderPanel('deep')">Получить максимум →</button>
         </div>
       </div>
     </div>
   </div>
 
   <div class="mg-right">
+    <div class="info-card" id="order-panel" style="display:none;">
+      <button type="button" class="op-close" onclick="closeOrderPanel()" aria-label="Закрыть">×</button>
+      <div class="ic-title">📝 Оформление заказа</div>
+      <div class="op-admin-banner" id="op-admin-banner">🔓 Режим администратора — бесплатно для теста</div>
+      <div class="op-summary">
+        Ниша: <strong id="op-niche-val">—</strong><br>
+        Уровень: <strong id="op-level-val">—</strong>
+      </div>
+
+      <form id="op-form" onsubmit="submitOrderPanel(event)">
+        <div class="op-field">
+          <label for="op-contact">Ваш Telegram <span>* для связи</span></label>
+          <input type="text" id="op-contact" required maxlength="200" placeholder="@username или +375291234567">
+        </div>
+        <div class="op-field">
+          <label for="op-comment">Комментарий <span>необязательно</span></label>
+          <textarea id="op-comment" maxlength="500" placeholder="Что важно учесть: откуда поставки, бюджет и т.д."></textarea>
+        </div>
+        <button type="submit" id="op-submit-btn" class="plan-btn primary">Отправить заявку →</button>
+      </form>
+
+      <div id="op-success" style="display:none;">
+        <div class="op-order-id">Заявка №<span id="op-order-id">—</span> принята.</div>
+        <div id="op-generating" class="op-status generating" style="display:none;">⏳ Генерируем PDF, обычно 1–4 минуты…</div>
+        <div id="op-ready" style="display:none;">
+          <a id="op-download-link" href="#" class="op-ready-link">📄 Скачать PDF</a>
+        </div>
+        <div id="op-error" class="op-status error" style="display:none;">Не удалось сгенерировать PDF автоматически — мы пришлём его вручную в Telegram.</div>
+        <div id="op-pending" class="op-status pending" style="display:none;"></div>
+      </div>
+    </div>
+
     <div class="info-card">
       <div class="ic-title">📊 Рынок WB сегодня</div>
       <div class="ic-row"><span class="lbl">Ниш в базе</span><span class="val" id="info-total">7 533</span></div>
@@ -1065,6 +1138,18 @@ function animateCounter(elementId, targetValue, duration = 1200, suffix = '') {
 let suggestTimeout = null;
 let allNiches = [];
 
+// ── Инлайн-панель заказа (вместо отдельной страницы /order) ──
+let _currentNiche = null;
+let _selectedLevel = null;
+let _adminKey = (new URLSearchParams(window.location.search)).get('admin_key') || '';
+let _isAdmin = false;
+if (_adminKey) {
+  fetch('/api/check-admin?admin_key=' + encodeURIComponent(_adminKey))
+    .then(function(r) { return r.json(); })
+    .then(function(d) { _isAdmin = !!d.is_admin; })
+    .catch(function() {});
+}
+
 async function fetchSuggestions(query) {
   if (query.length < 2) {
     hideSuggestions();
@@ -1189,11 +1274,115 @@ async function loadNews() {
 }
 
 function updateOrderLinks(nicheName) {
-  const suffix = nicheName ? ('&niche=' + encodeURIComponent(nicheName)) : '';
-  const standardBtn = document.querySelector('a[href^="/order?level=standard"]');
-  const deepBtn = document.querySelector('a[href^="/order?level=deep"]');
-  if (standardBtn) standardBtn.href = '/order?level=standard' + suffix;
-  if (deepBtn) deepBtn.href = '/order?level=deep' + suffix;
+  _currentNiche = nicheName || null;
+}
+
+function openOrderPanel(level) {
+  if (!_currentNiche) {
+    document.getElementById('hero-search').focus();
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    alert('Сначала введите нишу в строке поиска сверху.');
+    return;
+  }
+  _selectedLevel = level;
+
+  const levelLabels = {basic: 'Basic (бесплатно)', standard: 'Standard — 2 500 ₽', deep: 'Deep — 6 000 ₽'};
+  document.getElementById('op-niche-val').textContent = _currentNiche;
+  document.getElementById('op-level-val').textContent = levelLabels[level] || level;
+  document.getElementById('op-admin-banner').style.display = _isAdmin ? 'flex' : 'none';
+
+  const form = document.getElementById('op-form');
+  form.style.display = 'block';
+  form.reset();
+  document.getElementById('op-success').style.display = 'none';
+  ['op-generating', 'op-ready', 'op-error', 'op-pending'].forEach(function(id) {
+    document.getElementById(id).style.display = 'none';
+  });
+  const btn = document.getElementById('op-submit-btn');
+  btn.disabled = false;
+  btn.textContent = 'Отправить заявку →';
+
+  const panel = document.getElementById('order-panel');
+  panel.style.display = 'block';
+  panel.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+function closeOrderPanel() {
+  document.getElementById('order-panel').style.display = 'none';
+}
+
+function submitOrderPanel(e) {
+  e.preventDefault();
+  const btn = document.getElementById('op-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Отправляем...';
+
+  const data = {
+    admin_key: _adminKey,
+    niche: _currentNiche,
+    level: _selectedLevel,
+    contact: document.getElementById('op-contact').value.trim(),
+    comment: document.getElementById('op-comment').value.trim(),
+  };
+
+  fetch('/api/submit-order', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    if (res.ok) {
+      document.getElementById('op-form').style.display = 'none';
+      document.getElementById('op-order-id').textContent = res.order_id;
+      document.getElementById('op-success').style.display = 'block';
+      if (res.job_id) {
+        document.getElementById('op-generating').style.display = 'block';
+        pollPanelStatus(res.job_id);
+      } else if (res.message) {
+        const pendingEl = document.getElementById('op-pending');
+        pendingEl.textContent = res.message;
+        pendingEl.style.display = 'block';
+      } else {
+        document.getElementById('op-error').style.display = 'block';
+      }
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Отправить заявку →';
+      alert('Ошибка: ' + (res.error || 'попробуйте ещё раз'));
+    }
+  })
+  .catch(function() {
+    btn.disabled = false;
+    btn.textContent = 'Отправить заявку →';
+    alert('Ошибка сети — попробуйте ещё раз');
+  });
+}
+
+function pollPanelStatus(jobId, attempt) {
+  attempt = attempt || 0;
+  if (attempt > 90) {
+    document.getElementById('op-generating').style.display = 'none';
+    document.getElementById('op-error').style.display = 'block';
+    return;
+  }
+  fetch('/api/miniapp/status/' + jobId)
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.status === 'ready' && res.download_url) {
+        document.getElementById('op-generating').style.display = 'none';
+        document.getElementById('op-download-link').href = res.download_url;
+        document.getElementById('op-ready').style.display = 'block';
+      } else if (res.status === 'error' || res.status === 'not_found') {
+        document.getElementById('op-generating').style.display = 'none';
+        document.getElementById('op-error').style.display = 'block';
+      } else {
+        setTimeout(function() { pollPanelStatus(jobId, attempt + 1); }, 3000);
+      }
+    })
+    .catch(function() {
+      setTimeout(function() { pollPanelStatus(jobId, attempt + 1); }, 3000);
+    });
 }
 
 async function checkNiche() {

@@ -368,7 +368,7 @@
       <div class="search-wrap">
         <input id="hero-search" placeholder="Введите нишу: Кроссовки, Органайзеры..."
           onkeydown="if(event.key==='Enter') checkNiche()"
-          oninput="clearTimeout(suggestTimeout); suggestTimeout = setTimeout(()=>fetchSuggestions(this.value.trim()), 300)">
+          oninput="clearTimeout(suggestTimeout); suggestTimeout = setTimeout(()=>fetchSuggestions(this.value.trim()), 300); updateOrderLinks(this.value.trim() || null)">
         <div id="search-suggestions"></div>
       </div>
       <button class="btn-check" onclick="checkNiche()">Проверить бесплатно</button>

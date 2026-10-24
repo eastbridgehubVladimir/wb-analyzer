@@ -6391,6 +6391,18 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error': str(e)}).encode())
             return
 
+        if self.path.startswith('/api/check-admin'):
+            from urllib.parse import parse_qs, urlparse
+            import secrets as _secrets_check
+            key = parse_qs(urlparse(self.path).query).get('admin_key', [''])[0]
+            site_admin_key = os.getenv('SITE_ADMIN_KEY', '')
+            is_admin = bool(site_admin_key) and _secrets_check.compare_digest(key, site_admin_key)
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'is_admin': is_admin}).encode())
+            return
+
         if self.path == '/login':
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=utf-8')

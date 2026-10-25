@@ -299,6 +299,15 @@ function closeSupport() {
   document.getElementById('faq-overlay').classList.remove('open');
 }
 
+function openWebVersion() {
+  const url = 'https://wb-analyzer-production.up.railway.app/landing';
+  if (tg.openLink) {
+    tg.openLink(url);
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
 function toggleFaq(item) {
   const isExpanded = item.classList.contains('expanded');
   document.querySelectorAll('.faq-item.expanded')

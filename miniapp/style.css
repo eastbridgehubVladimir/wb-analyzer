@@ -706,6 +706,18 @@ body {
   opacity: 0.6;
 }
 
+.webversion-link {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--tg-hint-color);
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.webversion-link:active {
+  opacity: 0.45;
+}
+
 /* ── FAQ Bottom Sheet ───────────────────────────────────── */
 .faq-overlay {
   display: none;

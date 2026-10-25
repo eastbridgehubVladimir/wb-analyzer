@@ -379,9 +379,13 @@
     color: #f1f5f9; margin-bottom: 8px;
   }
 
-  /* ── Leaflet tile brightness (общее для всех карт на странице) ── */
+  /* ── Leaflet tile dark-mode (общее для всех карт на странице) ──
+     CARTO's dark_all tiles стали требовать API-ключ (см. 25.10.2026 —
+     тайлы отдавали "API KEY REQUIRED" вместо карты). Перешли на обычные
+     бесплатные тайлы OpenStreetMap (ключ не нужен) и имитируем тёмную
+     тему классическим CSS-инвертированием. */
   .leaflet-tile-pane {
-    filter: brightness(1.45) contrast(0.9);
+    filter: invert(92%) hue-rotate(180deg) brightness(95%) contrast(90%);
   }
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
@@ -1485,8 +1489,8 @@ async function initWarehouseMap() {
     }
 
     _warehouseMap = L.map('warehouse-map');
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19
     }).addTo(_warehouseMap);
 
@@ -1575,7 +1579,7 @@ async function initHeroMap() {
       touchZoom: false,
       keyboard: false
     });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19
     }).addTo(heroMap);
 

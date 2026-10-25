@@ -128,22 +128,28 @@
     cursor: pointer;
   }
   .plan:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-color: var(--em); }
-  .plan.popular { border: 2px solid var(--em) !important; background: #f0fdf4; }
+  .plan.popular { border: 2px solid var(--em) !important; background: #f0fdf4; position: relative; }
   .plan.popular:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(5,150,105,0.25); }
   .plan.premium { border: 2px solid #f59e0b !important; background: #fffbeb; position: relative; }
   .plan.premium:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(245,158,11,0.25); }
-  .plan-badge-gold {
-    position: absolute; top: -1px; right: 12px;
-    background: #f59e0b; color: #fff;
-    font-size: 10px; padding: 3px 10px;
-    border-radius: 0 0 8px 8px;
-    font-weight: 600;
+  /* ── Бейдж карточки (Популярный / Максимум) — один стиль для всех,
+     цвет меняется по варианту карточки. Раньше были две разные вёрстки:
+     овальная плашка внутри .plan-head у popular и прибитая к рамке
+     лента у premium — визуально выглядело как будто их делали разные
+     люди в разное время. Теперь оба — одинаковая лента вверху карточки. ── */
+  .plan-badge {
+    position: absolute; top: -1px; left: 50%; transform: translateX(-50%);
+    color: #fff; font-size: 10px; font-weight: 700;
+    padding: 3px 12px; border-radius: 0 0 8px 8px;
+    text-transform: uppercase; letter-spacing: .04em;
+    white-space: nowrap;
   }
+  .plan.popular .plan-badge { background: var(--em); }
+  .plan.premium .plan-badge { background: #f59e0b; }
   .plan-head { display: flex; justify-content: space-between; align-items: flex-start; }
   .plan-name { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin-bottom: 3px; }
   .plan.popular .plan-name { color: var(--em); font-weight: 600; }
   .plan-price { font-size: 17px; font-weight: 700; color: var(--text-1); margin-bottom: 8px; }
-  .plan-badge { background: var(--em); color: #fff; font-size: 9px; padding: 2px 7px; border-radius: 8px; white-space: nowrap; }
   .plan-div { height: 1px; background: var(--border-light); margin: 6px 0; }
   .pf { list-style: none; flex: 1; }
   .pf li { font-size: 13px; color: var(--text-2); padding: 1px 0; }
@@ -471,7 +477,7 @@
       <div class="section-title">Аналитика ниш — выберите глубину</div>
 
       <div class="plans-grid">
-        <div class="plan">
+        <div class="plan" onclick="document.getElementById('hero-search').focus(); window.scrollTo({top:0, behavior:'smooth'})">
           <div class="plan-head"><div class="plan-name">Экспресс</div></div>
           <div class="plan-price">Бесплатно</div>
           <div class="plan-div"></div>
@@ -484,7 +490,7 @@
             <li>Риск атаки на склады (новая фича)</li>
             <li>3 бесплатных анализа без регистрации</li>
           </ul>
-          <button class="plan-btn" onclick="document.getElementById('hero-search').focus(); window.scrollTo({top:0, behavior:'smooth'})">Попробовать</button>
+          <button class="plan-btn">Попробовать</button>
           <div style="display:flex; align-items:center; gap:8px;
             margin-top:16px; padding:10px 12px;
             background:var(--em-light);
@@ -495,10 +501,10 @@
           </div>
         </div>
 
-        <div class="plan popular">
+        <div class="plan popular" onclick="openOrderPanel('standard')">
+          <span class="plan-badge">Популярный</span>
           <div class="plan-head">
             <div class="plan-name">★ Стандартный</div>
-            <span class="plan-badge">Популярный</span>
           </div>
           <div class="plan-price">2 500 ₽</div>
           <div class="plan-div"></div>
@@ -519,11 +525,11 @@
             <li>Стратегия входа по месяцам (1–3 мес)</li>
             <li>Рекомендуемая цена входа на рынок</li>
           </ul>
-          <button type="button" class="plan-btn primary" onclick="openOrderPanel('standard')">Получить отчёт →</button>
+          <button type="button" class="plan-btn primary">Получить отчёт →</button>
         </div>
 
-        <div class="plan premium">
-          <span class="plan-badge-gold">МАКСИМУМ</span>
+        <div class="plan premium" onclick="openOrderPanel('deep')">
+          <span class="plan-badge">Максимум</span>
           <div class="plan-head"><div class="plan-name">Максимальный</div></div>
           <div class="plan-price">6 000 ₽</div>
           <div class="plan-div"></div>
@@ -550,7 +556,7 @@
             <li>Анализ сезонности и трендов</li>
             <li>Оценка потенциала масштабирования</li>
           </ul>
-          <button type="button" class="plan-btn premium" onclick="openOrderPanel('deep')">Получить максимум →</button>
+          <button type="button" class="plan-btn premium">Получить максимум →</button>
         </div>
       </div>
     </div>

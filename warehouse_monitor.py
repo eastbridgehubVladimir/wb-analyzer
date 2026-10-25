@@ -591,11 +591,14 @@ def _update_warehouse_status(conn, finding: dict) -> bool:
     return True
 
 
-# Кнопка под каждым уведомлением — ссылка на бота WBAnalyzer.
+# Кнопка под каждым уведомлением — открывает Mini App (раньше вела ссылкой на
+# сам чат с ботом, что было бессмысленно: уведомление и так приходит в этот чат,
+# клик по такой ссылке ничего не делал — см. 25.10.2026).
 _OPEN_APP_BUTTON = {
-    "inline_keyboard": [[
-        {"text": "📊 Открыть WBAnalyzer", "url": "https://t.me/Wbanalyzer_user_bot"}
-    ]]
+    "inline_keyboard": [
+        [{"text": "📊 Открыть WBAnalyzer", "web_app": {"url": "https://wb-analyzer-production.up.railway.app/miniapp"}}],
+        [{"text": "🌐 Не открылось? Открыть сайт", "url": "https://wb-analyzer-production.up.railway.app/landing"}],
+    ]
 }
 
 _STATUS_VERB = {'attacked': 'атакован', 'limited': 'ограничен', 'closed': 'закрыт'}

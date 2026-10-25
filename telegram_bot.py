@@ -343,6 +343,10 @@ async def cmd_start(message: Message):
             web_app=WebAppInfo(url="https://wb-analyzer-production.up.railway.app/miniapp")
         )],
         [InlineKeyboardButton(
+            text="🌐 Не открылось? Открыть сайт",
+            url="https://wb-analyzer-production.up.railway.app/landing"
+        )],
+        [InlineKeyboardButton(
             text="❓ Помощь и поддержка",
             callback_data="support_menu"
         )],

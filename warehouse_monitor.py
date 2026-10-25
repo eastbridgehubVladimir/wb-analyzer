@@ -4,9 +4,11 @@ warehouse_monitor.py — Агент v1: мониторинг статуса ск
 Раз в 4 часа (Railway cron) ищет свежие новости об атаках/закрытии складов WB
 и конкурентов (Ozon, Яндекс Маркет, СДЭК, Почта России) через Firecrawl,
 передаёт найденные тексты в Claude API для извлечения структурированных
-данных, обновляет таблицу warehouse_status (только для WB — по конкурентам
-своей таблицы пока нет, только лог + уведомление), логирует каждый запуск
-в warehouse_monitor_log и уведомляет TELEGRAM_ADMIN_ID.
+данных, обновляет таблицу warehouse_status (WB и Ozon — с 25.10.2026, колонка
+marketplace; по остальным конкурентам своей таблицы пока нет, только лог +
+уведомление), логирует каждый запуск в warehouse_monitor_log и уведомляет
+TELEGRAM_ADMIN_ID. Координаты новых складов (без сид-данных) определяются
+геокодингом по названию города через Nominatim/OpenStreetMap.
 
 Источники и уровни доверия (обновлено 31.07.2026 после ложного срабатывания
 по YouTube-шортсу и агрегатору dw.com — см. SOURCE_TIERS в коде):
@@ -552,6 +554,28 @@ def _extract_with_claude(text: str, known_names: list, source_url: str = '') -> 
         return {'found': False}
 
 
+def _geocode_city(name: str) -> tuple:
+    """Бесплатный геокодинг через Nominatim (OpenStreetMap) — координаты по
+    названию города/региона. Вызывается только для новых складов, которых ещё
+    нет в БД (WB без сид-списка и все Ozon) — редкое событие, укладывается в
+    usage policy Nominatim (не для массового геокодинга, но единичные запросы
+    по мере обнаружения новых складов — ровно наш случай).
+    Возвращает (lat, lon) или (None, None), если не нашли/запрос не удался."""
+    try:
+        resp = requests.get(
+            'https://nominatim.openstreetmap.org/search',
+            params={'q': name, 'countrycodes': 'ru', 'format': 'json', 'limit': 1},
+            headers={'User-Agent': 'WBAnalyzer-warehouse-monitor/1.0 (+https://wb-analyzer-production.up.railway.app)'},
+            timeout=8,
+        )
+        data = resp.json()
+        if data:
+            return float(data[0]['lat']), float(data[0]['lon'])
+    except Exception as e:
+        print(f'[warehouse_monitor] Геокодинг "{name}" не удался: {e}')
+    return None, None
+
+
 def _update_warehouse_status(conn, finding: dict, marketplace: str = 'wb') -> bool:
     """Обновляет запись в warehouse_status, либо создаёт новую, если склад
     обнаружен впервые (имя уже нормализовано через _resolve_warehouse_name() —
@@ -588,14 +612,16 @@ def _update_warehouse_status(conn, finding: dict, marketplace: str = 'wb') -> bo
         # так что добавление новой строки безопасно, а без этой ветки агент
         # структурно не может обнаружить впервые атакованный склад — именно это
         # произошло 03.08.2026 со складом во Владимирской области.
-        # lat/lon для новых складов неизвестны (нет сид-списка координат, как у
-        # WB) — на карте такая запись не отобразится, пока координаты не
-        # проставят вручную; это уже существовавшее поведение для новых WB-
-        # складов, для Ozon оно просто повторяется.
+        # lat/lon для новых складов не из сид-списка (все Ozon + впервые
+        # обнаруженные WB) — пробуем определить геокодингом по названию
+        # (обычно это ближайший крупный город, см. промпт в _extract_with_claude).
+        # Если геокодинг не удался — пишем NULL, на карте склад просто не
+        # появится, пока координаты не проставят вручную (было так и раньше).
+        lat, lon = _geocode_city(name)
         cur.execute("""
-            INSERT INTO warehouse_status (name, status, status_note, source_url, attacked_at, marketplace)
-            VALUES (%s, %s, %s, %s, CASE WHEN %s = 'attacked' THEN NOW() ELSE NULL END, %s)
-        """, (name, status, note, source_url, status, marketplace))
+            INSERT INTO warehouse_status (name, status, status_note, source_url, attacked_at, marketplace, lat, lon)
+            VALUES (%s, %s, %s, %s, CASE WHEN %s = 'attacked' THEN NOW() ELSE NULL END, %s, %s, %s)
+        """, (name, status, note, source_url, status, marketplace, lat, lon))
     conn.commit()
     cur.close()
     return True

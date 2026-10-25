@@ -440,7 +440,7 @@
   </div>
 
   <div class="wh-panel">
-    <div class="wh-panel-head"><span class="t">Склады WB</span><span class="live"><span class="live-dot"></span>live</span></div>
+    <div class="wh-panel-head"><span class="t">Склады WB + Ozon</span><span class="live"><span class="live-dot"></span>live</span></div>
     <div id="hero-map" class="hero-map"
       onclick="openModal('modal-warehouses')"
       title="Открыть карту складов"></div>
@@ -745,7 +745,7 @@
     height:85vh;max-height:85vh;display:flex;flex-direction:column">
     <button class="modal-close"
       onclick="closeModal('modal-warehouses')">×</button>
-    <div class="modal-title">🗺️ Карта складов Wildberries</div>
+    <div class="modal-title">🗺️ Карта складов Wildberries + Ozon</div>
     <div class="modal-subtitle" id="modal-wh-summary" style="flex-shrink:0">
       Загрузка данных...
     </div>
@@ -1469,6 +1469,15 @@ function markerColor(w) {
   if (w.status !== 'attacked') return '#52c41a';
   return DAMAGE_COLORS[w.damage_level] || DAMAGE_COLORS.unknown;
 }
+// Цвет заливки маркера — статус склада (как раньше). Цвет и толщина рамки —
+// маркетплейс (новое, 25.10.2026): так статус и принадлежность складу
+// читаются независимо друг от друга, без путаницы с общей легендой цветов.
+function markerBorder(w) {
+  return w.marketplace === 'ozon' ? '#005bff' : '#0d1f3c';
+}
+function marketplaceLabel(w) {
+  return w.marketplace === 'ozon' ? 'Ozon' : 'Wildberries';
+}
 
 async function initWarehouseMap() {
   if (_warehouseMapInitialized) {
@@ -1499,10 +1508,10 @@ async function initWarehouseMap() {
       const color = markerColor(w);
       const marker = L.circleMarker([w.lat, w.lon], {
         radius: 8,
-        color: '#0d1f3c',
+        color: markerBorder(w),
         fillColor: color,
         fillOpacity: 0.9,
-        weight: 2
+        weight: w.marketplace === 'ozon' ? 3 : 2
       }).addTo(_warehouseMap);
 
       const statusLabel = w.status === 'attacked'
@@ -1513,7 +1522,8 @@ async function initWarehouseMap() {
             {day:'2-digit', month:'2-digit', year:'numeric'})
         : null;
       let popup = '<div style="min-width:180px">'
-        + '<strong>' + w.name + '</strong><br>'
+        + '<strong>' + w.name + '</strong> '
+        + '<span style="color:' + markerBorder(w) + ';font-size:11px;font-weight:600">(' + marketplaceLabel(w) + ')</span><br>'
         + '<span style="color:#64748b">' + (w.region || '—') + '</span><br>'
         + '<span style="color:' + color + '">' + statusLabel + '</span>';
       if (date) popup += ' · ' + date;
@@ -1549,7 +1559,12 @@ async function initWarehouseMap() {
         '<div><span style="display:inline-block;width:10px;height:10px;'
         + 'border-radius:50%;background:' + c + ';margin-right:6px"></span>'
         + label + '</div>'
-      ).join('');
+      ).join('')
+      + '<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.15)">'
+      + '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;'
+      + 'background:transparent;border:2px solid #0d1f3c;margin-right:6px"></span>Wildberries</div>'
+      + '<div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;'
+      + 'background:transparent;border:3px solid #005bff;margin-right:6px"></span>Ozon</div>';
       return div;
     };
     legend.addTo(_warehouseMap);
@@ -1587,7 +1602,7 @@ async function initHeroMap() {
     warehouses.forEach(w => {
       L.circleMarker([w.lat, w.lon], {
         radius: 5,
-        color: '#0d1f3c',
+        color: markerBorder(w),
         fillColor: markerColor(w),
         fillOpacity: 0.9,
         weight: 1.5,

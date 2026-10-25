@@ -166,9 +166,10 @@ _ALL_SOURCE_DOMAINS = list(SOURCE_TIERS.keys()) + [_TELEGRAM_DOMAIN]
 _DOMAIN_FILTER = ' OR '.join(f'site:{d}' for d in _ALL_SOURCE_DOMAINS)
 
 # Склады конкурентов — тоже влияют на рынок и важны пользователям WBAnalyzer.
-# Инфраструктуры для хранения их статуса в БД пока нет (не было схемы в задаче) —
-# находки только логируются и уходят уведомлением админу, в warehouse_status
-# не пишутся.
+# С 25.10.2026 находки по Ozon проходят ту же confidence-проверку, что и WB,
+# и пишутся в warehouse_status (колонка marketplace) — попадают на публичную
+# карту складов на сайте. Остальные (Яндекс Маркет, СДЭК, Почта России) — как
+# раньше, только лог + справочное уведомление админу, в БД не пишутся.
 COMPETITOR_KEYWORDS = ['Ozon', 'Яндекс Маркет', 'СДЭК', 'Почта России']
 
 # Запросы разделены по приоритету источников (10.08.2026): украинские источники
@@ -551,10 +552,15 @@ def _extract_with_claude(text: str, known_names: list, source_url: str = '') -> 
         return {'found': False}
 
 
-def _update_warehouse_status(conn, finding: dict) -> bool:
+def _update_warehouse_status(conn, finding: dict, marketplace: str = 'wb') -> bool:
     """Обновляет запись в warehouse_status, либо создаёт новую, если склад
     обнаружен впервые (имя уже нормализовано через _resolve_warehouse_name() —
     см. run() — так что дубль под другим написанием того же склада исключён).
+    marketplace: 'wb' (по умолчанию) или 'ozon' — разные склады с одинаковым
+    названием города у разных маркетплейсов не считаются дублями (name остаётся
+    UNIQUE в таблице, поэтому для Ozon-складов с именем, уже занятым WB-складом,
+    запись не создастся — такое пока не встречалось, но если возникнет, нужно
+    будет различать имена явно, например суффиксом).
     Возвращает True, если в БД что-то реально изменилось."""
     name = str(finding.get('warehouse', '')).strip()
     status = str(finding.get('status', '')).strip().lower()
@@ -582,10 +588,14 @@ def _update_warehouse_status(conn, finding: dict) -> bool:
         # так что добавление новой строки безопасно, а без этой ветки агент
         # структурно не может обнаружить впервые атакованный склад — именно это
         # произошло 03.08.2026 со складом во Владимирской области.
+        # lat/lon для новых складов неизвестны (нет сид-списка координат, как у
+        # WB) — на карте такая запись не отобразится, пока координаты не
+        # проставят вручную; это уже существовавшее поведение для новых WB-
+        # складов, для Ozon оно просто повторяется.
         cur.execute("""
-            INSERT INTO warehouse_status (name, status, status_note, source_url, attacked_at)
-            VALUES (%s, %s, %s, %s, CASE WHEN %s = 'attacked' THEN NOW() ELSE NULL END)
-        """, (name, status, note, source_url, status))
+            INSERT INTO warehouse_status (name, status, status_note, source_url, attacked_at, marketplace)
+            VALUES (%s, %s, %s, %s, CASE WHEN %s = 'attacked' THEN NOW() ELSE NULL END, %s)
+        """, (name, status, note, source_url, status, marketplace))
     conn.commit()
     cur.close()
     return True
@@ -774,36 +784,50 @@ def run():
         raw_findings.extend(_search_and_extract(query, known_names))
 
     wb_findings = [f for f in raw_findings if str(f.get('company', '')).strip().upper() == 'WB']
-    competitor_findings = [f for f in raw_findings if str(f.get('company', '')).strip().upper() != 'WB']
+    ozon_findings = [f for f in raw_findings if str(f.get('company', '')).strip().upper() == 'OZON']
+    other_competitor_findings = [
+        f for f in raw_findings
+        if str(f.get('company', '')).strip().upper() not in ('WB', 'OZON')
+    ]
+    # competitor_findings — для сводного лога и итогового справочного уведомления
+    # (Яндекс Маркет/СДЭК/Почта России — без confidence-пайплайна и БД, как раньше).
+    competitor_findings = ozon_findings + other_competitor_findings
 
-    # Группируем WB-находки по (склад, статус) — правило "confirmed/uncertain/ignored"
-    # требует знать ВСЕ источники, сообщившие об одном и том же, а не рассматривать
-    # каждую находку изолированно.
-    groups = {}
-    for f in wb_findings:
-        groups.setdefault((f['warehouse'], f['status']), []).append(f)
+    def _process_findings(findings: list, marketplace: str) -> tuple:
+        """Группирует находки по (склад, статус), применяет confidence-правило
+        confirmed/uncertain/ignored и пишет confirmed в БД. Общая логика для
+        WB и Ozon — раньше была только для WB, продублирована для Ozon
+        25.10.2026 вместо копипасты всего блока."""
+        groups = {}
+        for f in findings:
+            groups.setdefault((f['warehouse'], f['status']), []).append(f)
 
-    updated = []
-    uncertain = []
-    for (wh, status), group in groups.items():
-        tiers = [f['_tier'] for f in group]
-        urls = [f['source_url'] for f in group]
-        conf = _confidence(tiers, urls)
-        best = dict(group[0])
-        best['confidence'] = conf
-        best['source_urls'] = urls
-        if conf == 'ignored':
-            print(f"[warehouse_monitor] {wh} → {status}: только источники уровня 4 — "
-                  f"игнорируем (не БД, не уведомление)")
-            continue
-        if conf == 'uncertain':
-            print(f"[warehouse_monitor] {wh} → {status}: неуверенность (источники: {urls}) "
-                  f"— БД не трогаем, только лог для ручной проверки, уведомление НЕ отправляется")
-            uncertain.append(best)
-            continue
-        # conf == 'confirmed'
-        if _update_warehouse_status(conn, best):
-            updated.append(best)
+        updated_, uncertain_ = [], []
+        for (wh, status), group in groups.items():
+            tiers = [f['_tier'] for f in group]
+            urls = [f['source_url'] for f in group]
+            conf = _confidence(tiers, urls)
+            best = dict(group[0])
+            best['confidence'] = conf
+            best['source_urls'] = urls
+            if conf == 'ignored':
+                print(f"[warehouse_monitor] [{marketplace}] {wh} → {status}: только источники "
+                      f"уровня 4 — игнорируем (не БД, не уведомление)")
+                continue
+            if conf == 'uncertain':
+                print(f"[warehouse_monitor] [{marketplace}] {wh} → {status}: неуверенность "
+                      f"(источники: {urls}) — БД не трогаем, только лог для ручной проверки, "
+                      f"уведомление НЕ отправляется")
+                uncertain_.append(best)
+                continue
+            # conf == 'confirmed'
+            if _update_warehouse_status(conn, best, marketplace=marketplace):
+                updated_.append(best)
+        return updated_, uncertain_
+
+    updated, uncertain = _process_findings(wb_findings, 'wb')
+    updated_ozon, uncertain_ozon = _process_findings(ozon_findings, 'ozon')
+    uncertain += uncertain_ozon
 
     # Дедуп уведомлений: не слать одно и то же за последние 24 часа, кроме
     # confirmed — подтверждённая атака отправляется всегда, даже если склад уже
@@ -814,7 +838,11 @@ def run():
         f for f in updated
         if f.get('confidence') == 'confirmed' or f.get('warehouse') not in recently_notified
     ]
-    notified_names = [f.get('warehouse') for f in to_notify_updated]
+    to_notify_ozon = [
+        f for f in updated_ozon
+        if f.get('confidence') == 'confirmed' or f.get('warehouse') not in recently_notified
+    ]
+    notified_names = [f.get('warehouse') for f in to_notify_updated + to_notify_ozon]
 
     # Один сводный лог на запуск: found=True, если было хоть одно распознанное упоминание
     # (включая конкурентов, confirmed, uncertain и ignored-находки — все они попадают в
@@ -838,9 +866,9 @@ def run():
     cur.close()
     conn.close()
 
-    if to_notify_updated:
+    def _format_notify_lines(findings: list) -> list:
         lines = []
-        for f in to_notify_updated:
+        for f in findings:
             verb = _STATUS_VERB.get(f.get('status'), f.get('status'))
             urls = f.get('source_urls') or [f.get('source_url')]
             labels = sorted({_source_label(u) for u in urls if u})
@@ -850,24 +878,36 @@ def run():
             else:
                 lines.append(f"  Источник: {urls[0]}")
             lines.append(f"  Статус: ПОДТВЕРЖДЕНО ({' / '.join(labels)})")
-        _notify_admin("🔴 Подтверждённая атака на склад WB\n\n" + "\n".join(lines))
-        print(f'[warehouse_monitor] Обновлено складов: {len(updated)} (уведомлено: {len(to_notify_updated)})')
+        return lines
+
+    if to_notify_updated:
+        _notify_admin("🔴 Подтверждённая атака на склад WB\n\n"
+                      + "\n".join(_format_notify_lines(to_notify_updated)))
+        print(f'[warehouse_monitor] Обновлено складов WB: {len(updated)} (уведомлено: {len(to_notify_updated)})')
     elif updated:
-        print(f'[warehouse_monitor] Обновлено складов: {len(updated)} '
+        print(f'[warehouse_monitor] Обновлено складов WB: {len(updated)} '
+              f'(уведомление подавлено — уже сообщали за последние 24ч)')
+
+    if to_notify_ozon:
+        _notify_admin("🔴 Подтверждённая атака на склад Ozon\n\n"
+                      + "\n".join(_format_notify_lines(to_notify_ozon)))
+        print(f'[warehouse_monitor] Обновлено складов Ozon: {len(updated_ozon)} (уведомлено: {len(to_notify_ozon)})')
+    elif updated_ozon:
+        print(f'[warehouse_monitor] Обновлено складов Ozon: {len(updated_ozon)} '
               f'(уведомление подавлено — уже сообщали за последние 24ч)')
 
     if uncertain:
         print(f'[warehouse_monitor] Находок с низкой уверенностью (uncertain): {len(uncertain)} '
               f'— залогированы для ручной проверки, уведомление НЕ отправлялось')
 
-    if competitor_findings:
+    if other_competitor_findings:
         lines = [f"• {f.get('company')}: {f.get('warehouse')} → {f.get('status')} ({f.get('source_url')})"
-                  for f in competitor_findings]
+                  for f in other_competitor_findings]
         print('[warehouse_monitor] Упоминания складов конкурентов:\n' + '\n'.join(lines))
-        _notify_admin("ℹ️ Упоминания складов конкурентов (не WB, справочно)\n\n"
+        _notify_admin("ℹ️ Упоминания складов конкурентов (не WB/Ozon, справочно)\n\n"
                       + '\n'.join(lines))
 
-    if not (to_notify_updated or competitor_findings):
+    if not (to_notify_updated or to_notify_ozon or other_competitor_findings):
         print('[warehouse_monitor] Тишина — нет подтверждённых новых атак')
 
     print(f'[warehouse_monitor] Готово: {datetime.now().isoformat()}')

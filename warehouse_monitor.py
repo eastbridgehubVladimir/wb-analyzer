@@ -391,12 +391,36 @@ def _confidence(tiers: list, source_urls: list) -> str:
 
 
 def _ensure_schema(conn):
-    """Идемпотентно добавляет notified_warehouses в warehouse_monitor_log, если
-    колонки ещё нет — самомиграция вместо отдельного .py-скрипта (задача явно
-    просила менять только warehouse_monitor.py). Безопасно вызывать на каждом
-    запуске: ADD COLUMN IF NOT EXISTS ничего не делает, если колонка уже есть."""
+    """Идемпотентно создаёт/дополняет схему — самомиграция вместо отдельных
+    .py-скриптов, по уже устоявшемуся в этом файле паттерну. Безопасно вызывать
+    на каждом запуске: IF NOT EXISTS ничего не делает, если объект уже есть.
+
+    warehouse_uncertain_notified и warehouse_extract_errors добавлены 06.11.2026
+    по итогам диагностики трёхмесячного молчания уведомлений (см. историю диалога):
+    первая — дедуп для нового канала "неподтверждено, но похоже на правду"
+    (пункты 1-2 задачи), вторая — явный лог упавшего JSON-парсинга Claude
+    (пункт 3), обе читаются еженедельным пульсом (пункт 4)."""
     cur = conn.cursor()
     cur.execute("ALTER TABLE warehouse_monitor_log ADD COLUMN IF NOT EXISTS notified_warehouses TEXT")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS warehouse_uncertain_notified (
+            id SERIAL PRIMARY KEY,
+            warehouse VARCHAR(100) NOT NULL,
+            marketplace VARCHAR(10) NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            first_notified_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE (warehouse, marketplace, status)
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS warehouse_extract_errors (
+            id SERIAL PRIMARY KEY,
+            occurred_at TIMESTAMP DEFAULT NOW(),
+            source_url TEXT,
+            raw_response TEXT,
+            error TEXT
+        )
+    """)
     conn.commit()
     cur.close()
 
@@ -418,6 +442,151 @@ def _get_recently_notified(conn, hours: int = 24) -> set:
             continue
     cur.close()
     return names
+
+
+def _already_notified_uncertain(conn, warehouse: str, marketplace: str, status: str) -> bool:
+    """Был ли этот инцидент (склад+маркетплейс+статус) уже отправлен в канал
+    'неподтверждено, но похоже на правду'. В отличие от _get_recently_notified
+    (24-часовое окно для confirmed) — здесь нет окна вообще: один и тот же
+    инцидент уведомляется максимум один раз, пока не появится в БД новый статус
+    (другая запись с тем же складом/маркетплейсом, но другим status — например
+    limited вместо attacked — это уже новый инцидент и уведомит заново)."""
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT 1 FROM warehouse_uncertain_notified WHERE warehouse=%s AND marketplace=%s AND status=%s",
+        (warehouse, marketplace, status)
+    )
+    found = cur.fetchone() is not None
+    cur.close()
+    return found
+
+
+def _mark_notified_uncertain(conn, warehouse: str, marketplace: str, status: str):
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO warehouse_uncertain_notified (warehouse, marketplace, status) "
+        "VALUES (%s, %s, %s) ON CONFLICT (warehouse, marketplace, status) DO NOTHING",
+        (warehouse, marketplace, status)
+    )
+    conn.commit()
+    cur.close()
+
+
+def _notify_uncertain_corroborated(conn, findings: list) -> list:
+    """Отдельный информационный канал для находок со статусом 'uncertain', но
+    подкреплённых минимум 2 РАЗНЫМИ источниками (неважно какого уровня — именно
+    это объединяло Ozon/Адыгейск и застрявшие WB-находки по Краснодару/Твери/
+    Коледино в диагностике 06.11.2026). НЕ меняет confirmed/БД-классификацию —
+    чисто сигнал "проверь сам". Дедуп через warehouse_uncertain_notified: один
+    инцидент уведомляет максимум один раз, даже если видится в каждом из
+    прогонов каждые 4 часа, пока статья не исчезнет из выдачи.
+
+    Если позже тот же инцидент дотянет до confirmed — это не блокирует обычное
+    confirmed-уведомление: тот путь (to_notify_updated ниже) полностью независим
+    от этой функции и от таблицы warehouse_uncertain_notified.
+
+    Возвращает список реально отправленных находок (для логирования в run())."""
+    candidates = [f for f in findings if len(set(f.get('source_urls') or [])) >= 2]
+    to_send = []
+    for f in candidates:
+        wh = f.get('warehouse')
+        mp = f.get('marketplace', 'wb')
+        st = f.get('status')
+        if _already_notified_uncertain(conn, wh, mp, st):
+            continue
+        to_send.append(f)
+    if not to_send:
+        return []
+
+    lines = []
+    for f in to_send:
+        label = 'WB' if f.get('marketplace', 'wb') == 'wb' else 'Ozon'
+        lines.append(f"- {label}, {f.get('warehouse')} → {f.get('status')}")
+        for u in sorted(set(f.get('source_urls') or [])):
+            lines.append(f"  {u}")
+    _notify_admin("⚠️ Неподтверждено, но похоже на правду — проверь сам\n\n" + "\n".join(lines))
+
+    for f in to_send:
+        _mark_notified_uncertain(conn, f.get('warehouse'), f.get('marketplace', 'wb'), f.get('status'))
+    return to_send
+
+
+def _maybe_send_weekly_pulse(conn):
+    """Раз в неделю (первый прогон понедельника, т.е. запуск в 00:xx UTC при
+    кроне 0 */4 * * *) — короткая сводка в Telegram: сколько прогонов было,
+    сколько находок всего, сколько confirmed / новых "неподтверждённых"
+    (см. _notify_uncertain_corroborated), сколько ошибок парсинга Claude
+    (см. _log_extract_error). Добавлено 06.11.2026 по итогам диагностики:
+    три месяца полного молчания прошли незамеченными именно потому, что
+    "тишина" и "всё спокойно, мониторинг работает" выглядели одинаково —
+    этот пульс делает их различимыми: тишина без пульса = мониторинг сломан,
+    тишина с пульсом "0 confirmed за неделю" = мониторинг работает, просто
+    нечего подтверждать.
+
+    Условие "первый прогон понедельника": weekday()==0 (понедельник) и
+    hour<4 — при кроне раз в 4 часа это соответствует ровно одному прогону
+    в неделю (00:xx), не требует отдельного крона или состояния "уже
+    отправляли сегодня"."""
+    now = datetime.now()
+    if now.weekday() != 0 or now.hour >= 4:
+        return
+
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT found, raw_response, notified_warehouses
+        FROM warehouse_monitor_log
+        WHERE run_at > NOW() - INTERVAL '7 days'
+    """)
+    rows = cur.fetchall()
+    total_runs = len(rows)
+    total_findings = 0
+    confirmed_count = 0
+    for found, raw, notified in rows:
+        if raw:
+            try:
+                data = json.loads(raw)
+                if isinstance(data, list):
+                    total_findings += len(data)
+            except (TypeError, ValueError):
+                pass
+        if notified:
+            try:
+                names = json.loads(notified)
+                if isinstance(names, list):
+                    confirmed_count += len(names)
+            except (TypeError, ValueError):
+                pass
+
+    cur.execute("SELECT COUNT(*) FROM warehouse_uncertain_notified WHERE first_notified_at > NOW() - INTERVAL '7 days'")
+    new_uncertain = cur.fetchone()[0]
+
+    cur.execute("SELECT COUNT(*) FROM warehouse_extract_errors WHERE occurred_at > NOW() - INTERVAL '7 days'")
+    extract_errors = cur.fetchone()[0]
+    cur.close()
+
+    expected_runs = 42  # каждые 4ч × 7 дней — ориентир, не точная цель
+    silence_note = ''
+    if confirmed_count == 0 and new_uncertain == 0:
+        silence_note = (
+            "\n\nℹ️ За неделю не было ни одной находки — ни confirmed, ни "
+            "«неподтверждённой». Если так продолжается неделями подряд — "
+            "стоит проверить вручную, не замолчали ли источники (см. "
+            "диагностику трёхмесячного молчания от 06.11.2026)."
+        )
+
+    text = (
+        "📊 Еженедельный пульс мониторинга складов\n\n"
+        f"Прогонов за неделю: {total_runs} (ориентир ~{expected_runs})\n"
+        f"Находок всего: {total_findings}\n"
+        f"Подтверждено (confirmed): {confirmed_count}\n"
+        f"Новых «неподтверждённых» (⚠️): {new_uncertain}\n"
+        f"Ошибок парсинга Claude: {extract_errors}"
+        f"{silence_note}"
+    )
+    _notify_admin(text)
+    print(f'[warehouse_monitor] Еженедельный пульс отправлен: прогонов={total_runs}, '
+          f'находок={total_findings}, confirmed={confirmed_count}, '
+          f'неподтверждённых={new_uncertain}, ошибок={extract_errors}')
 
 
 def _get_known_warehouse_names(conn) -> list:
@@ -483,7 +652,26 @@ def _resolve_warehouse_name(candidate: str, known_names: list):
     return c
 
 
-def _extract_with_claude(text: str, known_names: list, source_url: str = '') -> dict:
+def _log_extract_error(conn, source_url: str, raw_response: str, error: str):
+    """Явный, выживающий между прогонами лог упавшего JSON-парсинга Claude —
+    раньше (до 06.11.2026) это было print() без следа, за 60ч терялось 4 попытки
+    молча. conn может быть None (например при юнит-тесте этой функции отдельно) —
+    тогда просто не пишем в БД, печать в stdout всё равно происходит в вызывающем коде."""
+    if conn is None:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO warehouse_extract_errors (source_url, raw_response, error) VALUES (%s, %s, %s)",
+            (source_url, raw_response, error)
+        )
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f'[warehouse_monitor] Не удалось записать warehouse_extract_errors: {e}')
+
+
+def _extract_with_claude(text: str, known_names: list, source_url: str = '', conn=None) -> dict:
     """Просит Claude извлечь структурированные данные об атаке/закрытии склада WB
     или конкурента. Достоверность источника (уровни 1-4) проверяется по URL в
     Python (_classify_source_tier) — единичный вызов Claude на один текст не может
@@ -528,30 +716,45 @@ def _extract_with_claude(text: str, known_names: list, source_url: str = '') -> 
         '{"found": false}.\n\n'
         f"ТЕКСТ:\n{text}\n\nONLY JSON, без пояснений."
     )
-    try:
-        msg = client.messages.create(
-            model='claude-sonnet-4-6',
-            max_tokens=400,
-            messages=[{'role': 'user', 'content': prompt}],
-        )
-        raw = msg.content[0].text.strip().replace('```json', '').replace('```', '').strip()
-        result = json.loads(raw)
-        if isinstance(result, list):
-            result = result[0] if result else {}
-        if not isinstance(result, dict) or not result or result.get('found') is False:
-            return {'found': False}
-        if not str(result.get('warehouse', '')).strip():
-            return {'found': False}
-        # Сопоставление с известными складами (фаззи-матч на случай другого написания)
-        # или регистрация нового склада — делается централизованно в run() через
-        # _resolve_warehouse_name(), чтобы результат был согласован при группировке
-        # находок из разных источников по одному и тому же складу.
-        result['found'] = True
-        result['raw_response'] = raw
-        return result
-    except Exception as e:
-        print(f'[warehouse_monitor] Claude extract error: {e}')
-        return {'found': False}
+    # До 06.11.2026 единственная попытка молча превращалась в {'found': False} при
+    # любой ошибке парсинга — за 60ч диагностики так потерялось 4 находки без следа.
+    # Теперь: 1 повтор при сбое парсинга (сам Claude стохастичен — второй вызов часто
+    # возвращает чистый JSON), а если и повтор не распарсился — явный лог с сырым
+    # ответом вместо молчания (см. _log_extract_error).
+    last_error = None
+    last_raw = None
+    for attempt in range(2):
+        try:
+            msg = client.messages.create(
+                model='claude-sonnet-4-6',
+                max_tokens=400,
+                messages=[{'role': 'user', 'content': prompt}],
+            )
+            raw = msg.content[0].text.strip().replace('```json', '').replace('```', '').strip()
+            result = json.loads(raw)
+            if isinstance(result, list):
+                result = result[0] if result else {}
+            if not isinstance(result, dict) or not result or result.get('found') is False:
+                return {'found': False}
+            if not str(result.get('warehouse', '')).strip():
+                return {'found': False}
+            # Сопоставление с известными складами (фаззи-матч на случай другого написания)
+            # или регистрация нового склада — делается централизованно в run() через
+            # _resolve_warehouse_name(), чтобы результат был согласован при группировке
+            # находок из разных источников по одному и тому же складу.
+            result['found'] = True
+            result['raw_response'] = raw
+            return result
+        except Exception as e:
+            last_error = e
+            last_raw = locals().get('raw', '<Claude не вернул текст>')
+            if attempt == 0:
+                print(f'[warehouse_monitor] Claude extract error (попытка 1/2, повторяю): {e}')
+                continue
+    print(f'[warehouse_monitor] Claude extract error (после повтора, сдаёмся): {last_error} '
+          f'| источник: {source_url or "неизвестен"} | сырой ответ: {last_raw!r}')
+    _log_extract_error(conn, source_url, last_raw, str(last_error))
+    return {'found': False}
 
 
 def _geocode_city(name: str) -> tuple:
@@ -703,7 +906,7 @@ def _source_label(url: str) -> str:
     return host or url
 
 
-def _search_and_extract(query: str, known_names: list) -> list:
+def _search_and_extract(query: str, known_names: list, conn=None) -> list:
     """Один поисковый запрос → список находок с проставленными source_url/_tier.
     known_names мутируется на месте (append), чтобы новые склады, найденные в
     одном запросе, участвовали в группировке находок из следующего запроса."""
@@ -714,7 +917,7 @@ def _search_and_extract(query: str, known_names: list) -> list:
     for r in results:
         if not r['text']:
             continue
-        finding = _extract_with_claude(r['text'], known_names, r['url'])
+        finding = _extract_with_claude(r['text'], known_names, r['url'], conn=conn)
         if not finding.get('found'):
             continue
         if str(finding.get('company', '')).strip().upper() == 'WB':
@@ -736,7 +939,7 @@ def _search_and_extract(query: str, known_names: list) -> list:
     return found
 
 
-def _process_rss_source(feed_url: str, tier: int, label: str, keywords: list, known_names: list) -> list:
+def _process_rss_source(feed_url: str, tier: int, label: str, keywords: list, known_names: list, conn=None) -> list:
     """RSS-аналог _search_and_extract(): те же тексты проходят через тот же
     Claude-экстрактор и то же разрешение имени склада (is_valid_warehouse_name
     внутри _resolve_warehouse_name), только tier источника задан заранее
@@ -747,7 +950,7 @@ def _process_rss_source(feed_url: str, tier: int, label: str, keywords: list, kn
     if texts:
         print(f'[RSS] {feed_url}: {len(texts)} записей')
     for text in texts:
-        finding = _extract_with_claude(text, known_names, feed_url)
+        finding = _extract_with_claude(text, known_names, feed_url, conn=conn)
         if not finding.get('found'):
             continue
         if str(finding.get('company', '')).strip().upper() == 'WB':
@@ -783,10 +986,10 @@ def run():
     for i, (feed_url, tier, label) in enumerate(RSS_SOURCES):
         if i > 0:
             time.sleep(3)
-        raw_findings.extend(_process_rss_source(feed_url, tier, label, RSS_KEYWORDS, known_names))
+        raw_findings.extend(_process_rss_source(feed_url, tier, label, RSS_KEYWORDS, known_names, conn=conn))
 
     # ЗАПРОС 1 — украинские источники (приоритетный, публикуют быстро и точно).
-    raw_findings.extend(_search_and_extract(SEARCH_QUERY_UA, known_names))
+    raw_findings.extend(_search_and_extract(SEARCH_QUERY_UA, known_names, conn=conn))
 
     wb_ua_only = [f for f in raw_findings if str(f.get('company', '')).strip().upper() == 'WB']
     groups_ua = {}
@@ -804,10 +1007,10 @@ def run():
         print('[warehouse_monitor] Подтверждение уже есть из украинских источников — '
               'пропускаем запрос по российским источникам (экономия лимитов)')
     else:
-        raw_findings.extend(_search_and_extract(SEARCH_QUERY_RU, known_names))
+        raw_findings.extend(_search_and_extract(SEARCH_QUERY_RU, known_names, conn=conn))
 
     for query in COMPETITOR_SEARCH_QUERIES:
-        raw_findings.extend(_search_and_extract(query, known_names))
+        raw_findings.extend(_search_and_extract(query, known_names, conn=conn))
 
     wb_findings = [f for f in raw_findings if str(f.get('company', '')).strip().upper() == 'WB']
     ozon_findings = [f for f in raw_findings if str(f.get('company', '')).strip().upper() == 'OZON']
@@ -836,14 +1039,17 @@ def run():
             best = dict(group[0])
             best['confidence'] = conf
             best['source_urls'] = urls
+            best['marketplace'] = marketplace
             if conf == 'ignored':
                 print(f"[warehouse_monitor] [{marketplace}] {wh} → {status}: только источники "
                       f"уровня 4 — игнорируем (не БД, не уведомление)")
                 continue
             if conf == 'uncertain':
+                n_distinct = len(set(urls))
                 print(f"[warehouse_monitor] [{marketplace}] {wh} → {status}: неуверенность "
-                      f"(источники: {urls}) — БД не трогаем, только лог для ручной проверки, "
-                      f"уведомление НЕ отправляется")
+                      f"(источники: {urls}) — БД не трогаем, confirmed-уведомление НЕ отправляется"
+                      + (f"; подкреплено {n_distinct} разными источниками — пойдёт в канал "
+                         f"'неподтверждено' (см. _notify_uncertain_corroborated)" if n_distinct >= 2 else ""))
                 uncertain_.append(best)
                 continue
             # conf == 'confirmed'
@@ -855,10 +1061,18 @@ def run():
     updated_ozon, uncertain_ozon = _process_findings(ozon_findings, 'ozon')
     uncertain += uncertain_ozon
 
+    # Отдельный информационный канал (06.11.2026) — uncertain НЕ становится
+    # confirmed и НЕ пишется в warehouse_status от этого вызова, но если
+    # подкреплена 2+ разными источниками, уходит явно помеченным предупреждением,
+    # не чаще одного раза на инцидент (дедуп внутри функции). Независим от
+    # обычного confirmed-уведомления ниже — если инцидент позже дотянет до
+    # confirmed, оно всё равно уйдёт.
+    sent_uncertain = _notify_uncertain_corroborated(conn, uncertain)
+
     # Дедуп уведомлений: не слать одно и то же за последние 24 часа, кроме
     # confirmed — подтверждённая атака отправляется всегда, даже если склад уже
     # упоминался, иначе агент замолчит про реально новую смену статуса того же
-    # склада. uncertain НИКОГДА не уведомляется (см. ПРАВКА 2/4) — только лог.
+    # склада.
     recently_notified = _get_recently_notified(conn)
     to_notify_updated = [
         f for f in updated
@@ -890,6 +1104,8 @@ def run():
     ))
     conn.commit()
     cur.close()
+
+    _maybe_send_weekly_pulse(conn)
     conn.close()
 
     def _format_notify_lines(findings: list) -> list:
@@ -924,7 +1140,10 @@ def run():
 
     if uncertain:
         print(f'[warehouse_monitor] Находок с низкой уверенностью (uncertain): {len(uncertain)} '
-              f'— залогированы для ручной проверки, уведомление НЕ отправлялось')
+              f'— залогированы для ручной проверки, confirmed-уведомление НЕ отправлялось')
+    if sent_uncertain:
+        print(f'[warehouse_monitor] Отправлено в канал "неподтверждено": {len(sent_uncertain)} '
+              f'новых инцидентов (2+ разных источника)')
 
     if other_competitor_findings:
         lines = [f"• {f.get('company')}: {f.get('warehouse')} → {f.get('status')} ({f.get('source_url')})"
